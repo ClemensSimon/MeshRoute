@@ -1,0 +1,43 @@
+[
+  {
+    "scenario": 1,
+    "name": "Small Local Mesh",
+    "config": {
+      "n_nodes": 20,
+      "area_size": 1000,
+      "lora_range": 800,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 20,
+      "links": 166,
+      "clusters": 3,
+      "avg_neighbors": 16.6,
+      "avg_routes_per_dest": 1.5
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 31525,
+      "tx_per_delivered": 315.2,
+      "avg_hops": 1.1,
+      "energy_score": 315.2,
+      "max_node_load": 1881
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 112,
+      "tx_per_delivered": 1.1,
+      "avg_hops": 1.1,
+      "energy_score": 1.1,
+      "max_node_load": 12
+    }
+  }
+]
