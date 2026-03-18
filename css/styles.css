@@ -61,7 +61,8 @@ nav .logo {
   text-decoration: none;
 }
 nav .logo span { color: var(--text-muted); font-weight: 400; }
-nav ul { list-style: none; display: flex; gap: 0.25rem; }
+nav ul { list-style: none; display: flex; gap: 0.25rem; align-items: center; }
+nav .nav-sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.3rem; }
 nav a {
   color: var(--text-dim); text-decoration: none; font-size: 0.85rem;
   font-weight: 500; padding: 0.4rem 0.8rem; border-radius: 6px;

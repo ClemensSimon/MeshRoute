@@ -69,7 +69,19 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 <body>
 <div class="report">
 
-<a href="../index.html" class="back-link">&larr; Back to Presentation</a>
+<!-- NAV -->
+<nav style="position:sticky;top:0;z-index:1000;background:rgba(10,14,26,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 2rem;">
+  <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:50px;">
+    <a href="../index.html" style="font-family:var(--font-mono);font-weight:700;font-size:1rem;color:var(--cyan);text-decoration:none;">MESH<span style="color:var(--text-muted);font-weight:400;">ROUTE</span></a>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <a href="../index.html" style="color:var(--text-dim);text-decoration:none;font-size:0.8rem;font-family:var(--font-mono);padding:0.3rem 0.6rem;border-radius:6px;transition:all 0.2s;" onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color=''">Presentation</a>
+      <span style="width:1px;height:18px;background:var(--border);"></span>
+      <a href="../simulator.html" style="color:var(--cyan);text-decoration:none;font-size:0.8rem;font-family:var(--font-mono);padding:0.3rem 0.6rem;">Live Simulator</a>
+      <a href="esp-test-results.html" style="color:var(--green);text-decoration:none;font-size:0.8rem;font-family:var(--font-mono);padding:0.3rem 0.6rem;background:rgba(74,222,128,0.1);border-radius:6px;">ESP32 Test</a>
+      <a href="../summary.html" style="color:var(--text-dim);text-decoration:none;font-size:0.8rem;font-family:var(--font-mono);padding:0.3rem 0.6rem;" onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color=''">Summary</a>
+    </div>
+  </div>
+</nav>
 
 <h1>ESP32 Virtual Network Test Results</h1>
 <p>100 simulated ESP32 nodes across 5 Munich districts, running the actual firmware routing logic. Mixed LoRa ranges: 20% rooftop nodes (3km) + 80% handheld (1.5km).</p>
