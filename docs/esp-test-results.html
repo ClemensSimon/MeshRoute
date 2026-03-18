@@ -291,14 +291,15 @@ function drawNetworkMap(data) {
     const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
     const name = n.name || 'Node ' + n.id;
 
-    if (n.is_border) {
-      L.circleMarker([n.lat, n.lon], { radius: 12, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.9 }).addTo(map);
-    }
-
     const isRooftop = (n.lora_range || 2000) > 2000;
-    const nodeRadius = n.is_border ? 8 : isRooftop ? 6 : 4;
+    // All nodes same size (7), differentiated by color:
+    // - Fill = cluster color
+    // - Border ring: white = border node, cyan = rooftop, cluster color = handheld
+    const ringColor = n.is_border ? '#ffffff' : isRooftop ? '#22d3ee' : color;
+    const ringWidth = n.is_border ? 3 : isRooftop ? 2.5 : 1.5;
+
     const marker = L.circleMarker([n.lat, n.lon], {
-      radius: nodeRadius, color: color, weight: isRooftop ? 2.5 : 1.5, fillColor: color, fillOpacity: 0.9,
+      radius: 7, color: ringColor, weight: ringWidth, fillColor: color, fillOpacity: 0.85,
     }).addTo(map);
 
     // Build popup content
