@@ -53,31 +53,50 @@ A routing protocol that achieves **O(hops) cost** instead of O(n) — for all me
 
 This makes the hop limit irrelevant: 20 hops cost less than managed flooding costs for 1.
 
-## Simulation Results (vs. Meshtastic's Actual Routing)
+## Simulation Results (22 Scenarios, 4 Routers)
 
-The simulator compares all four approaches on identical networks:
+The simulator compares all four approaches on identical networks (100 messages each):
 
-### Normal Conditions
+### Scale Tests
 
-| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 vs Managed |
-|----------|------:|-----------------:|------------:|--------------:|
-| Small Local (1km) | 20 | 17,045 | 112 | **99.3% less** |
-| Medium City (5km) | 100 | 155,774 | 196 | **99.9% less** |
-| Large Regional (20km) | 500 | 708,720 | 497 | **99.9% less** |
-| Dense Urban (3km) | 200 | 1,239,692 | 136 | **100% less** |
-| 1000 Nodes (40km) | 1000 | 1,462,489 | 10,635 | **99.3% less** |
-| 1500 Nodes (50km) | 1500 | 2,119,189 | 38,850 | **98.2% less** |
+| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 Del% | S5 vs Managed |
+|----------|------:|-----------------:|------------:|--------:|--------------:|
+| Small Local (1km) | 20 | 16,459 | 115 | 100% | **99.3% less** |
+| Medium City (5km) | 100 | 201,920 | 34,382 | 94% | **83.0% less** |
+| Large Regional (20km) | 500 | 1,002,437 | 393,891 | 25% | **60.7% less** |
+| Dense Urban (3km) | 200 | 1,490,555 | 481,310 | 100% | **67.7% less** |
+
+### Realistic Environments
+
+| Scenario | Managed TX | System 5 TX | S5 Del% | S5 vs Managed |
+|----------|----------:|------------:|--------:|--------------:|
+| Rural Long Range | 30,152 | 617 | 100% | **98.0% less** |
+| Hiking Trail (linear) | 28,894 | 627 | 100% | **97.8% less** |
+| Maritime / Coastal | 9,319 | 339 | 100% | **96.4% less** |
+| Festival / Event | 912,953 | 107 | 100% | **99.99% less** |
+| Building Emergency | 3,651,559 | 386 | 100% | **99.99% less** |
+| Highway Convoy | 52,072 | 189 | 100% | **99.6% less** |
+| Community Mesh | 75,991 | 88 | 100% | **99.9% less** |
+| Indoor-Outdoor Mix | 268,468 | 37,522 | 97% | **86.0% less** |
 
 ### Stress Tests
 
-| Scenario | Managed Flood TX | System 5 TX | S5 Delivery | S5 vs Managed |
-|----------|----------------:|------------:|------------:|--------------:|
-| 30% Degraded Links | 170,214 | 4,701 | 100% | **97.2% less** |
-| 50% Degraded Links | 183,019 | 16,055 | 73% | **91.2% less** |
-| 20% Nodes Killed | 108,413 | 2,853 | 85% | **97.4% less** |
-| Combined Stress | 139,491 | 3,427 | 79% | **97.5% less** |
+| Scenario | Managed TX | System 5 TX | S5 Del% | S5 vs Managed |
+|----------|----------:|------------:|--------:|--------------:|
+| 30% Degraded Links | 208,164 | 37,159 | 67% | **82.1% less** |
+| 50% Degraded Links | 215,372 | 51,519 | 63% | **76.1% less** |
+| 20% Nodes Killed | 132,780 | 15,733 | 74% | **88.2% less** |
+| Combined Stress | 170,094 | 34,036 | 72% | **80.0% less** |
+| Disaster Relief | 35,635 | 271 | 78% | **99.2% less** |
+| Mountain Valley | 747 | 1,036 | 4% | *worse* |
+| Partition Recovery | 62,773 | 25,397 | 29% | **59.6% less** |
 
-Even against Meshtastic's managed flooding (which already suppresses ~50% of rebroadcasts), System 5 saves **91-99.9% of transmissions**.
+### Key Findings
+
+- **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with near-perfect delivery
+- **Stress conditions**: Still saves 60-99% TX, but delivery drops to 63-78% (fallback to cluster flooding helps)
+- **Extreme conditions** (mountain, partition): System 5 struggles — routes break faster than flooding adapts. These scenarios need the fallback mechanism.
+- **Backward compatibility**: Mixed-mode (S5 + Legacy nodes) works — S5 nodes route directly where possible, flood normally for legacy compatibility
 
 ## Interactive Presentation
 
