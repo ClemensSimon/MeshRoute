@@ -28,6 +28,17 @@ where Q = link quality (B.A.T.M.A.N. OGM reception rate), Load = queue pressure,
 
 **Fallback Flooding** — When all pre-computed routes fail (link degradation, killed nodes), System 5 falls back to scoped flooding within the source cluster. This is much cheaper than full network flooding because it's limited to the local geographic area.
 
+## The Killer Argument: Hop Limits Become Irrelevant
+
+In flooding, every hop multiplies transmissions across the **entire** network: `TX = n * hops`. The hop limit (default 3 in Meshtastic) is a survival mechanism — without it, the network drowns.
+
+In System 5, every hop costs **exactly 1 transmission**: `TX = hops`. The simulation confirms ~1.0 TX/hop across all scenarios, regardless of network size. This means:
+
+- **No artificial hop limit needed** — 20 or 50 hops cost less than flooding costs for 1
+- **Unlimited range** — limited only by node density, not protocol constraints
+- **Preset freedom** — SHORT_FAST with more hops works as well as LONG_SLOW with fewer
+- **Battery independence** — only forwarding nodes transmit, the rest sleep
+
 ## Simulation Results
 
 The `simulator/` directory contains a Python simulation comparing System 5 against naive flooding across 8 scenarios:
