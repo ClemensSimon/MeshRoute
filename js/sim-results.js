@@ -64,19 +64,34 @@
   }
 
   // ── Short scenario names for x-axis ──
+  const SHORT_NAMES = {
+    'Small Local Mesh':        'Small 20',
+    'Medium City Mesh':        'City 100',
+    'Large Regional Mesh':     'Regional 500',
+    'Dense Urban (high connectivity)': 'Dense 200',
+    'Stress Test (30% degraded links)': '30% Degrad.',
+    'Stress Test (50% degraded links)': '50% Degrad.',
+    'Node Failure (20% killed)': '20% Killed',
+    'Combined Stress (30% links + 10% nodes)': 'Combined',
+    'Rural Long Range (SF12)': 'Rural LR',
+    'Hiking Trail (linear)':   'Trail',
+    'Festival/Event (dense + mobile)': 'Festival',
+    'Disaster Relief (asymmetric + node loss)': 'Disaster',
+    'Indoor-Outdoor Mix (dense urban)': 'In/Outdoor',
+    'Duty Cycle Stress (100 nodes, 1% enforced)': 'Duty Cycle',
+    'Mountain Valley (poor propagation)': 'Mountain',
+    'Maritime / Coastal (line of sight)': 'Maritime',
+    'Building Emergency (high density, high load)': 'Building',
+    'Highway Convoy (fast linear mobile)': 'Highway',
+    'Community Mesh (stable, low traffic)': 'Community',
+    'Partition Recovery (40% node loss + degradation)': 'Partition',
+  };
   function shortName(name) {
-    return name
-      .replace('Small Local Mesh', 'Small\n20 nodes')
-      .replace('Medium City Mesh', 'City\n100 nodes')
-      .replace('Large Regional Mesh', 'Regional\n500 nodes')
-      .replace('Stress Test (30% degraded links)', 'Stress\n30% deg.')
-      .replace('Stress Test (50% degraded links)', 'Stress\n50% deg.')
-      .replace('Node Failure (20% killed)', 'Failure\n20% killed')
-      .replace('Combined Stress (30% links + 10% nodes)', 'Combined\n30%+10%')
-      .replace('Dense Urban (high connectivity)', 'Dense\n200 nodes')
-      .replace(/Large Scale \((\d+) nodes.*\)/, 'Large\n$1 nodes')
-      .replace(/Metro Scale \((\d+) nodes.*\)/, 'Metro\n$1 nodes')
-      .replace(/Extended Range \((\d+) nodes.*\)/, 'Extended\n$1 nodes');
+    if (SHORT_NAMES[name]) return SHORT_NAMES[name];
+    // Fallback: extract up to first ( or take first 2 words
+    const m = name.match(/^(.+?)\s*\(/);
+    if (m) return m[1].trim().substring(0, 12);
+    return name.split(/\s+/).slice(0, 2).join(' ').substring(0, 12);
   }
 
   // ── Scenario descriptions for tooltips ──
@@ -147,7 +162,7 @@
     const ctx = getCtx('chart-bandwidth');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 70, left: 75 };
+    const pad = { top: 30, right: 20, bottom: 90, left: 75 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
@@ -233,15 +248,16 @@
       }
       ctx.globalAlpha = 1;
 
-      // ── X-axis labels ──
+      // ── X-axis labels (diagonal) ──
       const sn = shortName(d.name);
-      const lines = sn.split('\n');
+      ctx.save();
       ctx.fillStyle = COLORS.textMuted;
       ctx.font = '9px monospace';
-      ctx.textAlign = 'center';
-      for (let l = 0; l < lines.length; l++) {
-        ctx.fillText(lines[l], cx, pad.top + chartH + 14 + l * 12);
-      }
+      ctx.textAlign = 'right';
+      ctx.translate(cx, pad.top + chartH + 8);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillText(sn, 0, 0);
+      ctx.restore();
     }
 
     // ── Legend ──
@@ -295,7 +311,7 @@
     const ctx = getCtx('chart-delivery');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 70, left: 50 };
+    const pad = { top: 30, right: 20, bottom: 90, left: 50 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
@@ -367,14 +383,16 @@
       ctx.textAlign = 'center';
       ctx.fillText(data[i].system5.delivery_rate + '%', x, ys - 10);
 
-      // X-axis labels (multi-line, horizontal)
+      // X-axis labels (diagonal)
       const sn = shortName(data[i].name);
-      const lines = sn.split('\n');
+      ctx.save();
       ctx.fillStyle = COLORS.textMuted;
       ctx.font = '9px monospace';
-      for (let l = 0; l < lines.length; l++) {
-        ctx.fillText(lines[l], x, pad.top + chartH + 14 + l * 12);
-      }
+      ctx.textAlign = 'right';
+      ctx.translate(x, pad.top + chartH + 8);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillText(sn, 0, 0);
+      ctx.restore();
     }
 
     // Legend
@@ -396,7 +414,7 @@
     const ctx = getCtx('chart-load');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 70, left: 65 };
+    const pad = { top: 30, right: 20, bottom: 90, left: 65 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
@@ -466,15 +484,16 @@
       }
       ctx.globalAlpha = 1;
 
-      // X label
+      // X label (diagonal)
       const sn = shortName(d.name);
-      const lines = sn.split('\n');
+      ctx.save();
       ctx.fillStyle = COLORS.textMuted;
       ctx.font = '9px monospace';
-      ctx.textAlign = 'center';
-      for (let l = 0; l < lines.length; l++) {
-        ctx.fillText(lines[l], cx, pad.top + chartH + 14 + l * 12);
-      }
+      ctx.textAlign = 'right';
+      ctx.translate(cx, pad.top + chartH + 8);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillText(sn, 0, 0);
+      ctx.restore();
     }
 
     // Legend
