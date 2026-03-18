@@ -32,6 +32,15 @@ tr:hover td { background: var(--bg-card); }
 .ok { color: var(--green); } .fail { color: var(--red); }
 
 canvas { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+
+/* Leaflet overrides — ensure map renders on dark theme */
+#leaflet-map { z-index: 1; background: #1a1a2e; }
+.leaflet-container { background: #1a1a2e !important; font-family: var(--font-mono) !important; }
+.leaflet-control-attribution { background: rgba(10,14,26,0.8) !important; color: var(--text-muted) !important; font-size: 10px !important; }
+.leaflet-control-attribution a { color: var(--cyan) !important; }
+.leaflet-control-zoom a { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+.node-tooltip { background: var(--bg-card) !important; color: var(--text) !important; border: 1px solid var(--border) !important; font-family: var(--font-mono) !important; font-size: 11px !important; padding: 6px 10px !important; }
+.node-tooltip .leaflet-tooltip-tip { display: none; }
 .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
 .chart-box { position: relative; }
 .chart-box h3 { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); margin-bottom: 0.5rem; }
@@ -134,7 +143,15 @@ const COLORS = { cyan: '#22d3ee', orange: '#fb923c', green: '#4ade80', red: '#f8
                  text: '#e2e8f0', dim: '#94a3b8', muted: '#64748b', bg: '#0f1419', card: '#1a2236', border: '#2a3654' };
 const CLUSTER_COLORS = ['#4ade80','#22d3ee','#a78bfa','#fb923c','#f472b6','#fbbf24'];
 
-fetch('esp-test-results.json').then(r=>r.json()).then(data => {
+fetch('esp-test-results.json').then(r => {
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}).catch(err => {
+  document.getElementById('del-rate').textContent = 'ERROR';
+  document.getElementById('leaflet-map').innerHTML = '<p style="color:red;padding:2rem;">Failed to load esp-test-results.json: ' + err.message + '</p>';
+  console.error('Data load failed:', err);
+}).then(data => {
+  if (!data) return;
   const s = data.summary;
 
   // Summary boxes
