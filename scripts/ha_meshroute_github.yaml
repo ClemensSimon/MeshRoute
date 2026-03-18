@@ -1,0 +1,77 @@
+# Home Assistant Package: MeshRoute GitHub Monitor
+# Deploy to: HA /config/packages/meshroute_github.yaml
+#
+# Creates:
+# - MQTT sensors for stars, comments, new activity
+# - Notification automation (push to phone + persistent notification)
+# - Dashboard card data
+
+mqtt:
+  sensor:
+    - name: "MeshRoute GitHub Stars"
+      state_topic: "simon42/meshroute/github/stars"
+      value_template: "{{ value_json.count }}"
+      icon: "mdi:star"
+      unit_of_measurement: ""
+      json_attributes_topic: "simon42/meshroute/github/stars"
+
+    - name: "MeshRoute GitHub Activity"
+      state_topic: "simon42/meshroute/github/activity"
+      value_template: "{{ value_json.type }}"
+      icon: "mdi:github"
+      json_attributes_topic: "simon42/meshroute/github/activity"
+      json_attributes_template: "{{ value_json | tojson }}"
+
+    - name: "MeshRoute GitHub Last Check"
+      state_topic: "simon42/meshroute/github/status"
+      value_template: "{{ value_json.last_check }}"
+      icon: "mdi:clock-check"
+      json_attributes_topic: "simon42/meshroute/github/status"
+
+  binary_sensor:
+    - name: "MeshRoute New Feedback"
+      state_topic: "simon42/meshroute/github/new_feedback"
+      payload_on: "true"
+      payload_off: "false"
+      icon: "mdi:message-alert"
+      device_class: "problem"
+
+automation:
+  - alias: "MeshRoute: GitHub Feedback Notification"
+    id: meshroute_github_notification
+    trigger:
+      - platform: mqtt
+        topic: "simon42/meshroute/github/activity"
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.payload_json.type in ['discussion_comment', 'issue', 'pr', 'stars'] }}
+      - condition: template
+        value_template: >
+          {{ trigger.payload_json.get('author', '') != 'ClemensSimon' }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "MeshRoute GitHub: {{ trigger.payload_json.type }}"
+          message: >
+            {% if trigger.payload_json.type == 'discussion_comment' %}
+            New comment by @{{ trigger.payload_json.author }} on Discussion #{{ trigger.payload_json.discussion }}:
+            {{ trigger.payload_json.body[:300] }}
+            {{ trigger.payload_json.url }}
+            {% elif trigger.payload_json.type == 'issue' %}
+            New issue #{{ trigger.payload_json.number }} by @{{ trigger.payload_json.author }}:
+            {{ trigger.payload_json.title }}
+            {{ trigger.payload_json.url }}
+            {% elif trigger.payload_json.type == 'pr' %}
+            New PR #{{ trigger.payload_json.number }} by @{{ trigger.payload_json.author }}:
+            {{ trigger.payload_json.title }}
+            {{ trigger.payload_json.url }}
+            {% elif trigger.payload_json.type == 'stars' %}
+            +{{ trigger.payload_json.new }} new star(s)! Total: {{ trigger.payload_json.count }}
+            {% endif %}
+          notification_id: "meshroute_github_{{ now().timestamp() | int }}"
+      - service: mqtt.publish
+        data:
+          topic: "simon42/meshroute/github/new_feedback"
+          payload: "true"
+          retain: true
