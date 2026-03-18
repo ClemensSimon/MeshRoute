@@ -27,6 +27,7 @@
   ];
 
   let resultsData = null;
+  let bwLogScale = true; // toggle between log and linear
 
   // ── Load data ──
   async function loadResults() {
@@ -34,12 +35,23 @@
       const resp = await fetch('simulator/results.json');
       if (!resp.ok) throw new Error(resp.statusText);
       resultsData = await resp.json();
+      setupScaleToggle();
       renderAll();
     } catch (e) {
       console.warn('Could not load simulation results:', e);
       const section = document.getElementById('sim-results');
       if (section) section.style.display = 'none';
     }
+  }
+
+  function setupScaleToggle() {
+    const btn = document.getElementById('btn-scale-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      bwLogScale = !bwLogScale;
+      btn.textContent = bwLogScale ? 'Switch to Linear' : 'Switch to Log';
+      renderBWChart();
+    });
   }
 
   function renderAll() {
@@ -49,6 +61,39 @@
     renderDeliveryChart();
     renderLoadChart();
     renderQoSChart();
+  }
+
+  // ── Short scenario names for x-axis ──
+  function shortName(name) {
+    return name
+      .replace('Small Local Mesh', 'Small\n20 nodes')
+      .replace('Medium City Mesh', 'City\n100 nodes')
+      .replace('Large Regional Mesh', 'Regional\n500 nodes')
+      .replace('Stress Test (30% degraded links)', 'Stress\n30% deg.')
+      .replace('Stress Test (50% degraded links)', 'Stress\n50% deg.')
+      .replace('Node Failure (20% killed)', 'Failure\n20% killed')
+      .replace('Combined Stress (30% links + 10% nodes)', 'Combined\n30%+10%')
+      .replace('Dense Urban (high connectivity)', 'Dense\n200 nodes')
+      .replace(/Large Scale \((\d+) nodes.*\)/, 'Large\n$1 nodes')
+      .replace(/Metro Scale \((\d+) nodes.*\)/, 'Metro\n$1 nodes')
+      .replace(/Extended Range \((\d+) nodes.*\)/, 'Extended\n$1 nodes');
+  }
+
+  // ── Scenario descriptions for tooltips ──
+  function scenarioTooltip(r) {
+    const c = r.config;
+    const net = r.network;
+    let desc = `${c.n_nodes} nodes over ${(c.area_size/1000).toFixed(0)}km area, LoRa range ${(c.lora_range/1000).toFixed(0)}km\n`;
+    desc += `${net.links} links, ${net.clusters} clusters, avg ${net.avg_neighbors} neighbors\n`;
+    desc += `${net.avg_routes_per_dest} routes per destination\n`;
+    if (c.link_degradation > 0) desc += `${(c.link_degradation*100).toFixed(0)}% of links randomly degraded (quality reduced to 10-50%)\n`;
+    if (c.node_kill_fraction > 0) desc += `${(c.node_kill_fraction*100).toFixed(0)}% of nodes killed (battery=0, all links down)\n`;
+    if (c.link_degradation === 0 && c.node_kill_fraction === 0) desc += `Normal conditions — no failures applied\n`;
+    desc += `\nFlooding: ${r.flooding.total_tx.toLocaleString()} TX, ${r.flooding.delivery_rate}% delivery`;
+    desc += `\nSystem 5: ${r.system5.total_tx.toLocaleString()} TX, ${r.system5.delivery_rate}% delivery`;
+    if (r.system5.fallback_used) desc += `\nFallback flooding used: ${r.system5.fallback_used}x`;
+    if (r.system5.route_switches) desc += `\nRoute switches: ${r.system5.route_switches}x`;
+    return desc;
   }
 
   // ── Summary Table ──
@@ -61,11 +106,11 @@
       const bw = r.comparison ? r.comparison.bw_savings_pct : 0;
       const s5 = r.system5;
       const fl = r.flooding;
-      const fallback = s5.fallback_used || 0;
-      const switches = s5.route_switches || 0;
 
       const tr = document.createElement('tr');
       tr.className = r.category === 'stress' ? 'stress-row' : '';
+      tr.title = scenarioTooltip(r);
+      tr.style.cursor = 'help';
       tr.innerHTML = `
         <td>${r.name}</td>
         <td>${r.config.n_nodes}</td>
@@ -74,7 +119,7 @@
         <td class="sys5-val">${s5.delivery_rate}%</td>
         <td>${bw}%</td>
         <td>${s5.avg_hops}</td>
-        <td title="Fallbacks: ${fallback}, Route switches: ${switches}">${s5.max_node_load}</td>
+        <td>${s5.max_node_load}</td>
       `;
       tbody.appendChild(tr);
     }
@@ -95,12 +140,12 @@
     return ctx;
   }
 
-  // ── Bandwidth Comparison Bar Chart ──
+  // ── Bandwidth Comparison Bar Chart (Log / Linear toggle) ──
   function renderBWChart() {
     const ctx = getCtx('chart-bandwidth');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 60, left: 70 };
+    const pad = { top: 30, right: 20, bottom: 70, left: 75 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
@@ -108,60 +153,88 @@
 
     const data = resultsData;
     const n = data.length;
-    const barW = Math.min(chartW / n * 0.35, 30);
+    const barW = Math.min(chartW / n * 0.35, 28);
     const gap = chartW / n;
 
-    // Find max TX (use log scale)
     const allTX = data.flatMap(d => [d.flooding.total_tx, d.system5.total_tx]);
-    const maxLog = Math.ceil(Math.log10(Math.max(...allTX)));
+    const maxVal = Math.max(...allTX);
+    const maxLog = Math.ceil(Math.log10(maxVal));
 
-    // Grid lines
+    // ── Y-Axis grid ──
     ctx.strokeStyle = COLORS.border;
     ctx.lineWidth = 0.5;
     ctx.font = '10px monospace';
     ctx.fillStyle = COLORS.textMuted;
     ctx.textAlign = 'right';
-    for (let i = 0; i <= maxLog; i++) {
-      const y = pad.top + chartH - (i / maxLog) * chartH;
-      ctx.beginPath();
-      ctx.moveTo(pad.left, y);
-      ctx.lineTo(W - pad.right, y);
-      ctx.stroke();
-      const label = i === 0 ? '1' : '10' + superscript(i);
-      ctx.fillText(Math.pow(10, i).toLocaleString(), pad.left - 5, y + 3);
+
+    if (bwLogScale) {
+      // Log scale grid
+      for (let i = 0; i <= maxLog; i++) {
+        const y = pad.top + chartH - (i / maxLog) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(fmtNum(Math.pow(10, i)), pad.left - 8, y + 3);
+      }
+    } else {
+      // Linear scale grid
+      const steps = 5;
+      const stepVal = niceStep(maxVal, steps);
+      const niceMax = stepVal * steps;
+      for (let i = 0; i <= steps; i++) {
+        const val = stepVal * i;
+        const y = pad.top + chartH - (val / niceMax) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillText(fmtNum(val), pad.left - 8, y + 3);
+      }
     }
 
-    // Bars
+    // ── Bars ──
     for (let i = 0; i < n; i++) {
       const d = data[i];
       const cx = pad.left + gap * i + gap / 2;
 
+      const floodVal = d.flooding.total_tx;
+      const s5Val = d.system5.total_tx;
+
+      let floodH, s5H;
+      if (bwLogScale) {
+        floodH = (Math.log10(Math.max(floodVal, 1)) / maxLog) * chartH;
+        s5H = (Math.log10(Math.max(s5Val, 1)) / maxLog) * chartH;
+      } else {
+        const steps = 5;
+        const stepVal = niceStep(maxVal, steps);
+        const niceMax = stepVal * steps;
+        floodH = (floodVal / niceMax) * chartH;
+        s5H = (s5Val / niceMax) * chartH;
+      }
+
       // Flooding bar
-      const floodH = (Math.log10(Math.max(d.flooding.total_tx, 1)) / maxLog) * chartH;
       ctx.fillStyle = COLORS.red;
       ctx.globalAlpha = 0.8;
       ctx.fillRect(cx - barW - 1, pad.top + chartH - floodH, barW, floodH);
 
       // System 5 bar
-      const s5H = (Math.log10(Math.max(d.system5.total_tx, 1)) / maxLog) * chartH;
       ctx.fillStyle = COLORS.cyan;
       ctx.fillRect(cx + 1, pad.top + chartH - s5H, barW, s5H);
-
       ctx.globalAlpha = 1;
 
-      // Label
+      // ── X-axis labels (multi-line, horizontal) ──
+      const sn = shortName(d.name);
+      const lines = sn.split('\n');
       ctx.fillStyle = COLORS.textMuted;
       ctx.font = '9px monospace';
       ctx.textAlign = 'center';
-      ctx.save();
-      ctx.translate(cx, pad.top + chartH + 8);
-      ctx.rotate(-0.5);
-      const shortName = d.name.replace(/\(.+\)/, '').trim();
-      ctx.fillText(shortName.substring(0, 18), 0, 0);
-      ctx.restore();
+      for (let l = 0; l < lines.length; l++) {
+        ctx.fillText(lines[l], cx, pad.top + chartH + 14 + l * 12);
+      }
     }
 
-    // Legend
+    // ── Legend ──
     ctx.globalAlpha = 1;
     ctx.font = '11px monospace';
     const lx = pad.left + 10;
@@ -175,20 +248,37 @@
     ctx.fillStyle = COLORS.text;
     ctx.fillText('System 5', lx + 106, 18);
 
-    // Y axis label
+    // Scale indicator (top right)
+    ctx.fillStyle = COLORS.textMuted;
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(bwLogScale ? 'LOG SCALE' : 'LINEAR SCALE', W - pad.right, 16);
+
+    // ── Y axis label ──
     ctx.save();
     ctx.fillStyle = COLORS.textMuted;
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.translate(12, pad.top + chartH / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Total Transmissions (log scale)', 0, 0);
+    ctx.fillText('Total Transmissions', 0, 0);
     ctx.restore();
   }
 
-  function superscript(n) {
-    const sups = '\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079';
-    return String(n).split('').map(c => sups[parseInt(c)]).join('');
+  function fmtNum(v) {
+    if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e4 ? 0 : 1) + 'K';
+    return String(Math.round(v));
+  }
+
+  function niceStep(max, steps) {
+    const raw = max / steps;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    if (norm <= 1) return mag;
+    if (norm <= 2) return 2 * mag;
+    if (norm <= 5) return 5 * mag;
+    return 10 * mag;
   }
 
   // ── Delivery Rate Chart ──
@@ -196,7 +286,7 @@
     const ctx = getCtx('chart-delivery');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 60, left: 50 };
+    const pad = { top: 30, right: 20, bottom: 70, left: 50 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
@@ -268,15 +358,14 @@
       ctx.textAlign = 'center';
       ctx.fillText(data[i].system5.delivery_rate + '%', x, ys - 10);
 
-      // X label
+      // X-axis labels (multi-line, horizontal)
+      const sn = shortName(data[i].name);
+      const lines = sn.split('\n');
       ctx.fillStyle = COLORS.textMuted;
       ctx.font = '9px monospace';
-      ctx.save();
-      ctx.translate(x, pad.top + chartH + 8);
-      ctx.rotate(-0.5);
-      const shortName = data[i].name.replace(/\(.+\)/, '').trim();
-      ctx.fillText(shortName.substring(0, 18), 0, 0);
-      ctx.restore();
+      for (let l = 0; l < lines.length; l++) {
+        ctx.fillText(lines[l], x, pad.top + chartH + 14 + l * 12);
+      }
     }
 
     // Legend

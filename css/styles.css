@@ -1062,6 +1062,24 @@ footer {
   margin-bottom: 0.75rem;
 }
 
+.scale-toggle-btn {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--cyan);
+  background: transparent;
+  border: 1px solid var(--cyan-dim);
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  margin-left: 0.75rem;
+  transition: background 0.2s;
+  vertical-align: middle;
+}
+
+.scale-toggle-btn:hover {
+  background: var(--cyan-glow);
+}
+
 .sim-chart-wrap {
   width: 100%;
   height: 280px;

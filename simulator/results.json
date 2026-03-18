@@ -911,5 +911,235 @@
       "load_reduction_pct": 100.0,
       "tx_ratio": 0.0001
     }
+  },
+  {
+    "scenario": 9,
+    "name": "Large Scale (1000 nodes, 40km)",
+    "category": "dense",
+    "config": {
+      "n_nodes": 1000,
+      "area_size": 40000,
+      "lora_range": 4000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 1000,
+      "links": 14240,
+      "clusters": 4,
+      "avg_neighbors": 28.5,
+      "avg_routes_per_dest": 4.7
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 2845249,
+      "tx_per_delivered": 28452.5,
+      "avg_hops": 6.8,
+      "energy_score": 28452.5,
+      "max_node_load": 4500,
+      "load_distribution": [
+        0,
+        7,
+        29,
+        57,
+        146,
+        294,
+        313,
+        136,
+        17,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 99,
+      "delivery_rate": 99.0,
+      "total_tx": 10635,
+      "tx_per_delivered": 107.4,
+      "avg_hops": 7.1,
+      "energy_score": 107.4,
+      "max_node_load": 46,
+      "load_distribution": [
+        316,
+        8,
+        20,
+        44,
+        48,
+        71,
+        81,
+        68,
+        11,
+        3
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 15,
+          "delivered": 14,
+          "rate": 93.3
+        },
+        "1": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 11,
+          "delivered": 11,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 14,
+          "delivered": 14,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        }
+      },
+      "fallback_used": 1,
+      "route_switches": 18
+    },
+    "comparison": {
+      "bw_savings_pct": 99.63,
+      "load_reduction_pct": 99.0,
+      "tx_ratio": 0.0037
+    }
+  },
+  {
+    "scenario": 10,
+    "name": "Metro Scale (1500 nodes, 50km)",
+    "category": "dense",
+    "config": {
+      "n_nodes": 1500,
+      "area_size": 50000,
+      "lora_range": 4000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 1500,
+      "links": 20807,
+      "clusters": 4,
+      "avg_neighbors": 27.7,
+      "avg_routes_per_dest": 4.9
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 4158558,
+      "tx_per_delivered": 41585.6,
+      "avg_hops": 7.6,
+      "energy_score": 41585.6,
+      "max_node_load": 4500,
+      "load_distribution": [
+        0,
+        4,
+        40,
+        114,
+        239,
+        494,
+        426,
+        164,
+        18,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 97,
+      "delivery_rate": 97.0,
+      "total_tx": 38850,
+      "tx_per_delivered": 400.5,
+      "avg_hops": 7.7,
+      "energy_score": 400.5,
+      "max_node_load": 80,
+      "load_distribution": [
+        116,
+        78,
+        321,
+        522,
+        155,
+        74,
+        37,
+        26,
+        10,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 16,
+          "delivered": 16,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 12,
+          "delivered": 11,
+          "rate": 91.7
+        },
+        "3": {
+          "sent": 13,
+          "delivered": 12,
+          "rate": 92.3
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 9,
+          "delivered": 9,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 15,
+          "delivered": 14,
+          "rate": 93.3
+        }
+      },
+      "fallback_used": 3,
+      "route_switches": 17
+    },
+    "comparison": {
+      "bw_savings_pct": 99.07,
+      "load_reduction_pct": 98.2,
+      "tx_ratio": 0.0093
+    }
   }
 ]

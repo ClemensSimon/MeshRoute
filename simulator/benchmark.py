@@ -102,6 +102,23 @@ SCENARIOS = [
         n_messages=100,
         geohash_prefix=5,
     ),
+    # --- Large scale / long hop chains ---
+    ScenarioConfig(
+        name="Large Scale (1000 nodes, 40km)",
+        n_nodes=1000,
+        area_size=40000,
+        lora_range=4000,
+        n_messages=100,
+        geohash_prefix=3,
+    ),
+    ScenarioConfig(
+        name="Metro Scale (1500 nodes, 50km)",
+        n_nodes=1500,
+        area_size=50000,
+        lora_range=4000,
+        n_messages=100,
+        geohash_prefix=3,
+    ),
 ]
 
 
