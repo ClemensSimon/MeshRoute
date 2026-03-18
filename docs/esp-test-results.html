@@ -263,14 +263,8 @@ function drawNetworkMap(data) {
   const clusterKeys = [...new Set(data.nodes.map(n => String(n.cluster)))];
   animLayer = L.layerGroup().addTo(map);
 
-  // LoRa range circles (per-node range: 1500m handheld, 3000m rooftop)
-  data.nodes.forEach(n => {
-    const range = n.lora_range || 2000;
-    L.circle([n.lat, n.lon], {
-      radius: range, color: range > 2000 ? '#22d3ee' : '#64748b',
-      weight: range > 2000 ? 0.8 : 0.3, fillOpacity: 0.02, dashArray: '4 4',
-    }).addTo(map);
-  });
+  // LoRa range circles — only shown on click (too many for 100 nodes)
+  // Individual range visible in node popup
 
   // Links
   data.nodes.forEach(n => {
@@ -353,6 +347,18 @@ function drawNetworkMap(data) {
     popupHtml += `</div>`;
 
     marker.bindPopup(popupHtml, { maxWidth: 380, className: 'dark-popup' });
+
+    // Show LoRa range circle on popup open, remove on close
+    let rangeCircle = null;
+    marker.on('popupopen', () => {
+      const range = n.lora_range || 2000;
+      rangeCircle = L.circle([n.lat, n.lon], {
+        radius: range, color: color, weight: 1.5, fillOpacity: 0.06, dashArray: '6 4',
+      }).addTo(map);
+    });
+    marker.on('popupclose', () => {
+      if (rangeCircle) { map.removeLayer(rangeCircle); rangeCircle = null; }
+    });
 
     // Label
     L.marker([n.lat, n.lon], {
