@@ -4,11 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MeshRoute — ESP32 Virtual Network Test Results</title>
-<link rel="stylesheet" href="../css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-body { background: var(--bg-deep); color: var(--text); }
+:root {
+  --bg-deep: #0a0e1a; --bg-surface: #111827; --bg-card: #1a2236;
+  --cyan: #22d3ee; --orange: #fb923c; --green: #4ade80; --red: #f87171; --purple: #a78bfa;
+  --text: #e2e8f0; --text-dim: #94a3b8; --text-muted: #64748b; --border: #2a3654;
+  --font-display: Georgia, serif; --font-mono: 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-deep); color: var(--text); font-family: system-ui, sans-serif; font-size: 16px; line-height: 1.6; }
 .report { max-width: 1200px; margin: 0 auto; padding: 2rem; }
 .report h1 { font-family: var(--font-display); color: var(--cyan); margin-bottom: 0.5rem; }
 .report h2 { font-family: var(--font-display); color: var(--text); margin: 2rem 0 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
