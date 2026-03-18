@@ -1,112 +1,103 @@
 # MeshRoute
 
-**Replacing Meshtastic's naive flooding with intelligent geo-clustered multi-path routing.**
+**A geo-clustered multi-path routing proposal for Meshtastic — benchmarked against Meshtastic's actual managed flooding (v2.6/2.7).**
 
-**[Live Demo](https://clemenssimon.github.io/MeshRoute/)** — Interactive presentation with algorithm visualizations, resilience testing, and scale scenarios.
+**[Live Demo](https://clemenssimon.github.io/MeshRoute/)** — Interactive presentation with algorithm visualizations, simulation results, and resilience testing.
 
-Meshtastic uses blind flooding: every node rebroadcasts every message. One message to one recipient causes *n* transmissions across the entire network. With LoRa's constraints (1-50 kbps, 1% EU duty cycle, half-duplex), this collapses beyond ~100 nodes.
+## Meshtastic's Current Routing (v2.6/2.7)
 
-MeshRoute proposes **System 5**, a routing protocol that combines ideas from OSPF, B.A.T.M.A.N., ECMP, ant colony optimization, and DNS into one self-healing system.
+Meshtastic does **not** use naive flooding. Its actual routing is already quite clever:
 
-## How System 5 Works
+- **Managed Flooding** (all messages): Before rebroadcasting, nodes listen briefly. If they hear another node rebroadcast first, they suppress. SNR-based priority gives distant nodes shorter contention windows so they rebroadcast first. ROUTER/ROUTER_LATE roles always rebroadcast. This suppresses ~40-50% of transmissions vs. naive flooding.
+- **Next-Hop Routing** (direct messages since v2.6): First message floods. The system learns which relay succeeded. Subsequent DMs go only via that cached relay node. Falls back to managed flooding if the next-hop fails.
+- **Congestion Scaling** (v2.6+): Networks with 40+ nodes automatically stretch broadcast intervals using `ScaledInterval = Interval * (1 + (Nodes - 40) * 0.075)`.
 
-**Geo-Clustering** — Nodes self-organize into geographic clusters using geohash prefixes. Within a cluster, every node knows the full topology. Between clusters, only border nodes communicate. This reduces routing table size from O(n) to O(cluster_size + border_nodes).
+**The limitation:** Both approaches still scale as O(n) per message. The hop limit (3-7) remains necessary because each hop multiplies transmissions proportional to network size.
 
-**Multi-Path Routing** — Each source maintains 2-3 independent paths to every destination. When the primary path fails, the next cached path activates instantly — no rediscovery flood needed.
+## What System 5 Proposes
 
-**Weighted Load Balancing** — Traffic is distributed proportionally across paths using:
+A routing protocol that achieves **O(hops) cost** instead of O(n) — for all message types, not just DMs.
 
-```
-W(r) = alpha * Q(r)  *  beta * (1 - Load(r))  *  gamma * Batt(r)
-```
+**Geo-Clustering** — Nodes self-organize by GPS geohash. Full topology within clusters, border nodes between.
 
-where Q = link quality (B.A.T.M.A.N. OGM reception rate), Load = queue pressure, Batt = minimum battery along route. Good paths get more traffic, but never all — preventing the "ant highway" problem.
+**Multi-Path Routing** — 2-3 cached paths per destination. Instant failover without rediscovery.
 
-**Adaptive QoS** — A Network Health Score (NHS) per cluster controls which traffic classes are allowed. When the network is stressed, low-priority traffic is automatically throttled. SOS (priority 0) always gets through, even at 1% NHS. The network "breathes": less traffic under stress leads to recovery, which allows more traffic again — a stable negative feedback loop.
+**Weighted Load Balancing** — `W(r) = α·Q(r) + β·(1-Load(r)) + γ·Batt(r)`. Traffic distributed proportionally across paths.
 
-**Back-Pressure** — Overloaded nodes (queue > 80%) are automatically avoided in route selection.
+**Adaptive QoS** — Network Health Score per cluster throttles low-priority traffic under stress. SOS always gets through.
 
-**Fallback Flooding** — When all pre-computed routes fail (link degradation, killed nodes), System 5 falls back to scoped flooding within the source cluster. This is much cheaper than full network flooding because it's limited to the local geographic area.
+**Fallback** — Scoped cluster flooding (not full network) when routes fail.
 
-## The Killer Argument: Hop Limits Become Irrelevant
+## The Key Difference: ~1 TX per Hop
 
-In flooding, every hop multiplies transmissions across the **entire** network: `TX = n * hops`. The hop limit (default 3 in Meshtastic) is a survival mechanism — without it, the network drowns.
+| Approach | Cost per Message | Cost per Hop | Hop Limit Needed? |
+|----------|:----------------:|:------------:|:-----------------:|
+| Managed Flooding | O(n) * (1-S) | n * (1-S) | Yes (3-7) |
+| Next-Hop (DMs) | O(hops) after learning | ~1 | Partially |
+| **System 5** | **O(hops) always** | **~1** | **No** |
 
-In System 5, every hop costs **exactly 1 transmission**: `TX = hops`. The simulation confirms ~1.0 TX/hop across all scenarios, regardless of network size. This means:
+This makes the hop limit irrelevant: 20 hops cost less than managed flooding costs for 1.
 
-- **No artificial hop limit needed** — 20 or 50 hops cost less than flooding costs for 1
-- **Unlimited range** — limited only by node density, not protocol constraints
-- **Preset freedom** — SHORT_FAST with more hops works as well as LONG_SLOW with fewer
-- **Battery independence** — only forwarding nodes transmit, the rest sleep
+## Simulation Results (vs. Meshtastic's Actual Routing)
 
-## Simulation Results
-
-The `simulator/` directory contains a Python simulation comparing System 5 against naive flooding across 8 scenarios:
+The simulator compares all four approaches on identical networks:
 
 ### Normal Conditions
 
-| Scenario | Nodes | Flooding TX | System 5 TX | S5 Delivery | BW Saved |
-|----------|------:|------------:|------------:|------------:|---------:|
-| Small Local (1km) | 20 | 31,525 | 112 | 100% | 99.6% |
-| Medium City (5km) | 100 | 330,181 | 196 | 100% | 99.9% |
-| Large Regional (20km) | 500 | 1,535,089 | 497 | 100% | 99.97% |
-| Dense Urban (3km) | 200 | 2,694,702 | 136 | 100% | 100.0% |
+| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 vs Managed |
+|----------|------:|-----------------:|------------:|--------------:|
+| Small Local (1km) | 20 | 17,045 | 112 | **99.3% less** |
+| Medium City (5km) | 100 | 155,774 | 196 | **99.9% less** |
+| Large Regional (20km) | 500 | 708,720 | 497 | **99.9% less** |
+| Dense Urban (3km) | 200 | 1,239,692 | 136 | **100% less** |
+| 1000 Nodes (40km) | 1000 | 1,462,489 | 10,635 | **99.3% less** |
+| 1500 Nodes (50km) | 1500 | 2,119,189 | 38,850 | **98.2% less** |
 
 ### Stress Tests
 
-| Scenario | Flooding TX | System 5 TX | S5 Delivery | BW Saved |
-|----------|------------:|------------:|------------:|---------:|
-| 30% Degraded Links | 330,181 | 4,701 | 100% | 98.6% |
-| 50% Degraded Links | 330,181 | 16,055 | 73% | 95.1% |
-| 20% Nodes Killed | 215,708 | 2,853 | 85% | 98.7% |
-| Combined (30% + 10%) | 271,210 | 3,427 | 79% | 98.7% |
+| Scenario | Managed Flood TX | System 5 TX | S5 Delivery | S5 vs Managed |
+|----------|----------------:|------------:|------------:|--------------:|
+| 30% Degraded Links | 170,214 | 4,701 | 100% | **97.2% less** |
+| 50% Degraded Links | 183,019 | 16,055 | 73% | **91.2% less** |
+| 20% Nodes Killed | 108,413 | 2,853 | 85% | **97.4% less** |
+| Combined Stress | 139,491 | 3,427 | 79% | **97.5% less** |
 
-Under normal conditions, System 5 delivers **100% of messages** using **99.6-99.97% less bandwidth**. Under extreme stress (50% degraded links), delivery drops to 73% — but still uses 95% less bandwidth. The fallback mechanism catches packets that pre-computed routes miss.
+Even against Meshtastic's managed flooding (which already suppresses ~50% of rebroadcasts), System 5 saves **91-99.9% of transmissions**.
 
 ## Interactive Presentation
 
-Open `index.html` in a browser. No build step, no dependencies — pure HTML, CSS, and Canvas.
+Open `index.html` in a browser. No build step, no dependencies.
 
-The presentation includes:
-- **Live algorithm visualizations** for all five routing approaches
-- **Simulation results** with interactive charts (loaded from `simulator/results.json`)
-- **Step-by-step formation animation** showing how the network self-organizes
-- **Three scale scenarios** — local (12 nodes), continental (2,400 nodes), global (50,000 nodes)
-- **Interactive resilience testing** — click nodes and links to kill them, watch the network adapt. Toggle MQTT bridge failures, GPS outages, and cascade failures.
-- **QoS priority gate** visualization with real-time NHS gauge
-
-A separate `summary.html` provides the executive summary.
+- **Four algorithm animations** on identical topology: Naive Flooding, Managed Flooding (Meshtastic current), Next-Hop (v2.6), System 5
+- **Simulation results** with interactive charts and log/linear toggle
+- **Step-by-step formation animation**
+- **Three scale scenarios** — local, continental, global
+- **Interactive resilience testing** — click nodes to kill them
+- **QoS priority gate** with real-time NHS gauge
 
 ## Running the Simulator
 
 ```bash
 cd simulator
-python run.py                    # run all 5 benchmark scenarios
-python run.py --scenario 2       # run only scenario 2 (Medium City)
+python run.py                    # run all 10 scenarios (4 routers each)
+python run.py --scenario 2       # single scenario
 python run.py --visualize        # ASCII network topology
-python run.py -s 3 -v            # scenario 3 with visualization
-python run.py --output out.json  # custom output file
 ```
-
-Results are saved to `simulator/results.json`.
 
 ### Simulator Architecture
 
 ```
 simulator/
   run.py          — CLI entry point
-  meshsim.py      — Network simulation engine (nodes, links, clusters, routes)
-  routing.py      — FloodingRouter and System5Router implementations
-  lora_model.py   — EU 868MHz LoRa physical layer (path loss, RSSI, SNR, time-on-air)
-  geohash.py      — Geographic clustering via geohash encoding
-  benchmark.py    — Scenario definitions and comparative benchmarking
+  meshsim.py      — Network simulation (nodes, links, clusters, routes)
+  routing.py      — NaiveFloodingRouter, ManagedFloodingRouter,
+                    NextHopRouter, System5Router
+  lora_model.py   — EU 868MHz LoRa physical layer model
+  geohash.py      — Geographic clustering via geohash
+  benchmark.py    — 10 scenarios, 4 routers, comparative benchmarking
 ```
 
-The LoRa model uses a log-distance path loss model (exponent 2.8 for urban environments) with a sigmoid packet success rate centered at -120 dBm receiver sensitivity.
-
 ## Architecture Origins
-
-System 5 doesn't invent new concepts — it combines proven ones:
 
 | Source | Concept | Used As |
 |--------|---------|---------|
@@ -119,14 +110,12 @@ System 5 doesn't invent new concepts — it combines proven ones:
 
 ## Project Status
 
-This is a research project and proof-of-concept simulator. There is no Meshtastic firmware implementation yet. The goal is to validate the routing approach through simulation before proposing changes to the Meshtastic protocol.
-
-### Roadmap
+Research project with working simulator. No firmware implementation yet.
 
 - [x] Algorithm design and mathematical analysis
 - [x] Interactive presentation with live visualizations
-- [x] Python simulation framework
-- [x] Comparative benchmarks (Flooding vs System 5)
+- [x] Python simulator (4 routers, 10 scenarios, EU868 LoRa model)
+- [x] Fair comparison against Meshtastic v2.6/2.7 actual routing
 - [ ] Firmware prototype (ESP32 / Meshtastic fork)
 - [ ] Field testing with real LoRa hardware
 - [ ] RFC / proposal to Meshtastic community
