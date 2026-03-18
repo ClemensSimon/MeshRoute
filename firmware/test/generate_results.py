@@ -178,8 +178,17 @@ for district, (clat, clon, count) in MUNICH_CLUSTERS.items():
         lon = clon + random.gauss(0, 0.008)
         batt = random.randint(40, 100)
         node = VNode(nid, round(lat, 6), round(lon, 6), batt)
-        # 20% are rooftop nodes (3km range), 80% handheld (1.5km range)
-        node.lora_range = 3000 if random.random() < 0.2 else 1500
+        # Varied ranges: 10% rooftop (2.5-3.5km), 25% outdoor fixed (1.5-2.5km),
+        # 45% handheld outdoor (1-1.8km), 20% indoor/pocket (600-1km)
+        r = random.random()
+        if r < 0.10:
+            node.lora_range = random.randint(2500, 3500)   # rooftop
+        elif r < 0.35:
+            node.lora_range = random.randint(1500, 2500)   # outdoor fixed
+        elif r < 0.80:
+            node.lora_range = random.randint(1000, 1800)   # handheld outdoor
+        else:
+            node.lora_range = random.randint(600, 1000)    # indoor/pocket
         nodes.append(node)
         nid += 1
 
