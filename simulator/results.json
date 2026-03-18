@@ -39,5 +39,169 @@
       "energy_score": 1.1,
       "max_node_load": 12
     }
+  },
+  {
+    "scenario": 2,
+    "name": "Medium City Mesh",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1668,
+      "clusters": 4,
+      "avg_neighbors": 33.4,
+      "avg_routes_per_dest": 3.7
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 330181,
+      "tx_per_delivered": 3301.8,
+      "avg_hops": 1.8,
+      "energy_score": 3301.8,
+      "max_node_load": 5600
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 99,
+      "delivery_rate": 99.0,
+      "total_tx": 188,
+      "tx_per_delivered": 1.9,
+      "avg_hops": 1.8,
+      "energy_score": 1.9,
+      "max_node_load": 8
+    }
+  },
+  {
+    "scenario": 3,
+    "name": "Large Regional Mesh",
+    "config": {
+      "n_nodes": 500,
+      "area_size": 20000,
+      "lora_range": 3000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 500,
+      "links": 7691,
+      "clusters": 4,
+      "avg_neighbors": 30.8,
+      "avg_routes_per_dest": 4.8
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 1535089,
+      "tx_per_delivered": 15350.9,
+      "avg_hops": 4.5,
+      "energy_score": 15350.9,
+      "max_node_load": 4500
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 99,
+      "delivery_rate": 99.0,
+      "total_tx": 493,
+      "tx_per_delivered": 5.0,
+      "avg_hops": 4.8,
+      "energy_score": 5.0,
+      "max_node_load": 6
+    }
+  },
+  {
+    "scenario": 4,
+    "name": "Stress Test (50% degraded links)",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.5,
+      "node_kill_fraction": 0.0
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1668,
+      "clusters": 4,
+      "avg_neighbors": 33.4,
+      "avg_routes_per_dest": 3.7
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 330181,
+      "tx_per_delivered": 3301.8,
+      "avg_hops": 2.0,
+      "energy_score": 3301.8,
+      "max_node_load": 5600
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 52,
+      "delivery_rate": 52.0,
+      "total_tx": 170,
+      "tx_per_delivered": 3.3,
+      "avg_hops": 1.9,
+      "energy_score": 3.3,
+      "max_node_load": 8
+    }
+  },
+  {
+    "scenario": 5,
+    "name": "Node Failure (20% killed)",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.2
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1092,
+      "clusters": 4,
+      "avg_neighbors": 21.8,
+      "avg_routes_per_dest": 3.6
+    },
+    "flooding": {
+      "router": "FloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 215708,
+      "tx_per_delivered": 2157.1,
+      "avg_hops": 1.8,
+      "energy_score": 2157.1,
+      "max_node_load": 4455
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 85,
+      "delivery_rate": 85.0,
+      "total_tx": 170,
+      "tx_per_delivered": 2.0,
+      "avg_hops": 1.9,
+      "energy_score": 2.0,
+      "max_node_load": 7
+    }
   }
 ]

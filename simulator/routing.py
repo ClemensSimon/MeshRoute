@@ -260,8 +260,8 @@ class System5Router:
         if not self._qos_gate(src_node, packet):
             return stats  # packet dropped by QoS
 
-        # Look up routes
-        routes = src_node.routing_table.get(dst_id)
+        # Look up routes (use get_routes for lazy computation in large networks)
+        routes = network.get_routes(src_node.id, dst_id)
         if not routes:
             return stats  # no route known
 

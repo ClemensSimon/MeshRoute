@@ -334,21 +334,43 @@ class MeshNetwork:
     def compute_routes(self, max_routes=5, max_hops=15):
         """Compute multi-path routes using BFS for all node pairs.
 
-        Finds up to max_routes distinct routes between each source-destination pair.
-        Routes are scored by quality, load, and battery.
+        For large networks (>200 nodes), uses lazy route computation
+        to avoid O(N^2) upfront cost. Routes are computed on first access.
 
         Args:
             max_routes: Maximum routes to store per destination
             max_hops: Maximum hops per route
         """
-        for src_node in self.nodes.values():
-            src_node.routing_table = {}
-            for dst_id in self.nodes:
-                if dst_id == src_node.id:
-                    continue
-                routes = self._find_routes_bfs(src_node.id, dst_id, max_routes, max_hops)
-                if routes:
-                    src_node.routing_table[dst_id] = routes
+        self._max_routes = max_routes
+        self._max_hops = max_hops
+
+        # For small networks, precompute all routes
+        if len(self.nodes) <= 200:
+            for src_node in self.nodes.values():
+                src_node.routing_table = {}
+                for dst_id in self.nodes:
+                    if dst_id == src_node.id:
+                        continue
+                    routes = self._find_routes_bfs(src_node.id, dst_id, max_routes, max_hops)
+                    if routes:
+                        src_node.routing_table[dst_id] = routes
+        else:
+            # Large network: clear tables, compute lazily via get_routes()
+            for src_node in self.nodes.values():
+                src_node.routing_table = {}
+
+    def get_routes(self, src_id, dst_id):
+        """Get routes from src to dst, computing lazily if needed."""
+        src_node = self.nodes[src_id]
+        if dst_id not in src_node.routing_table:
+            routes = self._find_routes_bfs(
+                src_id, dst_id, self._max_routes, self._max_hops
+            )
+            if routes:
+                src_node.routing_table[dst_id] = routes
+            else:
+                src_node.routing_table[dst_id] = []
+        return src_node.routing_table.get(dst_id, [])
 
     def _find_routes_bfs(self, src_id, dst_id, max_routes, max_hops):
         """Find multiple routes using modified BFS (Yen's k-shortest paths simplified).
@@ -543,9 +565,21 @@ class MeshNetwork:
         )
         avg_routes = 0
         route_counts = []
-        for node in self.nodes.values():
-            for routes in node.routing_table.values():
-                route_counts.append(len(routes))
+        if n_nodes <= 200:
+            # Precomputed: scan all tables
+            for node in self.nodes.values():
+                for routes in node.routing_table.values():
+                    route_counts.append(len(routes))
+        else:
+            # Lazy: sample ~50 random pairs to estimate
+            node_ids = list(self.nodes.keys())
+            sample_size = min(50, n_nodes)
+            for _ in range(sample_size):
+                src = self.rng.choice(node_ids)
+                dst = self.rng.choice(node_ids)
+                if src != dst:
+                    routes = self.get_routes(src, dst)
+                    route_counts.append(len(routes))
         if route_counts:
             avg_routes = sum(route_counts) / len(route_counts)
 
