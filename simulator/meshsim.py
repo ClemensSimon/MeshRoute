@@ -332,14 +332,17 @@ class MeshNetwork:
 
             if best_pair:
                 a_id, b_id = best_pair
-                link = Link(a_id, b_id, best_dist)
+                asym = self.rng.uniform(-self.asymmetry, self.asymmetry) if self.asymmetry > 0 else 0.0
+                link = Link(a_id, b_id, best_dist, terrain=self.terrain, asymmetry=asym)
                 # Force minimum quality for connectivity links
                 link.quality = max(link.quality, 0.1)
+                link.quality_ab = max(link.quality_ab, 0.1)
+                link.quality_ba = max(link.quality_ba, 0.1)
                 self.links.append(link)
                 key = (min(a_id, b_id), max(a_id, b_id))
                 self.link_map[key] = link
-                self.nodes[a_id].neighbors[b_id] = link.quality
-                self.nodes[b_id].neighbors[a_id] = link.quality
+                self.nodes[a_id].neighbors[b_id] = link.quality_ab
+                self.nodes[b_id].neighbors[a_id] = link.quality_ba
 
     def move_mobile_nodes(self, dt=1.0):
         """Move mobile nodes by one time step.
@@ -382,13 +385,17 @@ class MeshNetwork:
         """Recalculate links for specific nodes after movement."""
         node_set = set(node_ids)
 
-        # Remove old links involving moved nodes
-        old_links = [l for l in self.links
-                     if l.node_a in node_set or l.node_b in node_set]
-        for link in old_links:
-            self.links.remove(link)
-            key = (min(link.node_a, link.node_b), max(link.node_a, link.node_b))
-            self.link_map.pop(key, None)
+        # Remove old links involving moved nodes (filter in one pass, O(L))
+        old_keys = set()
+        kept_links = []
+        for link in self.links:
+            if link.node_a in node_set or link.node_b in node_set:
+                key = (min(link.node_a, link.node_b), max(link.node_a, link.node_b))
+                old_keys.add(key)
+                self.link_map.pop(key, None)
+            else:
+                kept_links.append(link)
+        self.links = kept_links
             na = self.nodes[link.node_a]
             nb = self.nodes[link.node_b]
             na.neighbors.pop(link.node_b, None)

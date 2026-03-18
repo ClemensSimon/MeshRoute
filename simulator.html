@@ -577,7 +577,7 @@ function simulateManagedFlood(net, src, dst, rng, hopLimit = 7) {
     if (hop >= 15) continue;
 
     // Hop limit enforcement — Meshtastic drops packets beyond this
-    if (hop > hopLimit) {
+    if (hop >= hopLimit) {
       droppedByLimit++;
       continue;
     }
@@ -800,7 +800,7 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
 
   while (queue.length) {
     const [cur, hop] = queue.shift();
-    if (hop >= 15 || hop > hopLimit) continue;
+    if (hop >= 15 || hop >= hopLimit) continue;
     const node = net.nodes[cur];
 
     if (cur !== src) {
