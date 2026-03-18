@@ -9,7 +9,12 @@
       "lora_range": 800,
       "n_messages": 100,
       "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
       "nodes": 20,
@@ -46,16 +51,16 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 17045,
-      "tx_per_delivered": 170.4,
+      "total_tx": 16459,
+      "tx_per_delivered": 164.6,
       "avg_hops": 1.1,
-      "energy_score": 170.4,
+      "energy_score": 164.6,
       "max_node_load": 1862,
       "load_distribution": [
         0,
         0,
-        3,
-        10,
+        5,
+        8,
         4,
         1,
         0,
@@ -69,17 +74,17 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 16465,
-      "tx_per_delivered": 164.7,
-      "avg_hops": 1.2,
-      "energy_score": 164.7,
+      "total_tx": 16250,
+      "tx_per_delivered": 162.5,
+      "avg_hops": 1.1,
+      "energy_score": 162.5,
       "max_node_load": 1862,
       "load_distribution": [
         0,
         0,
-        4,
+        5,
         10,
-        3,
+        2,
         1,
         0,
         1,
@@ -92,19 +97,19 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 112,
+      "total_tx": 115,
       "tx_per_delivered": 1.1,
       "avg_hops": 1.1,
       "energy_score": 1.1,
-      "max_node_load": 12,
+      "max_node_load": 13,
       "load_distribution": [
         0,
         1,
-        2,
-        8,
-        2,
+        5,
         4,
+        7,
         2,
+        0,
         0,
         0,
         1
@@ -157,16 +162,16 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 17045,
-      "tx_per_delivered": 170.4,
+      "total_tx": 16459,
+      "tx_per_delivered": 164.6,
       "avg_hops": 1.1,
-      "energy_score": 170.4,
+      "energy_score": 164.6,
       "max_node_load": 1862,
       "load_distribution": [
         0,
         0,
-        3,
-        10,
+        5,
+        8,
         4,
         1,
         0,
@@ -176,10 +181,10 @@
       ]
     },
     "comparison": {
-      "bw_savings_pct": 99.34,
+      "bw_savings_pct": 99.3,
       "bw_savings_vs_naive_pct": 99.64,
-      "load_reduction_pct": 99.4,
-      "tx_ratio": 0.0066
+      "load_reduction_pct": 99.3,
+      "tx_ratio": 0.007
     }
   },
   {
@@ -192,7 +197,12 @@
       "lora_range": 2000,
       "n_messages": 100,
       "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
       "nodes": 100,
@@ -208,7 +218,7 @@
       "delivery_rate": 100.0,
       "total_tx": 330181,
       "tx_per_delivered": 3301.8,
-      "avg_hops": 1.8,
+      "avg_hops": 2.0,
       "energy_score": 3301.8,
       "max_node_load": 5600,
       "load_distribution": [
@@ -229,17 +239,17 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 155774,
-      "tx_per_delivered": 1557.7,
-      "avg_hops": 1.8,
-      "energy_score": 1557.7,
+      "total_tx": 201920,
+      "tx_per_delivered": 2019.2,
+      "avg_hops": 2.0,
+      "energy_score": 2019.2,
       "max_node_load": 5600,
       "load_distribution": [
-        3,
-        35,
-        47,
-        10,
         0,
+        14,
+        32,
+        40,
+        9,
         0,
         0,
         1,
@@ -252,17 +262,17 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 155819,
-      "tx_per_delivered": 1558.2,
-      "avg_hops": 1.8,
-      "energy_score": 1558.2,
+      "total_tx": 201921,
+      "tx_per_delivered": 2019.2,
+      "avg_hops": 2.0,
+      "energy_score": 2019.2,
       "max_node_load": 5600,
       "load_distribution": [
-        3,
-        35,
-        47,
-        10,
         0,
+        14,
+        32,
+        40,
+        9,
         0,
         0,
         1,
@@ -273,24 +283,24 @@
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 196,
-      "tx_per_delivered": 2.0,
-      "avg_hops": 1.8,
-      "energy_score": 2.0,
-      "max_node_load": 8,
+      "messages_delivered": 94,
+      "delivery_rate": 94.0,
+      "total_tx": 34382,
+      "tx_per_delivered": 365.8,
+      "avg_hops": 1.9,
+      "energy_score": 365.8,
+      "max_node_load": 764,
       "load_distribution": [
-        0,
-        38,
-        20,
+        6,
+        18,
+        17,
+        12,
+        10,
         13,
+        13,
+        6,
         4,
-        4,
-        2,
-        1,
-        0,
-        3
+        1
       ],
       "qos_breakdown": {
         "0": {
@@ -305,18 +315,18 @@
         },
         "2": {
           "sent": 9,
-          "delivered": 9,
-          "rate": 100.0
+          "delivered": 7,
+          "rate": 77.8
         },
         "3": {
           "sent": 14,
-          "delivered": 14,
-          "rate": 100.0
+          "delivered": 12,
+          "rate": 85.7
         },
         "4": {
           "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "delivered": 9,
+          "rate": 90.0
         },
         "5": {
           "sent": 12,
@@ -330,28 +340,29 @@
         },
         "7": {
           "sent": 15,
-          "delivered": 15,
-          "rate": 100.0
+          "delivered": 14,
+          "rate": 93.3
         }
       },
-      "route_switches": 2
+      "fallback_used": 16,
+      "route_switches": 17
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 155774,
-      "tx_per_delivered": 1557.7,
-      "avg_hops": 1.8,
-      "energy_score": 1557.7,
+      "total_tx": 201920,
+      "tx_per_delivered": 2019.2,
+      "avg_hops": 2.0,
+      "energy_score": 2019.2,
       "max_node_load": 5600,
       "load_distribution": [
-        3,
-        35,
-        47,
-        10,
         0,
+        14,
+        32,
+        40,
+        9,
         0,
         0,
         1,
@@ -360,10 +371,10 @@
       ]
     },
     "comparison": {
-      "bw_savings_pct": 99.87,
-      "bw_savings_vs_naive_pct": 99.94,
-      "load_reduction_pct": 99.9,
-      "tx_ratio": 0.0013
+      "bw_savings_pct": 82.97,
+      "bw_savings_vs_naive_pct": 89.59,
+      "load_reduction_pct": 86.4,
+      "tx_ratio": 0.1703
     }
   },
   {
@@ -376,24 +387,29 @@
       "lora_range": 3000,
       "n_messages": 100,
       "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
       "nodes": 500,
       "links": 7691,
       "clusters": 4,
       "avg_neighbors": 30.8,
-      "avg_routes_per_dest": 4.8
+      "avg_routes_per_dest": 4.7
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 1535089,
-      "tx_per_delivered": 15350.9,
-      "avg_hops": 4.5,
-      "energy_score": 15350.9,
+      "total_tx": 1534552,
+      "tx_per_delivered": 15345.5,
+      "avg_hops": 6.8,
+      "energy_score": 15345.5,
       "max_node_load": 4500,
       "load_distribution": [
         0,
@@ -413,18 +429,18 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 708720,
-      "tx_per_delivered": 7087.2,
-      "avg_hops": 4.9,
-      "energy_score": 7087.2,
+      "total_tx": 1002437,
+      "tx_per_delivered": 10024.4,
+      "avg_hops": 7.2,
+      "energy_score": 10024.4,
       "max_node_load": 4500,
       "load_distribution": [
-        4,
-        106,
-        238,
-        123,
-        4,
-        0,
+        3,
+        13,
+        90,
+        147,
+        183,
+        39,
         0,
         0,
         23,
@@ -436,18 +452,18 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 708720,
-      "tx_per_delivered": 7087.2,
-      "avg_hops": 4.9,
-      "energy_score": 7087.2,
+      "total_tx": 1002437,
+      "tx_per_delivered": 10024.4,
+      "avg_hops": 7.2,
+      "energy_score": 10024.4,
       "max_node_load": 4500,
       "load_distribution": [
-        4,
-        106,
-        238,
-        123,
-        4,
-        0,
+        3,
+        13,
+        90,
+        147,
+        183,
+        39,
         0,
         0,
         23,
@@ -457,67 +473,68 @@
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 497,
-      "tx_per_delivered": 5.0,
-      "avg_hops": 4.8,
-      "energy_score": 5.0,
-      "max_node_load": 8,
+      "messages_delivered": 25,
+      "delivery_rate": 25.0,
+      "total_tx": 393891,
+      "tx_per_delivered": 15755.6,
+      "avg_hops": 4.6,
+      "energy_score": 15755.6,
+      "max_node_load": 1931,
       "load_distribution": [
-        0,
-        151,
+        4,
+        72,
+        131,
+        118,
+        68,
         66,
-        27,
+        19,
+        9,
         12,
-        8,
-        5,
-        1,
-        0,
         1
       ],
       "qos_breakdown": {
         "0": {
           "sent": 15,
-          "delivered": 15,
-          "rate": 100.0
+          "delivered": 9,
+          "rate": 60.0
         },
         "1": {
           "sent": 15,
-          "delivered": 15,
-          "rate": 100.0
+          "delivered": 4,
+          "rate": 26.7
         },
         "2": {
           "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "delivered": 1,
+          "rate": 10.0
         },
         "3": {
           "sent": 15,
-          "delivered": 15,
-          "rate": 100.0
+          "delivered": 5,
+          "rate": 33.3
         },
         "4": {
           "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "delivered": 2,
+          "rate": 20.0
         },
         "5": {
           "sent": 11,
-          "delivered": 11,
-          "rate": 100.0
+          "delivered": 4,
+          "rate": 36.4
         },
         "6": {
           "sent": 14,
-          "delivered": 14,
-          "rate": 100.0
+          "delivered": 0,
+          "rate": 0.0
         },
         "7": {
           "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "delivered": 0,
+          "rate": 0.0
         }
       },
+      "fallback_used": 73,
       "route_switches": 1
     },
     "flooding": {
@@ -525,18 +542,18 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 708720,
-      "tx_per_delivered": 7087.2,
-      "avg_hops": 4.9,
-      "energy_score": 7087.2,
+      "total_tx": 1002437,
+      "tx_per_delivered": 10024.4,
+      "avg_hops": 7.2,
+      "energy_score": 10024.4,
       "max_node_load": 4500,
       "load_distribution": [
-        4,
-        106,
-        238,
-        123,
-        4,
-        0,
+        3,
+        13,
+        90,
+        147,
+        183,
+        39,
         0,
         0,
         23,
@@ -544,10 +561,10 @@
       ]
     },
     "comparison": {
-      "bw_savings_pct": 99.93,
-      "bw_savings_vs_naive_pct": 99.97,
-      "load_reduction_pct": 99.8,
-      "tx_ratio": 0.0007
+      "bw_savings_pct": 60.71,
+      "bw_savings_vs_naive_pct": 74.33,
+      "load_reduction_pct": 57.1,
+      "tx_ratio": 0.3929
     }
   },
   {
@@ -560,7 +577,12 @@
       "lora_range": 2000,
       "n_messages": 100,
       "link_degradation": 0.3,
-      "node_kill_fraction": 0.0
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
       "nodes": 100,
@@ -576,7 +598,7 @@
       "delivery_rate": 100.0,
       "total_tx": 330181,
       "tx_per_delivered": 3301.8,
-      "avg_hops": 1.9,
+      "avg_hops": 2.2,
       "energy_score": 3301.8,
       "max_node_load": 5600,
       "load_distribution": [
@@ -597,17 +619,17 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 170214,
-      "tx_per_delivered": 1702.1,
-      "avg_hops": 2.0,
-      "energy_score": 1702.1,
+      "total_tx": 208164,
+      "tx_per_delivered": 2081.6,
+      "avg_hops": 2.2,
+      "energy_score": 2081.6,
       "max_node_load": 5600,
       "load_distribution": [
         0,
-        29,
-        42,
-        23,
-        1,
+        13,
+        33,
+        34,
+        15,
         0,
         0,
         1,
@@ -620,17 +642,17 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 168009,
-      "tx_per_delivered": 1680.1,
-      "avg_hops": 1.9,
-      "energy_score": 1680.1,
+      "total_tx": 209587,
+      "tx_per_delivered": 2095.9,
+      "avg_hops": 2.2,
+      "energy_score": 2095.9,
       "max_node_load": 5600,
       "load_distribution": [
-        2,
-        26,
-        48,
-        17,
-        2,
+        0,
+        12,
+        32,
+        35,
+        16,
         0,
         0,
         1,
@@ -641,23 +663,783 @@
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
+      "messages_delivered": 67,
+      "delivery_rate": 67.0,
+      "total_tx": 37159,
+      "tx_per_delivered": 554.6,
+      "avg_hops": 1.9,
+      "energy_score": 554.6,
+      "max_node_load": 827,
+      "load_distribution": [
+        5,
+        16,
+        20,
+        13,
+        12,
+        13,
+        10,
+        7,
+        3,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 14,
+          "delivered": 12,
+          "rate": 85.7
+        },
+        "1": {
+          "sent": 14,
+          "delivered": 13,
+          "rate": 92.9
+        },
+        "2": {
+          "sent": 9,
+          "delivered": 9,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 14,
+          "delivered": 11,
+          "rate": 78.6
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 12,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 15,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 18,
+      "route_switches": 19
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 4701,
-      "tx_per_delivered": 47.0,
-      "avg_hops": 1.9,
-      "energy_score": 47.0,
-      "max_node_load": 110,
+      "total_tx": 208164,
+      "tx_per_delivered": 2081.6,
+      "avg_hops": 2.2,
+      "energy_score": 2081.6,
+      "max_node_load": 5600,
       "load_distribution": [
-        12,
+        0,
+        13,
+        33,
+        34,
+        15,
+        0,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 82.15,
+      "bw_savings_vs_naive_pct": 88.75,
+      "load_reduction_pct": 85.2,
+      "tx_ratio": 0.1785
+    }
+  },
+  {
+    "scenario": 5,
+    "name": "Stress Test (50% degraded links)",
+    "category": "stress",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.5,
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1668,
+      "clusters": 4,
+      "avg_neighbors": 33.4,
+      "avg_routes_per_dest": 3.7
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 330169,
+      "tx_per_delivered": 3301.7,
+      "avg_hops": 2.1,
+      "energy_score": 3301.7,
+      "max_node_load": 5600,
+      "load_distribution": [
+        0,
+        1,
+        6,
+        14,
+        25,
+        15,
+        25,
         10,
+        3,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 215372,
+      "tx_per_delivered": 2153.7,
+      "avg_hops": 2.2,
+      "energy_score": 2153.7,
+      "max_node_load": 5600,
+      "load_distribution": [
+        0,
+        8,
+        30,
+        38,
         17,
-        6,
-        16,
-        18,
-        9,
-        6,
         2,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 215373,
+      "tx_per_delivered": 2153.7,
+      "avg_hops": 2.2,
+      "energy_score": 2153.7,
+      "max_node_load": 5600,
+      "load_distribution": [
+        0,
+        8,
+        30,
+        38,
+        17,
+        2,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 63,
+      "delivery_rate": 63.0,
+      "total_tx": 51519,
+      "tx_per_delivered": 817.8,
+      "avg_hops": 1.9,
+      "energy_score": 817.8,
+      "max_node_load": 1148,
+      "load_distribution": [
+        5,
+        19,
+        14,
+        15,
+        15,
+        11,
+        8,
+        9,
+        3,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 14,
+          "delivered": 12,
+          "rate": 85.7
+        },
+        "1": {
+          "sent": 14,
+          "delivered": 11,
+          "rate": 78.6
+        },
+        "2": {
+          "sent": 9,
+          "delivered": 7,
+          "rate": 77.8
+        },
+        "3": {
+          "sent": 14,
+          "delivered": 13,
+          "rate": 92.9
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 8,
+          "rate": 80.0
+        },
+        "5": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 12,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 15,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 25,
+      "route_switches": 11
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 215372,
+      "tx_per_delivered": 2153.7,
+      "avg_hops": 2.2,
+      "energy_score": 2153.7,
+      "max_node_load": 5600,
+      "load_distribution": [
+        0,
+        8,
+        30,
+        38,
+        17,
+        2,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 76.08,
+      "bw_savings_vs_naive_pct": 84.4,
+      "load_reduction_pct": 79.5,
+      "tx_ratio": 0.2392
+    }
+  },
+  {
+    "scenario": 6,
+    "name": "Node Failure (20% killed)",
+    "category": "stress",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.2,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1087,
+      "clusters": 4,
+      "avg_neighbors": 21.7,
+      "avg_routes_per_dest": 3.6
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 214718,
+      "tx_per_delivered": 2147.2,
+      "avg_hops": 2.3,
+      "energy_score": 2147.2,
+      "max_node_load": 4410,
+      "load_distribution": [
+        0,
+        0,
+        6,
+        9,
+        18,
+        11,
+        22,
+        7,
+        6,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 132780,
+      "tx_per_delivered": 1327.8,
+      "avg_hops": 2.3,
+      "energy_score": 1327.8,
+      "max_node_load": 4410,
+      "load_distribution": [
+        0,
+        8,
+        25,
+        32,
+        10,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 132780,
+      "tx_per_delivered": 1327.8,
+      "avg_hops": 2.3,
+      "energy_score": 1327.8,
+      "max_node_load": 4410,
+      "load_distribution": [
+        0,
+        8,
+        25,
+        32,
+        10,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 74,
+      "delivery_rate": 74.0,
+      "total_tx": 15733,
+      "tx_per_delivered": 212.6,
+      "avg_hops": 2.1,
+      "energy_score": 212.6,
+      "max_node_load": 440,
+      "load_distribution": [
+        7,
+        8,
+        17,
+        11,
+        8,
+        12,
+        7,
+        6,
+        3,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 16,
+          "delivered": 15,
+          "rate": 93.8
+        },
+        "1": {
+          "sent": 14,
+          "delivered": 14,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 15,
+          "delivered": 13,
+          "rate": 86.7
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 13,
+          "delivered": 11,
+          "rate": 84.6
+        },
+        "5": {
+          "sent": 7,
+          "delivered": 6,
+          "rate": 85.7
+        },
+        "6": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 12,
+      "route_switches": 16
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 132780,
+      "tx_per_delivered": 1327.8,
+      "avg_hops": 2.3,
+      "energy_score": 1327.8,
+      "max_node_load": 4410,
+      "load_distribution": [
+        0,
+        8,
+        25,
+        32,
+        10,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 88.15,
+      "bw_savings_vs_naive_pct": 92.67,
+      "load_reduction_pct": 90.0,
+      "tx_ratio": 0.1185
+    }
+  },
+  {
+    "scenario": 7,
+    "name": "Combined Stress (30% links + 10% nodes)",
+    "category": "stress",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.3,
+      "node_kill_fraction": 0.1,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1362,
+      "clusters": 4,
+      "avg_neighbors": 27.2,
+      "avg_routes_per_dest": 3.6
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 269456,
+      "tx_per_delivered": 2694.6,
+      "avg_hops": 2.2,
+      "energy_score": 2694.6,
+      "max_node_load": 5000,
+      "load_distribution": [
+        0,
+        0,
+        5,
+        13,
+        25,
+        9,
+        24,
+        10,
+        3,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 170094,
+      "tx_per_delivered": 1700.9,
+      "avg_hops": 2.2,
+      "energy_score": 1700.9,
+      "max_node_load": 5000,
+      "load_distribution": [
+        0,
+        10,
+        29,
+        32,
+        13,
+        1,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 170094,
+      "tx_per_delivered": 1700.9,
+      "avg_hops": 2.2,
+      "energy_score": 1700.9,
+      "max_node_load": 5000,
+      "load_distribution": [
+        0,
+        10,
+        29,
+        32,
+        13,
+        1,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 72,
+      "delivery_rate": 72.0,
+      "total_tx": 34036,
+      "tx_per_delivered": 472.7,
+      "avg_hops": 1.9,
+      "energy_score": 472.7,
+      "max_node_load": 842,
+      "load_distribution": [
+        4,
+        17,
+        12,
+        15,
+        10,
+        13,
+        9,
+        8,
+        1,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 17,
+          "delivered": 15,
+          "rate": 88.2
+        },
+        "1": {
+          "sent": 16,
+          "delivered": 16,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 14,
+          "delivered": 13,
+          "rate": 92.9
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 13,
+          "rate": 86.7
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 7,
+          "rate": 70.0
+        },
+        "5": {
+          "sent": 8,
+          "delivered": 8,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 20,
+      "route_switches": 18
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 170094,
+      "tx_per_delivered": 1700.9,
+      "avg_hops": 2.2,
+      "energy_score": 1700.9,
+      "max_node_load": 5000,
+      "load_distribution": [
+        0,
+        10,
+        29,
+        32,
+        13,
+        1,
+        0,
+        1,
+        3,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 79.99,
+      "bw_savings_vs_naive_pct": 87.37,
+      "load_reduction_pct": 83.2,
+      "tx_ratio": 0.2001
+    }
+  },
+  {
+    "scenario": 8,
+    "name": "Dense Urban (high connectivity)",
+    "category": "dense",
+    "config": {
+      "n_nodes": 200,
+      "area_size": 3000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 200,
+      "links": 13542,
+      "clusters": 4,
+      "avg_neighbors": 135.4,
+      "avg_routes_per_dest": 2.3
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 2694702,
+      "tx_per_delivered": 26947.0,
+      "avg_hops": 1.6,
+      "energy_score": 26947.0,
+      "max_node_load": 19900,
+      "load_distribution": [
+        0,
+        0,
+        1,
+        4,
+        39,
+        59,
+        43,
+        32,
+        21,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 1490555,
+      "tx_per_delivered": 14905.5,
+      "avg_hops": 1.5,
+      "energy_score": 14905.5,
+      "max_node_load": 19900,
+      "load_distribution": [
+        0,
+        6,
+        93,
+        72,
+        18,
+        1,
+        0,
+        0,
+        9,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 1490556,
+      "tx_per_delivered": 14905.6,
+      "avg_hops": 1.5,
+      "energy_score": 14905.6,
+      "max_node_load": 19900,
+      "load_distribution": [
+        0,
+        6,
+        93,
+        72,
+        18,
+        1,
+        0,
+        0,
+        9,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 481310,
+      "tx_per_delivered": 4813.1,
+      "avg_hops": 1.4,
+      "energy_score": 4813.1,
+      "max_node_load": 3563,
+      "load_distribution": [
+        0,
+        0,
+        2,
+        8,
+        33,
+        60,
+        44,
+        30,
+        22,
         1
       ],
       "qos_breakdown": {
@@ -702,147 +1484,530 @@
           "rate": 100.0
         }
       },
-      "fallback_used": 2,
-      "route_switches": 8
+      "fallback_used": 18,
+      "route_switches": 13
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 170214,
-      "tx_per_delivered": 1702.1,
-      "avg_hops": 2.0,
-      "energy_score": 1702.1,
-      "max_node_load": 5600,
+      "total_tx": 1490555,
+      "tx_per_delivered": 14905.5,
+      "avg_hops": 1.5,
+      "energy_score": 14905.5,
+      "max_node_load": 19900,
       "load_distribution": [
         0,
-        29,
-        42,
-        23,
+        6,
+        93,
+        72,
+        18,
         1,
         0,
         0,
-        1,
-        3,
+        9,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 97.24,
-      "bw_savings_vs_naive_pct": 98.58,
-      "load_reduction_pct": 98.0,
-      "tx_ratio": 0.0276
+      "bw_savings_pct": 67.71,
+      "bw_savings_vs_naive_pct": 82.14,
+      "load_reduction_pct": 82.1,
+      "tx_ratio": 0.3229
     }
   },
   {
-    "scenario": 5,
-    "name": "Stress Test (50% degraded links)",
-    "category": "stress",
+    "scenario": 9,
+    "name": "Large Scale (1000 nodes, 40km)",
+    "category": "dense",
     "config": {
-      "n_nodes": 100,
-      "area_size": 5000,
-      "lora_range": 2000,
+      "n_nodes": 1000,
+      "area_size": 40000,
+      "lora_range": 4000,
       "n_messages": 100,
-      "link_degradation": 0.5,
-      "node_kill_fraction": 0.0
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
-      "nodes": 100,
-      "links": 1668,
+      "nodes": 1000,
+      "links": 9060,
       "clusters": 4,
-      "avg_neighbors": 33.4,
-      "avg_routes_per_dest": 3.7
+      "avg_neighbors": 18.1,
+      "avg_routes_per_dest": 4.8
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 330181,
-      "tx_per_delivered": 3301.8,
-      "avg_hops": 2.0,
-      "energy_score": 3301.8,
-      "max_node_load": 5600,
+      "messages_delivered": 92,
+      "delivery_rate": 92.0,
+      "total_tx": 1698623,
+      "tx_per_delivered": 18463.3,
+      "avg_hops": 15.9,
+      "energy_score": 18463.3,
+      "max_node_load": 2976,
       "load_distribution": [
-        0,
-        1,
-        6,
         14,
-        25,
         15,
-        25,
-        10,
-        3,
+        52,
+        85,
+        282,
+        266,
+        213,
+        61,
+        11,
         1
       ]
     },
     "managed_flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 183019,
-      "tx_per_delivered": 1830.2,
-      "avg_hops": 2.0,
-      "energy_score": 1830.2,
-      "max_node_load": 5600,
+      "messages_delivered": 47,
+      "delivery_rate": 47.0,
+      "total_tx": 548710,
+      "tx_per_delivered": 11674.7,
+      "avg_hops": 17.1,
+      "energy_score": 11674.7,
+      "max_node_load": 2046,
       "load_distribution": [
-        1,
-        24,
-        36,
-        29,
-        5,
-        0,
-        0,
-        1,
+        133,
+        264,
+        342,
+        167,
+        54,
+        12,
         3,
+        17,
+        6,
         1
       ]
     },
     "next_hop": {
       "router": "NextHopRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 183496,
-      "tx_per_delivered": 1835.0,
-      "avg_hops": 2.0,
-      "energy_score": 1835.0,
-      "max_node_load": 5600,
+      "messages_delivered": 47,
+      "delivery_rate": 47.0,
+      "total_tx": 548710,
+      "tx_per_delivered": 11674.7,
+      "avg_hops": 17.1,
+      "energy_score": 11674.7,
+      "max_node_load": 2046,
       "load_distribution": [
-        1,
-        24,
-        36,
-        29,
-        5,
-        0,
-        0,
-        1,
+        133,
+        264,
+        342,
+        167,
+        54,
+        12,
         3,
+        17,
+        6,
         1
       ]
     },
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 73,
-      "delivery_rate": 73.0,
-      "total_tx": 16055,
-      "tx_per_delivered": 219.9,
-      "avg_hops": 1.9,
-      "energy_score": 219.9,
-      "max_node_load": 366,
+      "messages_delivered": 11,
+      "delivery_rate": 11.0,
+      "total_tx": 229089,
+      "tx_per_delivered": 20826.3,
+      "avg_hops": 5.8,
+      "energy_score": 20826.3,
+      "max_node_load": 648,
+      "load_distribution": [
+        44,
+        186,
+        248,
+        235,
+        142,
+        80,
+        49,
+        8,
+        0,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 15,
+          "delivered": 4,
+          "rate": 26.7
+        },
+        "1": {
+          "sent": 15,
+          "delivered": 1,
+          "rate": 6.7
+        },
+        "2": {
+          "sent": 10,
+          "delivered": 1,
+          "rate": 10.0
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 2,
+          "rate": 13.3
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 2,
+          "rate": 20.0
+        },
+        "5": {
+          "sent": 11,
+          "delivered": 1,
+          "rate": 9.1
+        },
+        "6": {
+          "sent": 14,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 76
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 47,
+      "delivery_rate": 47.0,
+      "total_tx": 548710,
+      "tx_per_delivered": 11674.7,
+      "avg_hops": 17.1,
+      "energy_score": 11674.7,
+      "max_node_load": 2046,
+      "load_distribution": [
+        133,
+        264,
+        342,
+        167,
+        54,
+        12,
+        3,
+        17,
+        6,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 58.25,
+      "bw_savings_vs_naive_pct": 86.51,
+      "load_reduction_pct": 68.3,
+      "tx_ratio": 0.4175
+    }
+  },
+  {
+    "scenario": 10,
+    "name": "Metro Scale (1500 nodes, 50km)",
+    "category": "dense",
+    "config": {
+      "n_nodes": 1500,
+      "area_size": 50000,
+      "lora_range": 4000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 1500,
+      "links": 13180,
+      "clusters": 4,
+      "avg_neighbors": 17.6,
+      "avg_routes_per_dest": 4.4
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 88,
+      "delivery_rate": 88.0,
+      "total_tx": 2263578,
+      "tx_per_delivered": 25722.5,
+      "avg_hops": 16.9,
+      "energy_score": 25722.5,
+      "max_node_load": 2910,
+      "load_distribution": [
+        23,
+        63,
+        127,
+        265,
+        394,
+        330,
+        197,
+        83,
+        17,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 36,
+      "delivery_rate": 36.0,
+      "total_tx": 563607,
+      "tx_per_delivered": 15655.8,
+      "avg_hops": 14.2,
+      "energy_score": 15655.8,
+      "max_node_load": 1410,
+      "load_distribution": [
+        258,
+        437,
+        385,
+        234,
+        100,
+        30,
+        10,
+        20,
+        25,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 36,
+      "delivery_rate": 36.0,
+      "total_tx": 563607,
+      "tx_per_delivered": 15655.8,
+      "avg_hops": 14.2,
+      "energy_score": 15655.8,
+      "max_node_load": 1410,
+      "load_distribution": [
+        258,
+        437,
+        385,
+        234,
+        100,
+        30,
+        10,
+        20,
+        25,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 16,
+      "delivery_rate": 16.0,
+      "total_tx": 238652,
+      "tx_per_delivered": 14915.8,
+      "avg_hops": 6.3,
+      "energy_score": 14915.8,
+      "max_node_load": 558,
+      "load_distribution": [
+        207,
+        344,
+        419,
+        306,
+        144,
+        49,
+        22,
+        5,
+        1,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 16,
+          "delivered": 5,
+          "rate": 31.2
+        },
+        "1": {
+          "sent": 15,
+          "delivered": 4,
+          "rate": 26.7
+        },
+        "2": {
+          "sent": 12,
+          "delivered": 1,
+          "rate": 8.3
+        },
+        "3": {
+          "sent": 13,
+          "delivered": 1,
+          "rate": 7.7
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 2,
+          "rate": 20.0
+        },
+        "5": {
+          "sent": 9,
+          "delivered": 3,
+          "rate": 33.3
+        },
+        "6": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 15,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 74
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 36,
+      "delivery_rate": 36.0,
+      "total_tx": 563607,
+      "tx_per_delivered": 15655.8,
+      "avg_hops": 14.2,
+      "energy_score": 15655.8,
+      "max_node_load": 1410,
+      "load_distribution": [
+        258,
+        437,
+        385,
+        234,
+        100,
+        30,
+        10,
+        20,
+        25,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 57.66,
+      "bw_savings_vs_naive_pct": 89.46,
+      "load_reduction_pct": 60.4,
+      "tx_ratio": 0.4234
+    }
+  },
+  {
+    "scenario": 11,
+    "name": "Rural Long Range (SF12)",
+    "category": "scale",
+    "config": {
+      "n_nodes": 50,
+      "area_size": 15000,
+      "lora_range": 5000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "rural",
+      "asymmetry": 0.15,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 50,
+      "links": 319,
+      "clusters": 4,
+      "avg_neighbors": 12.8,
+      "avg_routes_per_dest": 3.9
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 62499,
+      "tx_per_delivered": 625.0,
+      "avg_hops": 2.3,
+      "energy_score": 625.0,
+      "max_node_load": 2037,
+      "load_distribution": [
+        0,
+        2,
+        6,
+        9,
+        3,
+        7,
+        6,
+        8,
+        8,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 91,
+      "delivery_rate": 91.0,
+      "total_tx": 30152,
+      "tx_per_delivered": 331.3,
+      "avg_hops": 2.5,
+      "energy_score": 331.3,
+      "max_node_load": 1995,
+      "load_distribution": [
+        5,
+        10,
+        19,
+        9,
+        5,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 94,
+      "delivery_rate": 94.0,
+      "total_tx": 30712,
+      "tx_per_delivered": 326.7,
+      "avg_hops": 2.5,
+      "energy_score": 326.7,
+      "max_node_load": 2016,
+      "load_distribution": [
+        6,
+        10,
+        15,
+        12,
+        5,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 617,
+      "tx_per_delivered": 6.2,
+      "avg_hops": 2.7,
+      "energy_score": 6.2,
+      "max_node_load": 33,
       "load_distribution": [
         11,
-        9,
-        14,
+        7,
+        4,
         5,
-        17,
-        16,
-        13,
-        6,
+        8,
+        4,
+        5,
         3,
+        0,
         1
       ],
       "qos_breakdown": {
@@ -878,88 +2043,93 @@
         },
         "6": {
           "sent": 12,
-          "delivered": 0,
-          "rate": 0.0
+          "delivered": 12,
+          "rate": 100.0
         },
         "7": {
           "sent": 15,
-          "delivered": 0,
-          "rate": 0.0
+          "delivered": 15,
+          "rate": 100.0
         }
       },
-      "fallback_used": 7,
-      "route_switches": 16
+      "fallback_used": 1,
+      "route_switches": 1
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 183019,
-      "tx_per_delivered": 1830.2,
-      "avg_hops": 2.0,
-      "energy_score": 1830.2,
-      "max_node_load": 5600,
+      "messages_delivered": 91,
+      "delivery_rate": 91.0,
+      "total_tx": 30152,
+      "tx_per_delivered": 331.3,
+      "avg_hops": 2.5,
+      "energy_score": 331.3,
+      "max_node_load": 1995,
       "load_distribution": [
-        1,
-        24,
-        36,
-        29,
+        5,
+        10,
+        19,
+        9,
         5,
         0,
         0,
+        0,
         1,
-        3,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 91.23,
-      "bw_savings_vs_naive_pct": 95.14,
-      "load_reduction_pct": 93.5,
-      "tx_ratio": 0.0877
+      "bw_savings_pct": 97.95,
+      "bw_savings_vs_naive_pct": 99.01,
+      "load_reduction_pct": 98.3,
+      "tx_ratio": 0.0205
     }
   },
   {
-    "scenario": 6,
-    "name": "Node Failure (20% killed)",
-    "category": "stress",
+    "scenario": 12,
+    "name": "Hiking Trail (linear)",
+    "category": "topology",
     "config": {
-      "n_nodes": 100,
-      "area_size": 5000,
+      "n_nodes": 40,
+      "area_size": 8000,
       "lora_range": 2000,
       "n_messages": 100,
       "link_degradation": 0.0,
-      "node_kill_fraction": 0.2
+      "node_kill_fraction": 0.0,
+      "terrain": "rural",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "linear",
+      "enable_duty_cycle": false
     },
     "network": {
-      "nodes": 100,
-      "links": 1092,
+      "nodes": 40,
+      "links": 308,
       "clusters": 4,
-      "avg_neighbors": 21.8,
-      "avg_routes_per_dest": 3.6
+      "avg_neighbors": 15.4,
+      "avg_routes_per_dest": 3.4
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 215708,
-      "tx_per_delivered": 2157.1,
-      "avg_hops": 1.8,
-      "energy_score": 2157.1,
-      "max_node_load": 4455,
+      "total_tx": 60032,
+      "tx_per_delivered": 600.3,
+      "avg_hops": 2.0,
+      "energy_score": 600.3,
+      "max_node_load": 1800,
       "load_distribution": [
+        0,
+        0,
         0,
         1,
         3,
-        13,
-        20,
-        9,
-        16,
-        12,
-        5,
-        1
+        4,
+        4,
+        7,
+        18,
+        3
       ]
     },
     "managed_flooding": {
@@ -967,67 +2137,67 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 108413,
-      "tx_per_delivered": 1084.1,
-      "avg_hops": 1.9,
-      "energy_score": 1084.1,
-      "max_node_load": 4455,
+      "total_tx": 28894,
+      "tx_per_delivered": 288.9,
+      "avg_hops": 2.0,
+      "energy_score": 288.9,
+      "max_node_load": 1782,
       "load_distribution": [
-        4,
-        25,
-        30,
-        14,
-        2,
+        0,
+        1,
+        10,
+        17,
+        10,
         0,
         0,
         0,
-        4,
+        1,
         1
       ]
     },
     "next_hop": {
       "router": "NextHopRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 108413,
-      "tx_per_delivered": 1084.1,
-      "avg_hops": 1.9,
-      "energy_score": 1084.1,
-      "max_node_load": 4455,
+      "messages_delivered": 99,
+      "delivery_rate": 99.0,
+      "total_tx": 28873,
+      "tx_per_delivered": 291.6,
+      "avg_hops": 2.0,
+      "energy_score": 291.6,
+      "max_node_load": 1800,
       "load_distribution": [
-        4,
-        25,
-        30,
-        14,
-        2,
+        0,
+        1,
+        9,
+        22,
+        6,
         0,
         0,
         0,
-        4,
+        1,
         1
       ]
     },
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 85,
-      "delivery_rate": 85.0,
-      "total_tx": 2853,
-      "tx_per_delivered": 33.6,
-      "avg_hops": 2.0,
-      "energy_score": 33.6,
-      "max_node_load": 83,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 627,
+      "tx_per_delivered": 6.3,
+      "avg_hops": 2.1,
+      "energy_score": 6.3,
+      "max_node_load": 29,
       "load_distribution": [
-        9,
-        8,
-        17,
-        8,
-        8,
-        10,
+        4,
+        6,
+        2,
+        2,
+        4,
+        6,
         5,
-        11,
-        1,
+        5,
+        5,
         1
       ],
       "qos_breakdown": {
@@ -1063,87 +2233,92 @@
         },
         "6": {
           "sent": 10,
-          "delivered": 3,
-          "rate": 30.0
+          "delivered": 10,
+          "rate": 100.0
         },
         "7": {
           "sent": 10,
-          "delivered": 2,
-          "rate": 20.0
+          "delivered": 10,
+          "rate": 100.0
         }
       },
-      "fallback_used": 2
+      "fallback_used": 1
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 108413,
-      "tx_per_delivered": 1084.1,
-      "avg_hops": 1.9,
-      "energy_score": 1084.1,
-      "max_node_load": 4455,
+      "total_tx": 28894,
+      "tx_per_delivered": 288.9,
+      "avg_hops": 2.0,
+      "energy_score": 288.9,
+      "max_node_load": 1782,
       "load_distribution": [
-        4,
-        25,
-        30,
-        14,
-        2,
+        0,
+        1,
+        10,
+        17,
+        10,
         0,
         0,
         0,
-        4,
+        1,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 97.37,
-      "bw_savings_vs_naive_pct": 98.68,
-      "load_reduction_pct": 98.1,
-      "tx_ratio": 0.0263
+      "bw_savings_pct": 97.83,
+      "bw_savings_vs_naive_pct": 98.96,
+      "load_reduction_pct": 98.4,
+      "tx_ratio": 0.0217
     }
   },
   {
-    "scenario": 7,
-    "name": "Combined Stress (30% links + 10% nodes)",
-    "category": "stress",
+    "scenario": 13,
+    "name": "Festival/Event (dense + mobile)",
+    "category": "mobility",
     "config": {
-      "n_nodes": 100,
-      "area_size": 5000,
-      "lora_range": 2000,
+      "n_nodes": 150,
+      "area_size": 2000,
+      "lora_range": 1500,
       "n_messages": 100,
-      "link_degradation": 0.3,
-      "node_kill_fraction": 0.1
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "suburban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.6,
+      "placement": "clustered",
+      "enable_duty_cycle": false
     },
     "network": {
-      "nodes": 100,
-      "links": 1371,
+      "nodes": 150,
+      "links": 10736,
       "clusters": 4,
-      "avg_neighbors": 27.4,
-      "avg_routes_per_dest": 3.6
+      "avg_neighbors": 143.1,
+      "avg_routes_per_dest": 1.2
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 271210,
-      "tx_per_delivered": 2712.1,
-      "avg_hops": 1.9,
-      "energy_score": 2712.1,
-      "max_node_load": 5100,
+      "total_tx": 2120119,
+      "tx_per_delivered": 21201.2,
+      "avg_hops": 1.1,
+      "energy_score": 21201.2,
+      "max_node_load": 14900,
       "load_distribution": [
         0,
-        1,
-        10,
-        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
         21,
-        14,
-        25,
-        7,
-        3,
-        1
+        94,
+        31
       ]
     },
     "managed_flooding": {
@@ -1151,22 +2326,22 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 139491,
-      "tx_per_delivered": 1394.9,
-      "avg_hops": 2.0,
-      "energy_score": 1394.9,
-      "max_node_load": 5100,
+      "total_tx": 912953,
+      "tx_per_delivered": 9129.5,
+      "avg_hops": 1.1,
+      "energy_score": 9129.5,
+      "max_node_load": 14900,
       "load_distribution": [
-        2,
-        27,
-        36,
-        16,
-        4,
         0,
         0,
+        20,
+        111,
+        11,
         1,
-        3,
-        1
+        0,
+        0,
+        2,
+        5
       ]
     },
     "next_hop": {
@@ -1174,60 +2349,248 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 138671,
-      "tx_per_delivered": 1386.7,
-      "avg_hops": 2.0,
-      "energy_score": 1386.7,
-      "max_node_load": 5100,
+      "total_tx": 912953,
+      "tx_per_delivered": 9129.5,
+      "avg_hops": 1.1,
+      "energy_score": 9129.5,
+      "max_node_load": 14900,
       "load_distribution": [
+        0,
+        0,
+        20,
+        111,
+        11,
+        1,
+        0,
+        0,
         2,
-        23,
-        40,
+        5
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 107,
+      "tx_per_delivered": 1.1,
+      "avg_hops": 1.1,
+      "energy_score": 1.1,
+      "max_node_load": 4,
+      "load_distribution": [
+        0,
+        0,
+        51,
+        0,
+        20,
+        0,
+        4,
+        0,
+        0,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 18,
+          "delivered": 18,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 18,
+          "delivered": 18,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 14,
+          "delivered": 14,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 7,
+          "delivered": 7,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 7,
+          "delivered": 7,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 9,
+          "delivered": 9,
+          "rate": 100.0
+        }
+      }
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 912953,
+      "tx_per_delivered": 9129.5,
+      "avg_hops": 1.1,
+      "energy_score": 9129.5,
+      "max_node_load": 14900,
+      "load_distribution": [
+        0,
+        0,
+        20,
+        111,
+        11,
+        1,
+        0,
+        0,
+        2,
+        5
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 99.99,
+      "bw_savings_vs_naive_pct": 99.99,
+      "load_reduction_pct": 100.0,
+      "tx_ratio": 0.0001
+    }
+  },
+  {
+    "scenario": 14,
+    "name": "Disaster Relief (asymmetric + node loss)",
+    "category": "stress",
+    "config": {
+      "n_nodes": 80,
+      "area_size": 10000,
+      "lora_range": 3000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.25,
+      "terrain": "suburban",
+      "asymmetry": 0.3,
+      "mobile_fraction": 0.3,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 80,
+      "links": 356,
+      "clusters": 4,
+      "avg_neighbors": 8.9,
+      "avg_routes_per_dest": 4.0
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 70424,
+      "tx_per_delivered": 704.2,
+      "avg_hops": 2.8,
+      "energy_score": 704.2,
+      "max_node_load": 2107,
+      "load_distribution": [
+        0,
+        2,
+        11,
+        10,
+        8,
+        10,
+        6,
+        8,
+        4,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 90,
+      "delivery_rate": 90.0,
+      "total_tx": 35635,
+      "tx_per_delivered": 395.9,
+      "avg_hops": 3.0,
+      "energy_score": 395.9,
+      "max_node_load": 2044,
+      "load_distribution": [
+        7,
         17,
+        22,
+        8,
+        2,
+        0,
+        0,
+        0,
         3,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 87,
+      "delivery_rate": 87.0,
+      "total_tx": 34489,
+      "tx_per_delivered": 396.4,
+      "avg_hops": 2.9,
+      "energy_score": 396.4,
+      "max_node_load": 2022,
+      "load_distribution": [
+        7,
+        17,
+        20,
+        11,
+        1,
         0,
         0,
         1,
-        3,
+        2,
         1
       ]
     },
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 79,
-      "delivery_rate": 79.0,
-      "total_tx": 3427,
-      "tx_per_delivered": 43.4,
-      "avg_hops": 2.0,
-      "energy_score": 43.4,
-      "max_node_load": 86,
+      "messages_delivered": 78,
+      "delivery_rate": 78.0,
+      "total_tx": 271,
+      "tx_per_delivered": 3.5,
+      "avg_hops": 3.1,
+      "energy_score": 3.5,
+      "max_node_load": 14,
       "load_distribution": [
         4,
-        12,
-        16,
-        18,
+        20,
         7,
-        10,
-        10,
-        7,
-        3,
-        1
+        11,
+        5,
+        4,
+        2,
+        1,
+        0,
+        2
       ],
       "qos_breakdown": {
         "0": {
-          "sent": 17,
-          "delivered": 17,
+          "sent": 15,
+          "delivered": 15,
           "rate": 100.0
         },
         "1": {
-          "sent": 16,
-          "delivered": 16,
+          "sent": 19,
+          "delivered": 19,
           "rate": 100.0
         },
         "2": {
-          "sent": 14,
-          "delivered": 14,
+          "sent": 9,
+          "delivered": 9,
           "rate": 100.0
         },
         "3": {
@@ -1237,16 +2600,16 @@
         },
         "4": {
           "sent": 10,
-          "delivered": 9,
-          "rate": 90.0
+          "delivered": 10,
+          "rate": 100.0
         },
         "5": {
-          "sent": 8,
-          "delivered": 8,
+          "sent": 10,
+          "delivered": 10,
           "rate": 100.0
         },
         "6": {
-          "sent": 10,
+          "sent": 12,
           "delivered": 0,
           "rate": 0.0
         },
@@ -1256,78 +2619,82 @@
           "rate": 0.0
         }
       },
-      "fallback_used": 2,
-      "route_switches": 8
+      "route_switches": 2
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 139491,
-      "tx_per_delivered": 1394.9,
-      "avg_hops": 2.0,
-      "energy_score": 1394.9,
-      "max_node_load": 5100,
+      "messages_delivered": 90,
+      "delivery_rate": 90.0,
+      "total_tx": 35635,
+      "tx_per_delivered": 395.9,
+      "avg_hops": 3.0,
+      "energy_score": 395.9,
+      "max_node_load": 2044,
       "load_distribution": [
+        7,
+        17,
+        22,
+        8,
         2,
-        27,
-        36,
-        16,
-        4,
         0,
         0,
-        1,
+        0,
         3,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 97.54,
-      "bw_savings_vs_naive_pct": 98.74,
-      "load_reduction_pct": 98.3,
-      "tx_ratio": 0.0246
+      "bw_savings_pct": 99.24,
+      "bw_savings_vs_naive_pct": 99.62,
+      "load_reduction_pct": 99.3,
+      "tx_ratio": 0.0076
     }
   },
   {
-    "scenario": 8,
-    "name": "Dense Urban (high connectivity)",
-    "category": "dense",
+    "scenario": 15,
+    "name": "Indoor-Outdoor Mix (dense urban)",
+    "category": "scale",
     "config": {
-      "n_nodes": 200,
-      "area_size": 3000,
-      "lora_range": 2000,
+      "n_nodes": 100,
+      "area_size": 2000,
+      "lora_range": 1000,
       "n_messages": 100,
       "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
+      "node_kill_fraction": 0.0,
+      "terrain": "dense_urban",
+      "asymmetry": 0.2,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
-      "nodes": 200,
-      "links": 13542,
+      "nodes": 100,
+      "links": 2310,
       "clusters": 4,
-      "avg_neighbors": 135.4,
-      "avg_routes_per_dest": 2.3
+      "avg_neighbors": 46.2,
+      "avg_routes_per_dest": 3.1
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 2694702,
-      "tx_per_delivered": 26947.0,
-      "avg_hops": 1.3,
-      "energy_score": 26947.0,
-      "max_node_load": 19900,
+      "total_tx": 457271,
+      "tx_per_delivered": 4572.7,
+      "avg_hops": 1.7,
+      "energy_score": 4572.7,
+      "max_node_load": 7326,
       "load_distribution": [
         0,
         0,
-        1,
-        4,
-        39,
-        59,
-        43,
-        32,
+        3,
+        13,
+        22,
+        20,
         21,
+        13,
+        7,
         1
       ]
     },
@@ -1336,21 +2703,21 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 1239692,
-      "tx_per_delivered": 12396.9,
-      "avg_hops": 1.3,
-      "energy_score": 12396.9,
-      "max_node_load": 19900,
+      "total_tx": 268468,
+      "tx_per_delivered": 2684.7,
+      "avg_hops": 1.8,
+      "energy_score": 2684.7,
+      "max_node_load": 7326,
       "load_distribution": [
         0,
-        47,
-        109,
-        30,
-        3,
-        1,
+        16,
+        32,
+        32,
+        15,
         0,
         0,
-        9,
+        0,
+        4,
         1
       ]
     },
@@ -1359,21 +2726,590 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 1244625,
-      "tx_per_delivered": 12446.2,
-      "avg_hops": 1.3,
-      "energy_score": 12446.2,
-      "max_node_load": 19900,
+      "total_tx": 268469,
+      "tx_per_delivered": 2684.7,
+      "avg_hops": 1.8,
+      "energy_score": 2684.7,
+      "max_node_load": 7326,
       "load_distribution": [
         0,
-        47,
-        108,
+        16,
         32,
-        2,
+        32,
+        15,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 97,
+      "delivery_rate": 97.0,
+      "total_tx": 37522,
+      "tx_per_delivered": 386.8,
+      "avg_hops": 1.6,
+      "energy_score": 386.8,
+      "max_node_load": 687,
+      "load_distribution": [
+        1,
+        11,
+        9,
+        12,
+        16,
+        19,
+        16,
+        9,
+        6,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 14,
+          "delivered": 14,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 14,
+          "delivered": 13,
+          "rate": 92.9
+        },
+        "2": {
+          "sent": 9,
+          "delivered": 9,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 14,
+          "delivered": 14,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 9,
+          "rate": 90.0
+        },
+        "5": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 15,
+          "delivered": 14,
+          "rate": 93.3
+        }
+      },
+      "fallback_used": 10,
+      "route_switches": 11
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 268468,
+      "tx_per_delivered": 2684.7,
+      "avg_hops": 1.8,
+      "energy_score": 2684.7,
+      "max_node_load": 7326,
+      "load_distribution": [
+        0,
+        16,
+        32,
+        32,
+        15,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 86.02,
+      "bw_savings_vs_naive_pct": 91.79,
+      "load_reduction_pct": 90.6,
+      "tx_ratio": 0.1398
+    }
+  },
+  {
+    "scenario": 16,
+    "name": "Duty Cycle Stress (100 nodes, 1% enforced)",
+    "category": "duty_cycle",
+    "config": {
+      "n_nodes": 100,
+      "area_size": 5000,
+      "lora_range": 2000,
+      "n_messages": 200,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "urban",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": true
+    },
+    "network": {
+      "nodes": 100,
+      "links": 1668,
+      "clusters": 4,
+      "avg_neighbors": 33.4,
+      "avg_routes_per_dest": 3.7
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 200,
+      "messages_delivered": 200,
+      "delivery_rate": 100.0,
+      "total_tx": 660511,
+      "tx_per_delivered": 3302.6,
+      "avg_hops": 2.1,
+      "energy_score": 3302.6,
+      "max_node_load": 11088,
+      "load_distribution": [
+        0,
+        1,
+        6,
+        14,
+        23,
+        14,
+        28,
+        9,
+        4,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 200,
+      "messages_delivered": 200,
+      "delivery_rate": 100.0,
+      "total_tx": 404779,
+      "tx_per_delivered": 2023.9,
+      "avg_hops": 2.2,
+      "energy_score": 2023.9,
+      "max_node_load": 11088,
+      "load_distribution": [
+        0,
+        13,
+        32,
+        42,
+        7,
         1,
         0,
         0,
+        4,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 200,
+      "messages_delivered": 200,
+      "delivery_rate": 100.0,
+      "total_tx": 403867,
+      "tx_per_delivered": 2019.3,
+      "avg_hops": 2.2,
+      "energy_score": 2019.3,
+      "max_node_load": 11088,
+      "load_distribution": [
+        0,
+        13,
+        32,
+        41,
         9,
+        0,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 200,
+      "messages_delivered": 184,
+      "delivery_rate": 92.0,
+      "total_tx": 83745,
+      "tx_per_delivered": 455.1,
+      "avg_hops": 1.9,
+      "energy_score": 455.1,
+      "max_node_load": 1889,
+      "load_distribution": [
+        7,
+        12,
+        21,
+        12,
+        11,
+        15,
+        11,
+        7,
+        3,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 24,
+          "delivered": 24,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 26,
+          "delivered": 25,
+          "rate": 96.2
+        },
+        "2": {
+          "sent": 24,
+          "delivered": 20,
+          "rate": 83.3
+        },
+        "3": {
+          "sent": 33,
+          "delivered": 29,
+          "rate": 87.9
+        },
+        "4": {
+          "sent": 22,
+          "delivered": 18,
+          "rate": 81.8
+        },
+        "5": {
+          "sent": 22,
+          "delivered": 22,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 26,
+          "delivered": 25,
+          "rate": 96.2
+        },
+        "7": {
+          "sent": 23,
+          "delivered": 21,
+          "rate": 91.3
+        }
+      },
+      "fallback_used": 40,
+      "route_switches": 37
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 200,
+      "messages_delivered": 200,
+      "delivery_rate": 100.0,
+      "total_tx": 404779,
+      "tx_per_delivered": 2023.9,
+      "avg_hops": 2.2,
+      "energy_score": 2023.9,
+      "max_node_load": 11088,
+      "load_distribution": [
+        0,
+        13,
+        32,
+        42,
+        7,
+        1,
+        0,
+        0,
+        4,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 79.31,
+      "bw_savings_vs_naive_pct": 87.32,
+      "load_reduction_pct": 83.0,
+      "tx_ratio": 0.2069
+    }
+  },
+  {
+    "scenario": 17,
+    "name": "Mountain Valley (poor propagation)",
+    "category": "scale",
+    "config": {
+      "n_nodes": 60,
+      "area_size": 12000,
+      "lora_range": 2000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "dense_urban",
+      "asymmetry": 0.35,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 60,
+      "links": 88,
+      "clusters": 4,
+      "avg_neighbors": 2.9,
+      "avg_routes_per_dest": 1.7
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 3,
+      "delivery_rate": 3.0,
+      "total_tx": 901,
+      "tx_per_delivered": 300.3,
+      "avg_hops": 2.0,
+      "energy_score": 300.3,
+      "max_node_load": 55,
+      "load_distribution": [
+        19,
+        12,
+        4,
+        8,
+        6,
+        3,
+        0,
+        1,
+        2,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 3,
+      "delivery_rate": 3.0,
+      "total_tx": 747,
+      "tx_per_delivered": 249.0,
+      "avg_hops": 1.7,
+      "energy_score": 249.0,
+      "max_node_load": 56,
+      "load_distribution": [
+        20,
+        13,
+        7,
+        9,
+        3,
+        2,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 3,
+      "delivery_rate": 3.0,
+      "total_tx": 747,
+      "tx_per_delivered": 249.0,
+      "avg_hops": 1.7,
+      "energy_score": 249.0,
+      "max_node_load": 56,
+      "load_distribution": [
+        20,
+        13,
+        7,
+        9,
+        3,
+        2,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 4,
+      "delivery_rate": 4.0,
+      "total_tx": 1036,
+      "tx_per_delivered": 259.0,
+      "avg_hops": 2.0,
+      "energy_score": 259.0,
+      "max_node_load": 67,
+      "load_distribution": [
+        20,
+        8,
+        7,
+        3,
+        7,
+        2,
+        3,
+        2,
+        0,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 15,
+          "delivered": 1,
+          "rate": 6.7
+        },
+        "1": {
+          "sent": 19,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "2": {
+          "sent": 9,
+          "delivered": 1,
+          "rate": 11.1
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 1,
+          "rate": 6.7
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 1,
+          "rate": 10.0
+        },
+        "5": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "6": {
+          "sent": 12,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      },
+      "fallback_used": 66
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 3,
+      "delivery_rate": 3.0,
+      "total_tx": 747,
+      "tx_per_delivered": 249.0,
+      "avg_hops": 1.7,
+      "energy_score": 249.0,
+      "max_node_load": 56,
+      "load_distribution": [
+        20,
+        13,
+        7,
+        9,
+        3,
+        2,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": -38.69,
+      "bw_savings_vs_naive_pct": -14.98,
+      "load_reduction_pct": -19.6,
+      "tx_ratio": 1.3869
+    }
+  },
+  {
+    "scenario": 18,
+    "name": "Maritime / Coastal (line of sight)",
+    "category": "scale",
+    "config": {
+      "n_nodes": 30,
+      "area_size": 25000,
+      "lora_range": 8000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "free_space",
+      "asymmetry": 0.05,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 30,
+      "links": 106,
+      "clusters": 4,
+      "avg_neighbors": 7.1,
+      "avg_routes_per_dest": 3.5
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 20513,
+      "tx_per_delivered": 205.1,
+      "avg_hops": 2.5,
+      "energy_score": 205.1,
+      "max_node_load": 1056,
+      "load_distribution": [
+        0,
+        0,
+        3,
+        2,
+        5,
+        6,
+        4,
+        4,
+        5,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 89,
+      "delivery_rate": 89.0,
+      "total_tx": 9319,
+      "tx_per_delivered": 104.7,
+      "avg_hops": 2.7,
+      "energy_score": 104.7,
+      "max_node_load": 990,
+      "load_distribution": [
+        3,
+        6,
+        6,
+        12,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 89,
+      "delivery_rate": 89.0,
+      "total_tx": 9291,
+      "tx_per_delivered": 104.4,
+      "avg_hops": 2.7,
+      "energy_score": 104.4,
+      "max_node_load": 990,
+      "load_distribution": [
+        3,
+        6,
+        6,
+        12,
+        2,
+        0,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -1382,22 +3318,399 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 136,
-      "tx_per_delivered": 1.4,
-      "avg_hops": 1.3,
-      "energy_score": 1.4,
-      "max_node_load": 6,
+      "total_tx": 339,
+      "tx_per_delivered": 3.4,
+      "avg_hops": 3.3,
+      "energy_score": 3.4,
+      "max_node_load": 28,
       "load_distribution": [
-        0,
-        57,
-        0,
-        16,
-        4,
-        0,
+        2,
         6,
-        1,
+        5,
+        2,
+        4,
+        6,
+        3,
+        0,
         0,
         1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 19,
+          "delivered": 19,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 9,
+          "delivered": 9,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 15,
+          "delivered": 15,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 12,
+          "delivered": 12,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 10,
+          "delivered": 10,
+          "rate": 100.0
+        }
+      },
+      "route_switches": 1
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 89,
+      "delivery_rate": 89.0,
+      "total_tx": 9319,
+      "tx_per_delivered": 104.7,
+      "avg_hops": 2.7,
+      "energy_score": 104.7,
+      "max_node_load": 990,
+      "load_distribution": [
+        3,
+        6,
+        6,
+        12,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 96.36,
+      "bw_savings_vs_naive_pct": 98.35,
+      "load_reduction_pct": 97.2,
+      "tx_ratio": 0.0364
+    }
+  },
+  {
+    "scenario": 19,
+    "name": "Building Emergency (high density, high load)",
+    "category": "mobility",
+    "config": {
+      "n_nodes": 200,
+      "area_size": 500,
+      "lora_range": 300,
+      "n_messages": 300,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "indoor",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.8,
+      "placement": "clustered",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 200,
+      "links": 15846,
+      "clusters": 4,
+      "avg_neighbors": 158.5,
+      "avg_routes_per_dest": 1.8
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 300,
+      "messages_delivered": 300,
+      "delivery_rate": 100.0,
+      "total_tx": 8188465,
+      "tx_per_delivered": 27294.9,
+      "avg_hops": 1.3,
+      "energy_score": 27294.9,
+      "max_node_load": 57202,
+      "load_distribution": [
+        0,
+        0,
+        0,
+        1,
+        21,
+        46,
+        67,
+        48,
+        16,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 300,
+      "messages_delivered": 300,
+      "delivery_rate": 100.0,
+      "total_tx": 3651559,
+      "tx_per_delivered": 12171.9,
+      "avg_hops": 1.3,
+      "energy_score": 12171.9,
+      "max_node_load": 57202,
+      "load_distribution": [
+        0,
+        25,
+        122,
+        42,
+        0,
+        1,
+        2,
+        2,
+        5,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 300,
+      "messages_delivered": 300,
+      "delivery_rate": 100.0,
+      "total_tx": 3651559,
+      "tx_per_delivered": 12171.9,
+      "avg_hops": 1.3,
+      "energy_score": 12171.9,
+      "max_node_load": 57202,
+      "load_distribution": [
+        0,
+        25,
+        122,
+        42,
+        0,
+        1,
+        2,
+        2,
+        5,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 300,
+      "messages_delivered": 300,
+      "delivery_rate": 100.0,
+      "total_tx": 386,
+      "tx_per_delivered": 1.3,
+      "avg_hops": 1.3,
+      "energy_score": 1.3,
+      "max_node_load": 7,
+      "load_distribution": [
+        0,
+        58,
+        55,
+        44,
+        0,
+        14,
+        1,
+        3,
+        0,
+        1
+      ],
+      "qos_breakdown": {
+        "0": {
+          "sent": 35,
+          "delivered": 35,
+          "rate": 100.0
+        },
+        "1": {
+          "sent": 36,
+          "delivered": 36,
+          "rate": 100.0
+        },
+        "2": {
+          "sent": 33,
+          "delivered": 33,
+          "rate": 100.0
+        },
+        "3": {
+          "sent": 45,
+          "delivered": 45,
+          "rate": 100.0
+        },
+        "4": {
+          "sent": 40,
+          "delivered": 40,
+          "rate": 100.0
+        },
+        "5": {
+          "sent": 32,
+          "delivered": 32,
+          "rate": 100.0
+        },
+        "6": {
+          "sent": 41,
+          "delivered": 41,
+          "rate": 100.0
+        },
+        "7": {
+          "sent": 38,
+          "delivered": 38,
+          "rate": 100.0
+        }
+      }
+    },
+    "flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 300,
+      "messages_delivered": 300,
+      "delivery_rate": 100.0,
+      "total_tx": 3651559,
+      "tx_per_delivered": 12171.9,
+      "avg_hops": 1.3,
+      "energy_score": 12171.9,
+      "max_node_load": 57202,
+      "load_distribution": [
+        0,
+        25,
+        122,
+        42,
+        0,
+        1,
+        2,
+        2,
+        5,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 99.99,
+      "bw_savings_vs_naive_pct": 100.0,
+      "load_reduction_pct": 100.0,
+      "tx_ratio": 0.0001
+    }
+  },
+  {
+    "scenario": 20,
+    "name": "Highway Convoy (fast linear mobile)",
+    "category": "mobility",
+    "config": {
+      "n_nodes": 50,
+      "area_size": 10000,
+      "lora_range": 3000,
+      "n_messages": 100,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "rural",
+      "asymmetry": 0.0,
+      "mobile_fraction": 0.9,
+      "placement": "linear",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 50,
+      "links": 587,
+      "clusters": 4,
+      "avg_neighbors": 23.5,
+      "avg_routes_per_dest": 3.1
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 114555,
+      "tx_per_delivered": 1145.5,
+      "avg_hops": 1.8,
+      "energy_score": 1145.5,
+      "max_node_load": 2870,
+      "load_distribution": [
+        0,
+        0,
+        0,
+        0,
+        6,
+        7,
+        7,
+        9,
+        20,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 52072,
+      "tx_per_delivered": 520.7,
+      "avg_hops": 1.9,
+      "energy_score": 520.7,
+      "max_node_load": 2744,
+      "load_distribution": [
+        0,
+        3,
+        13,
+        28,
+        4,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "next_hop": {
+      "router": "NextHopRouter",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 52121,
+      "tx_per_delivered": 521.2,
+      "avg_hops": 1.9,
+      "energy_score": 521.2,
+      "max_node_load": 2744,
+      "load_distribution": [
+        0,
+        3,
+        17,
+        22,
+        6,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "system5": {
+      "router": "System5Router",
+      "messages_sent": 100,
+      "messages_delivered": 100,
+      "delivery_rate": 100.0,
+      "total_tx": 189,
+      "tx_per_delivered": 1.9,
+      "avg_hops": 1.9,
+      "energy_score": 1.9,
+      "max_node_load": 8,
+      "load_distribution": [
+        0,
+        5,
+        10,
+        7,
+        12,
+        6,
+        3,
+        1,
+        0,
+        5
       ],
       "qos_breakdown": {
         "0": {
@@ -1447,399 +3760,406 @@
       "messages_sent": 100,
       "messages_delivered": 100,
       "delivery_rate": 100.0,
-      "total_tx": 1239692,
-      "tx_per_delivered": 12396.9,
-      "avg_hops": 1.3,
-      "energy_score": 12396.9,
-      "max_node_load": 19900,
+      "total_tx": 52072,
+      "tx_per_delivered": 520.7,
+      "avg_hops": 1.9,
+      "energy_score": 520.7,
+      "max_node_load": 2744,
       "load_distribution": [
         0,
-        47,
-        109,
-        30,
         3,
+        13,
+        28,
+        4,
+        0,
+        0,
+        0,
+        1,
+        1
+      ]
+    },
+    "comparison": {
+      "bw_savings_pct": 99.64,
+      "bw_savings_vs_naive_pct": 99.84,
+      "load_reduction_pct": 99.7,
+      "tx_ratio": 0.0036
+    }
+  },
+  {
+    "scenario": 21,
+    "name": "Community Mesh (stable, low traffic)",
+    "category": "topology",
+    "config": {
+      "n_nodes": 80,
+      "area_size": 8000,
+      "lora_range": 2500,
+      "n_messages": 50,
+      "link_degradation": 0.0,
+      "node_kill_fraction": 0.0,
+      "terrain": "suburban",
+      "asymmetry": 0.1,
+      "mobile_fraction": 0.0,
+      "placement": "clustered",
+      "enable_duty_cycle": false
+    },
+    "network": {
+      "nodes": 80,
+      "links": 1564,
+      "clusters": 3,
+      "avg_neighbors": 39.1,
+      "avg_routes_per_dest": 2.9
+    },
+    "naive_flooding": {
+      "router": "NaiveFloodingRouter",
+      "messages_sent": 50,
+      "messages_delivered": 50,
+      "delivery_rate": 100.0,
+      "total_tx": 154335,
+      "tx_per_delivered": 3086.7,
+      "avg_hops": 1.6,
+      "energy_score": 3086.7,
+      "max_node_load": 2940,
+      "load_distribution": [
+        0,
+        10,
+        5,
+        3,
+        10,
+        5,
+        10,
+        22,
+        14,
+        1
+      ]
+    },
+    "managed_flooding": {
+      "router": "ManagedFloodingRouter",
+      "messages_sent": 50,
+      "messages_delivered": 49,
+      "delivery_rate": 98.0,
+      "total_tx": 75991,
+      "tx_per_delivered": 1550.8,
+      "avg_hops": 1.6,
+      "energy_score": 1550.8,
+      "max_node_load": 2940,
+      "load_distribution": [
+        13,
+        7,
+        26,
+        25,
+        4,
         1,
         0,
         0,
-        9,
-        1
-      ]
-    },
-    "comparison": {
-      "bw_savings_pct": 99.99,
-      "bw_savings_vs_naive_pct": 99.99,
-      "load_reduction_pct": 100.0,
-      "tx_ratio": 0.0001
-    }
-  },
-  {
-    "scenario": 9,
-    "name": "Large Scale (1000 nodes, 40km)",
-    "category": "dense",
-    "config": {
-      "n_nodes": 1000,
-      "area_size": 40000,
-      "lora_range": 4000,
-      "n_messages": 100,
-      "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
-    },
-    "network": {
-      "nodes": 1000,
-      "links": 14240,
-      "clusters": 4,
-      "avg_neighbors": 28.5,
-      "avg_routes_per_dest": 4.7
-    },
-    "naive_flooding": {
-      "router": "NaiveFloodingRouter",
-      "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 2845249,
-      "tx_per_delivered": 28452.5,
-      "avg_hops": 6.8,
-      "energy_score": 28452.5,
-      "max_node_load": 4500,
-      "load_distribution": [
-        0,
-        7,
-        29,
-        57,
-        146,
-        294,
-        313,
-        136,
-        17,
-        1
-      ]
-    },
-    "managed_flooding": {
-      "router": "ManagedFloodingRouter",
-      "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 1462489,
-      "tx_per_delivered": 14624.9,
-      "avg_hops": 7.3,
-      "energy_score": 14624.9,
-      "max_node_load": 4500,
-      "load_distribution": [
-        14,
-        126,
-        503,
-        297,
-        10,
-        0,
-        0,
-        32,
-        17,
+        3,
         1
       ]
     },
     "next_hop": {
       "router": "NextHopRouter",
-      "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 1462489,
-      "tx_per_delivered": 14624.9,
-      "avg_hops": 7.3,
-      "energy_score": 14624.9,
-      "max_node_load": 4500,
+      "messages_sent": 50,
+      "messages_delivered": 49,
+      "delivery_rate": 98.0,
+      "total_tx": 75991,
+      "tx_per_delivered": 1550.8,
+      "avg_hops": 1.6,
+      "energy_score": 1550.8,
+      "max_node_load": 2940,
       "load_distribution": [
-        14,
-        126,
-        503,
-        297,
-        10,
+        13,
+        7,
+        26,
+        25,
+        4,
+        1,
         0,
         0,
-        32,
-        17,
+        3,
         1
       ]
     },
     "system5": {
       "router": "System5Router",
-      "messages_sent": 100,
-      "messages_delivered": 99,
-      "delivery_rate": 99.0,
-      "total_tx": 10635,
-      "tx_per_delivered": 107.4,
-      "avg_hops": 7.1,
-      "energy_score": 107.4,
-      "max_node_load": 46,
+      "messages_sent": 50,
+      "messages_delivered": 50,
+      "delivery_rate": 100.0,
+      "total_tx": 88,
+      "tx_per_delivered": 1.8,
+      "avg_hops": 1.7,
+      "energy_score": 1.8,
+      "max_node_load": 5,
       "load_distribution": [
-        316,
-        8,
-        20,
-        44,
-        48,
-        71,
-        81,
-        68,
-        11,
-        3
+        0,
+        28,
+        0,
+        15,
+        0,
+        4,
+        0,
+        2,
+        0,
+        2
       ],
       "qos_breakdown": {
         "0": {
-          "sent": 15,
-          "delivered": 14,
-          "rate": 93.3
+          "sent": 6,
+          "delivered": 6,
+          "rate": 100.0
         },
         "1": {
-          "sent": 15,
-          "delivered": 15,
+          "sent": 7,
+          "delivered": 7,
           "rate": 100.0
         },
         "2": {
-          "sent": 10,
-          "delivered": 10,
+          "sent": 9,
+          "delivered": 9,
           "rate": 100.0
         },
         "3": {
-          "sent": 15,
-          "delivered": 15,
+          "sent": 6,
+          "delivered": 6,
           "rate": 100.0
         },
         "4": {
-          "sent": 10,
-          "delivered": 10,
+          "sent": 12,
+          "delivered": 12,
           "rate": 100.0
         },
         "5": {
-          "sent": 11,
-          "delivered": 11,
+          "sent": 3,
+          "delivered": 3,
           "rate": 100.0
         },
         "6": {
-          "sent": 14,
-          "delivered": 14,
+          "sent": 4,
+          "delivered": 4,
           "rate": 100.0
         },
         "7": {
-          "sent": 10,
-          "delivered": 10,
+          "sent": 3,
+          "delivered": 3,
           "rate": 100.0
         }
-      },
-      "fallback_used": 1,
-      "route_switches": 18
+      }
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
-      "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 1462489,
-      "tx_per_delivered": 14624.9,
-      "avg_hops": 7.3,
-      "energy_score": 14624.9,
-      "max_node_load": 4500,
+      "messages_sent": 50,
+      "messages_delivered": 49,
+      "delivery_rate": 98.0,
+      "total_tx": 75991,
+      "tx_per_delivered": 1550.8,
+      "avg_hops": 1.6,
+      "energy_score": 1550.8,
+      "max_node_load": 2940,
       "load_distribution": [
-        14,
-        126,
-        503,
-        297,
-        10,
+        13,
+        7,
+        26,
+        25,
+        4,
+        1,
         0,
         0,
-        32,
-        17,
+        3,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 99.27,
-      "bw_savings_vs_naive_pct": 99.63,
-      "load_reduction_pct": 99.0,
-      "tx_ratio": 0.0073
+      "bw_savings_pct": 99.88,
+      "bw_savings_vs_naive_pct": 99.94,
+      "load_reduction_pct": 99.8,
+      "tx_ratio": 0.0012
     }
   },
   {
-    "scenario": 10,
-    "name": "Metro Scale (1500 nodes, 50km)",
-    "category": "dense",
+    "scenario": 22,
+    "name": "Partition Recovery (40% node loss + degradation)",
+    "category": "stress",
     "config": {
-      "n_nodes": 1500,
-      "area_size": 50000,
-      "lora_range": 4000,
+      "n_nodes": 120,
+      "area_size": 8000,
+      "lora_range": 2500,
       "n_messages": 100,
-      "link_degradation": 0.0,
-      "node_kill_fraction": 0.0
+      "link_degradation": 0.4,
+      "node_kill_fraction": 0.4,
+      "terrain": "urban",
+      "asymmetry": 0.2,
+      "mobile_fraction": 0.0,
+      "placement": "random",
+      "enable_duty_cycle": false
     },
     "network": {
-      "nodes": 1500,
-      "links": 20807,
+      "nodes": 120,
+      "links": 531,
       "clusters": 4,
-      "avg_neighbors": 27.7,
-      "avg_routes_per_dest": 4.9
+      "avg_neighbors": 8.8,
+      "avg_routes_per_dest": 4.1
     },
     "naive_flooding": {
       "router": "NaiveFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 4158558,
-      "tx_per_delivered": 41585.6,
-      "avg_hops": 7.6,
-      "energy_score": 41585.6,
-      "max_node_load": 4500,
+      "messages_delivered": 89,
+      "delivery_rate": 89.0,
+      "total_tx": 97498,
+      "tx_per_delivered": 1095.5,
+      "avg_hops": 3.7,
+      "energy_score": 1095.5,
+      "max_node_load": 2375,
       "load_distribution": [
-        0,
+        1,
+        8,
         4,
-        40,
-        114,
-        239,
-        494,
-        426,
-        164,
-        18,
+        8,
+        15,
+        7,
+        14,
+        9,
+        5,
         1
       ]
     },
     "managed_flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 2119189,
-      "tx_per_delivered": 21191.9,
-      "avg_hops": 8.2,
-      "energy_score": 21191.9,
-      "max_node_load": 4500,
+      "messages_delivered": 88,
+      "delivery_rate": 88.0,
+      "total_tx": 62773,
+      "tx_per_delivered": 713.3,
+      "avg_hops": 4.1,
+      "energy_score": 713.3,
+      "max_node_load": 2325,
       "load_distribution": [
-        17,
-        244,
-        788,
-        369,
-        7,
+        10,
+        10,
+        11,
+        16,
+        16,
+        3,
         0,
-        0,
-        56,
-        18,
+        1,
+        4,
         1
       ]
     },
     "next_hop": {
       "router": "NextHopRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 2119189,
-      "tx_per_delivered": 21191.9,
-      "avg_hops": 8.2,
-      "energy_score": 21191.9,
-      "max_node_load": 4500,
+      "messages_delivered": 88,
+      "delivery_rate": 88.0,
+      "total_tx": 62773,
+      "tx_per_delivered": 713.3,
+      "avg_hops": 4.1,
+      "energy_score": 713.3,
+      "max_node_load": 2325,
       "load_distribution": [
-        17,
-        244,
-        788,
-        369,
-        7,
+        10,
+        10,
+        11,
+        16,
+        16,
+        3,
         0,
-        0,
-        56,
-        18,
+        1,
+        4,
         1
       ]
     },
     "system5": {
       "router": "System5Router",
       "messages_sent": 100,
-      "messages_delivered": 97,
-      "delivery_rate": 97.0,
-      "total_tx": 38850,
-      "tx_per_delivered": 400.5,
-      "avg_hops": 7.7,
-      "energy_score": 400.5,
-      "max_node_load": 80,
+      "messages_delivered": 29,
+      "delivery_rate": 29.0,
+      "total_tx": 25397,
+      "tx_per_delivered": 875.8,
+      "avg_hops": 2.5,
+      "energy_score": 875.8,
+      "max_node_load": 937,
       "load_distribution": [
-        116,
-        78,
-        321,
-        522,
-        155,
-        74,
-        37,
-        26,
+        14,
+        11,
+        13,
+        6,
         10,
+        4,
+        8,
+        5,
+        0,
         1
       ],
       "qos_breakdown": {
         "0": {
           "sent": 16,
-          "delivered": 16,
-          "rate": 100.0
+          "delivered": 5,
+          "rate": 31.2
         },
         "1": {
-          "sent": 15,
-          "delivered": 15,
-          "rate": 100.0
+          "sent": 16,
+          "delivered": 8,
+          "rate": 50.0
         },
         "2": {
-          "sent": 12,
-          "delivered": 11,
-          "rate": 91.7
+          "sent": 9,
+          "delivered": 5,
+          "rate": 55.6
         },
         "3": {
-          "sent": 13,
-          "delivered": 12,
-          "rate": 92.3
+          "sent": 17,
+          "delivered": 11,
+          "rate": 64.7
         },
         "4": {
-          "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "sent": 14,
+          "delivered": 0,
+          "rate": 0.0
         },
         "5": {
-          "sent": 9,
-          "delivered": 9,
-          "rate": 100.0
+          "sent": 8,
+          "delivered": 0,
+          "rate": 0.0
         },
         "6": {
           "sent": 10,
-          "delivered": 10,
-          "rate": 100.0
+          "delivered": 0,
+          "rate": 0.0
         },
         "7": {
-          "sent": 15,
-          "delivered": 14,
-          "rate": 93.3
+          "sent": 10,
+          "delivered": 0,
+          "rate": 0.0
         }
       },
-      "fallback_used": 3,
-      "route_switches": 17
+      "fallback_used": 50
     },
     "flooding": {
       "router": "ManagedFloodingRouter",
       "messages_sent": 100,
-      "messages_delivered": 100,
-      "delivery_rate": 100.0,
-      "total_tx": 2119189,
-      "tx_per_delivered": 21191.9,
-      "avg_hops": 8.2,
-      "energy_score": 21191.9,
-      "max_node_load": 4500,
+      "messages_delivered": 88,
+      "delivery_rate": 88.0,
+      "total_tx": 62773,
+      "tx_per_delivered": 713.3,
+      "avg_hops": 4.1,
+      "energy_score": 713.3,
+      "max_node_load": 2325,
       "load_distribution": [
-        17,
-        244,
-        788,
-        369,
-        7,
+        10,
+        10,
+        11,
+        16,
+        16,
+        3,
         0,
-        0,
-        56,
-        18,
+        1,
+        4,
         1
       ]
     },
     "comparison": {
-      "bw_savings_pct": 98.17,
-      "bw_savings_vs_naive_pct": 99.07,
-      "load_reduction_pct": 98.2,
-      "tx_ratio": 0.0183
+      "bw_savings_pct": 59.54,
+      "bw_savings_vs_naive_pct": 73.95,
+      "load_reduction_pct": 59.7,
+      "tx_ratio": 0.4046
     }
   }
 ]
