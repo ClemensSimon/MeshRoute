@@ -87,6 +87,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
   <button id="btn-play" onclick="toggleAnimation()" style="background:var(--bg-card);color:var(--cyan);border:1px solid var(--cyan);padding:0.4rem 1rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Play Messages</button>
   <button onclick="stepAnimation()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Step</button>
   <button onclick="resetAnimation()" style="background:var(--bg-card);color:var(--orange);border:1px solid var(--border);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Reset</button>
+  <button id="btn-range" onclick="toggleRangeCircles()" style="background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Show Range</button>
   <span id="anim-status" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-left:1rem;">Click a node for details. Press Play to watch routing.</span>
 </div>
 <div id="leaflet-map" style="width:100%;height:85vh;min-height:700px;border-radius:12px;border:1px solid var(--border);"></div>
@@ -245,6 +246,8 @@ fetch('esp-test-results.json').then(r => {
 let mapInstance = null;
 let mapData = null;
 let animLayer = null;
+let rangeLayer = null;
+let rangeVisible = false;
 let animMsgIdx = 0;
 let animPlaying = false;
 let animTimer = null;
@@ -263,8 +266,22 @@ function drawNetworkMap(data) {
   const clusterKeys = [...new Set(data.nodes.map(n => String(n.cluster)))];
   animLayer = L.layerGroup().addTo(map);
 
-  // LoRa range circles — only shown on click (too many for 100 nodes)
-  // Individual range visible in node popup
+  // LoRa range circles — togglable layer
+  rangeLayer = L.layerGroup();
+  data.nodes.forEach(n => {
+    const range = n.lora_range || 2000;
+    const ci = clusterKeys.indexOf(String(n.cluster));
+    const col = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
+    L.circle([n.lat, n.lon], {
+      radius: range,
+      color: range > 2000 ? '#22d3ee' : col,
+      weight: range > 2000 ? 1 : 0.5,
+      fillColor: range > 2000 ? '#22d3ee' : col,
+      fillOpacity: range > 2000 ? 0.04 : 0.02,
+      dashArray: '5 5',
+    }).addTo(rangeLayer);
+  });
+  // Off by default
 
   // Links
   data.nodes.forEach(n => {
@@ -369,6 +386,22 @@ function drawNetworkMap(data) {
       }),
     }).addTo(map);
   });
+}
+
+function toggleRangeCircles() {
+  if (!mapInstance || !rangeLayer) return;
+  rangeVisible = !rangeVisible;
+  if (rangeVisible) {
+    rangeLayer.addTo(mapInstance);
+    document.getElementById('btn-range').textContent = 'Hide Range';
+    document.getElementById('btn-range').style.color = '#22d3ee';
+    document.getElementById('btn-range').style.borderColor = '#22d3ee';
+  } else {
+    mapInstance.removeLayer(rangeLayer);
+    document.getElementById('btn-range').textContent = 'Show Range';
+    document.getElementById('btn-range').style.color = '';
+    document.getElementById('btn-range').style.borderColor = '';
+  }
 }
 
 // ── Animation: step through messages one by one ──
