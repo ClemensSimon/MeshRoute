@@ -1,0 +1,223 @@
+/**
+ * MeshRoute System 5 — Geo-Clustered Multi-Path Routing for Meshtastic
+ *
+ * Core header: data structures for nodes, links, clusters, routes.
+ * Designed to integrate with Meshtastic firmware as a routing module.
+ *
+ * Memory budget: ~8KB RAM for 100-node network on ESP32.
+ */
+
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// ── Configuration ──────────────────────────────────────────────
+
+#define S5_MAX_NODES         100   // max tracked nodes in network
+#define S5_MAX_NEIGHBORS      16   // max neighbors per node
+#define S5_MAX_ROUTES          5   // max cached routes per destination
+#define S5_MAX_HOPS           20   // no hop limit needed, but cap for safety
+#define S5_MAX_PATH_LEN       15   // max hops in a single route
+#define S5_MAX_CLUSTERS        8   // max geo-clusters
+#define S5_GEOHASH_PRECISION   4   // characters for cluster grouping
+#define S5_BRIDGE_LINKS_PER_PAIR 2 // bridge links between cluster pairs
+
+// Route weight parameters: W(r) = alpha*Q + beta*(1-Load) + gamma*Batt
+#define S5_ALPHA  0.4f
+#define S5_BETA   0.35f
+#define S5_GAMMA  0.25f
+
+// QoS: Network Health Score thresholds -> max allowed priority
+#define S5_NHS_HEALTHY    0.8f  // priorities 0-7 allowed
+#define S5_NHS_MODERATE   0.6f  // priorities 0-5 allowed
+#define S5_NHS_DEGRADED   0.4f  // priorities 0-3 allowed
+#define S5_NHS_CRITICAL   0.2f  // priorities 0-1 allowed
+
+#define S5_BACKPRESSURE_THRESHOLD 0.8f
+#define S5_MAX_RETRIES     3    // retries per hop on link failure
+
+// ── Geohash ────────────────────────────────────────────────────
+
+typedef struct {
+    char hash[S5_GEOHASH_PRECISION + 1]; // null-terminated
+} s5_geohash_t;
+
+/**
+ * Encode GPS coordinates to geohash.
+ * @param lat  Latitude in degrees (-90 to 90)
+ * @param lon  Longitude in degrees (-180 to 180)
+ * @param precision  Number of characters (1-8)
+ * @param out  Output geohash struct
+ */
+void s5_geohash_encode(float lat, float lon, uint8_t precision, s5_geohash_t *out);
+
+/**
+ * Common prefix length of two geohashes.
+ * @return Number of matching characters from the start
+ */
+uint8_t s5_geohash_common_prefix(const s5_geohash_t *a, const s5_geohash_t *b);
+
+// ── Node ───────────────────────────────────────────────────────
+
+typedef uint32_t s5_node_id_t;
+
+typedef struct {
+    s5_node_id_t id;
+    float lat, lon;              // GPS position
+    s5_geohash_t geohash;
+    uint8_t cluster_id;          // assigned cluster (0-255, 0xFF = unassigned)
+    bool is_border;              // has neighbors in other clusters
+    uint8_t battery_pct;         // 0-100
+    uint8_t queue_len;           // current TX queue length
+    float link_quality;          // average link quality to this node (0-1)
+    int8_t snr;                  // last received SNR in dB
+    uint32_t last_heard_ms;      // millis() of last reception from this node
+} s5_neighbor_t;
+
+typedef struct {
+    s5_node_id_t my_id;
+    float my_lat, my_lon;
+    s5_geohash_t my_geohash;
+    uint8_t my_cluster_id;
+    bool my_is_border;
+    uint8_t my_battery_pct;
+
+    // Neighbor table
+    s5_neighbor_t neighbors[S5_MAX_NEIGHBORS];
+    uint8_t neighbor_count;
+} s5_node_state_t;
+
+// ── Route ──────────────────────────────────────────────────────
+
+typedef struct {
+    s5_node_id_t path[S5_MAX_PATH_LEN];
+    uint8_t path_len;            // number of nodes in path (including src+dst)
+    float quality;               // product of link qualities along path
+    float load;                  // average load of intermediate nodes
+    float battery;               // min battery of intermediate nodes
+    float weight;                // computed W(r)
+    uint32_t last_used_ms;       // millis() of last successful use
+    uint8_t fail_count;          // consecutive failures on this route
+} s5_route_t;
+
+typedef struct {
+    s5_node_id_t dest_id;
+    s5_route_t routes[S5_MAX_ROUTES];
+    uint8_t route_count;
+} s5_route_entry_t;
+
+// ── Cluster ────────────────────────────────────────────────────
+
+typedef struct {
+    uint8_t id;
+    char geohash_prefix[S5_GEOHASH_PRECISION + 1];
+    uint8_t member_count;
+    uint8_t border_count;
+    float nhs;                   // Network Health Score (0-1)
+} s5_cluster_t;
+
+// ── Packet ─────────────────────────────────────────────────────
+
+typedef struct {
+    s5_node_id_t src;
+    s5_node_id_t dst;
+    uint32_t packet_id;          // unique ID for dedup
+    uint8_t priority;            // QoS 0-7 (0 = highest / SOS)
+    uint8_t hop_count;           // current hop count
+    uint8_t ttl;                 // remaining hops
+    s5_node_id_t next_hop;       // system5 routing: next node on path (0 = flood)
+    bool is_system5;             // true = directed routing, false = legacy flood
+    uint16_t payload_len;
+    uint8_t *payload;            // pointer to payload (not owned)
+} s5_packet_t;
+
+// ── Router API ─────────────────────────────────────────────────
+
+/**
+ * Routing decision result.
+ */
+typedef enum {
+    S5_ROUTE_DIRECT,       // send to specific next_hop
+    S5_ROUTE_FLOOD,        // managed flooding fallback
+    S5_ROUTE_DROP,         // QoS gate blocked / no route
+    S5_ROUTE_DELIVERED,    // packet is for us
+} s5_route_action_t;
+
+typedef struct {
+    s5_route_action_t action;
+    s5_node_id_t next_hop;       // valid when action == S5_ROUTE_DIRECT
+    uint8_t route_index;         // which route was selected
+    bool used_fallback;
+} s5_route_decision_t;
+
+/**
+ * Initialize System 5 router state.
+ * Call once at boot.
+ */
+void s5_init(s5_node_state_t *state);
+
+/**
+ * Update own position. Triggers cluster recomputation if geohash changed.
+ */
+void s5_update_position(s5_node_state_t *state, float lat, float lon);
+
+/**
+ * Register a neighbor (from received OGM or packet).
+ * Updates link quality, SNR, position.
+ */
+void s5_update_neighbor(s5_node_state_t *state, s5_node_id_t id,
+                         float lat, float lon, uint8_t battery_pct,
+                         int8_t snr, float link_quality);
+
+/**
+ * Remove a neighbor (timed out / dead).
+ */
+void s5_remove_neighbor(s5_node_state_t *state, s5_node_id_t id);
+
+/**
+ * Compute or refresh routing table for a destination.
+ * Uses BFS over known topology.
+ */
+void s5_compute_routes(s5_node_state_t *state, s5_node_id_t dest_id);
+
+/**
+ * Main routing decision: what to do with a packet.
+ * Called for both incoming and locally-generated packets.
+ *
+ * @param state   Our node state
+ * @param packet  The packet to route
+ * @return        Routing decision (direct, flood, drop, delivered)
+ */
+s5_route_decision_t s5_route(s5_node_state_t *state, const s5_packet_t *packet);
+
+/**
+ * Report that a route attempt succeeded or failed.
+ * Used for route quality learning / failover.
+ */
+void s5_route_feedback(s5_node_state_t *state, s5_node_id_t dest_id,
+                        uint8_t route_index, bool success);
+
+/**
+ * Periodic maintenance: prune old neighbors, recompute NHS, decay routes.
+ * Call every ~30 seconds.
+ */
+void s5_maintenance(s5_node_state_t *state, uint32_t now_ms);
+
+/**
+ * Get current cluster info for this node.
+ */
+const s5_cluster_t *s5_get_my_cluster(const s5_node_state_t *state);
+
+/**
+ * Get Network Health Score for local cluster.
+ */
+float s5_get_nhs(const s5_node_state_t *state);
+
+#ifdef __cplusplus
+}
+#endif
