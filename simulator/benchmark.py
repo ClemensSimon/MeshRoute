@@ -663,7 +663,7 @@ def run_scenario(config, scenario_num, verbose=True, parallel_routers=True):
         "network": net_stats,
     }
 
-    for key, label, _ in routers:
+    for key, label, _ in ROUTER_REGISTRY:
         result_dict[key] = results_by_router[key].to_dict()
 
     # Backward compat aliases

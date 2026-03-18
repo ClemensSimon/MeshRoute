@@ -269,7 +269,7 @@
       <span><span class="dot" style="background:#fbbf24"></span> Reached</span>
       <span><span class="dot" style="background:#4ade80"></span> SRC</span>
       <span><span class="dot" style="background:#f87171"></span> DST</span>
-      <span style="color:#fff;font-size:0.9rem;">&#9670;</span> S5 Node</span>
+      <span><span class="dot" style="background:transparent;border:2px solid #22d3ee;width:6px;height:6px"></span> S5 Node</span>
     </div>
     <a href="index.html" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--cyan);text-decoration:none;margin-left:auto;">Back to Presentation</a>
   </div>
@@ -485,8 +485,8 @@ function buildNetwork(scenarioKey, rng) {
     }
   }
 
-  // Limit inter-cluster links to 2 per cluster pair (best quality),
-  // mark them as bridge links (drawn in blue)
+  // Inter-cluster: only 2 bridge links per cluster pair exist (dedicated routes).
+  // All other inter-cluster links are physically removed — they don't exist.
   const bridgeLinks = new Set(); // edge indices that are bridge links
   const interByPair = {}; // "c0-c1" -> [{index, quality}]
   for (let i = 0; i < links.length; i++) {
@@ -498,16 +498,24 @@ function buildNetwork(scenarioKey, rng) {
     if (!interByPair[pairKey]) interByPair[pairKey] = [];
     interByPair[pairKey].push({ idx: i, quality: l.quality });
   }
-  // Keep top 2 per pair, hide the rest
+  // Keep top 2 per pair, DELETE the rest (remove link + neighbor entries)
+  const toDelete = new Set();
   for (const [pairKey, candidates] of Object.entries(interByPair)) {
     candidates.sort((a, b) => b.quality - a.quality);
     for (let j = 0; j < candidates.length; j++) {
       if (j < 2) {
         bridgeLinks.add(candidates[j].idx);
       } else {
-        links[candidates[j].idx].hidden = true; // not drawn, but still usable for routing
+        toDelete.add(candidates[j].idx);
       }
     }
+  }
+  // Remove deleted links and their neighbor references
+  for (const idx of toDelete) {
+    const l = links[idx];
+    l.alive = false; // mark dead so it's skipped everywhere
+    delete nodes[l.a].neighbors[l.b];
+    delete nodes[l.b].neighbors[l.a];
   }
 
   // Compute cluster bounding boxes for background drawing
@@ -535,7 +543,7 @@ function bfsPath(nodes, links, src, dst, skipHidden = false) {
     const [cur, path] = queue.shift();
     for (const l of links) {
       if (!l.alive) continue;
-      if (skipHidden && l.hidden) continue; // System 5: only use visible bridge links
+      if (skipHidden && l.hidden) continue; // legacy guard, hidden links no longer exist
       let neighbor = -1;
       if (l.a === cur) neighbor = l.b;
       else if (l.b === cur) neighbor = l.a;
@@ -591,7 +599,7 @@ function simulateManagedFlood(net, src, dst, rng, hopLimit = 7) {
 
     for (const [nidStr, quality] of Object.entries(node.neighbors)) {
       const nid = +nidStr;
-      const link = net.links.find(l => l.alive && !l.hidden &&
+      const link = net.links.find(l => l.alive &&
         ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
       if (!link) continue;
 
@@ -657,7 +665,7 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
       for (let i = 0; i < s5Path.length - 1; i++) {
         const from = s5Path[i], to = s5Path[i+1];
         txEvents.push({ from, to, time: tick++, hop: i, mode: 's5' });
-        const link = net.links.find(l => l.alive && !l.hidden &&
+        const link = net.links.find(l => l.alive &&
           ((l.a===from && l.b===to) || (l.a===to && l.b===from)));
         const q = link ? link.quality : 0.1;
         if (rng.next() > q) {
@@ -674,14 +682,24 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
     }
   }
 
-  // Fallback: mixed flooding — S5 nodes still rebroadcast, but suppress
-  // more aggressively between each other (they know who has the packet)
+  // Fallback: mixed flooding — same suppression as legacy (40%) for compatibility,
+  // but S5 nodes that see an S5 neighbor on the BFS-path send ONLY to that neighbor
+  // instead of broadcasting to ALL. This is the real TX saving.
   const txEvents = [];
   const seen = new Set([src]);
   const rebroadcast = new Set([src]);
   const queue = [[src, 0]];
   let delivered = false, tick = 0, suppressed = 0;
   const nodesReached = new Set([src]);
+
+  // Pre-compute BFS next-hop hints for S5 nodes (which S5 neighbor to send to)
+  const s5NextHop = {};
+  const fullPath = bfsPath(net.nodes, net.links, src, dst, true);
+  if (fullPath) {
+    for (let i = 0; i < fullPath.length - 1; i++) {
+      s5NextHop[fullPath[i]] = fullPath[i + 1];
+    }
+  }
 
   while (queue.length) {
     const [cur, hop] = queue.shift();
@@ -692,31 +710,48 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
       const neighborRebroadcasted = Object.keys(node.neighbors).some(
         nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
       );
-      // S5 nodes suppress more aggressively (they have routing knowledge)
-      const suppressChance = node.isS5 ? 0.7 : 0.4;
-      if (neighborRebroadcasted && rng.next() < suppressChance) {
+      // Same suppression as legacy — backward compatible
+      if (neighborRebroadcasted && rng.next() < 0.4) {
         suppressed++;
         continue;
       }
     }
 
     rebroadcast.add(cur);
-    for (const [nidStr, quality] of Object.entries(node.neighbors)) {
-      const nid = +nidStr;
-      const link = net.links.find(l => l.alive && !l.hidden &&
+
+    // S5 optimization: if this node is S5 and knows the next hop toward DST,
+    // send ONLY to that neighbor (directed) instead of broadcasting to all.
+    const nextHopTarget = (node.isS5 && s5NextHop[cur] != null) ? s5NextHop[cur] : null;
+
+    if (nextHopTarget != null && net.nodes[nextHopTarget].battery > 0) {
+      // Directed send — 1 TX only
+      const nid = nextHopTarget;
+      const link = net.links.find(l => l.alive &&
         ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
-      if (!link) continue;
+      if (link) {
+        txEvents.push({ from: cur, to: nid, time: tick++, hop, mode: 's5' });
+        if (rng.next() <= link.quality && !seen.has(nid)) {
+          seen.add(nid); nodesReached.add(nid);
+          if (nid === dst) { delivered = true; }
+          else if (net.nodes[nid].battery > 0) queue.push([nid, hop + 1]);
+        }
+      }
+    } else {
+      // Legacy flood — broadcast to ALL neighbors
+      for (const [nidStr, quality] of Object.entries(node.neighbors)) {
+        const nid = +nidStr;
+        const link = net.links.find(l => l.alive &&
+          ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+        if (!link) continue;
 
-      const mode = (node.isS5 && net.nodes[nid].isS5) ? 's5' : 'flood';
-      txEvents.push({ from: cur, to: nid, time: tick++, hop, mode });
-
-      if (rng.next() > quality) continue;
-      if (seen.has(nid)) continue;
-      seen.add(nid);
-      nodesReached.add(nid);
-      if (nid === dst) { delivered = true; continue; }
-      if (net.nodes[nid].battery <= 0) continue;
-      queue.push([nid, hop + 1]);
+        txEvents.push({ from: cur, to: nid, time: tick++, hop, mode: 'flood' });
+        if (rng.next() > quality) continue;
+        if (seen.has(nid)) continue;
+        seen.add(nid); nodesReached.add(nid);
+        if (nid === dst) { delivered = true; continue; }
+        if (net.nodes[nid].battery <= 0) continue;
+        queue.push([nid, hop + 1]);
+      }
     }
   }
 
@@ -736,7 +771,7 @@ function bfsPathS5Only(nodes, links, src, dst) {
   while (queue.length) {
     const [cur, path] = queue.shift();
     for (const l of links) {
-      if (!l.alive || l.hidden) continue;
+      if (!l.alive) continue;
       let neighbor = -1;
       if (l.a === cur) neighbor = l.b;
       else if (l.b === cur) neighbor = l.a;
@@ -972,7 +1007,7 @@ class SimRenderer {
     const bridges = this.net.bridgeLinks || new Set();
     for (let li = 0; li < this.net.links.length; li++) {
       const l = this.net.links[li];
-      if (l.hidden) continue; // inter-cluster links beyond the 2 best are hidden
+      // Dead links drawn separately above
 
       // Dead links — dashed red
       if (!l.alive) {
@@ -1064,15 +1099,23 @@ class SimRenderer {
         ctx.stroke();
       }
 
-      // S5 node indicator — small diamond inside
-      if (n.isS5 && n.battery > 0 && nodeIntensity < 0.3) {
-        const d = nodeR * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy - d); ctx.lineTo(sx + d, sy);
-        ctx.lineTo(sx, sy + d); ctx.lineTo(sx - d, sy);
-        ctx.closePath();
-        ctx.fillStyle = '#fff';
-        ctx.fill();
+      // S5 node indicator — cyan double ring + label
+      if (n.isS5 && n.battery > 0) {
+        // Outer cyan ring
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 3, 0, PI2);
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Inner cyan ring
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 6, 0, PI2);
+        ctx.strokeStyle = 'rgba(34,211,238,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // "S5" label below node
+        ctx.font = 'bold 8px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillText('S5', sx, sy + nodeR + 14);
       }
     }
 
@@ -1592,8 +1635,8 @@ function prepareHopByHop() {
       const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'S5' : 'Legacy';
       const nS5 = rendererSystem5.net.nodes.filter(n => n.isS5).length;
       rightIntro = `SRC is <b>${srcS5}</b>, DST is <b>${dstS5}</b>. No all-S5 path exists.<br>`
-        + `Falling back to <b>smart flooding</b>: ${nS5} S5 nodes suppress 70% (vs 40% for legacy).<br>`
-        + `<span class="log-dim">S5 nodes still rebroadcast for backward compatibility, but suppress more aggressively using their routing knowledge.</span>`;
+        + `Falling back to <b>hybrid flooding</b>: ${nS5} S5 nodes send <b>directed</b> (1 TX) where they know the next hop, Legacy nodes flood normally.<br>`
+        + `<span class="log-dim">S5 nodes use their routing table to skip broadcasting — they send only to the next hop on the path. Legacy nodes still flood to ALL neighbors. Same suppression rate (40%) for full backward compatibility.</span>`;
     }
   } else {
     // Pure System 5
@@ -1702,16 +1745,14 @@ function advanceOneHop() {
   let mDeliveredThisHop = false;
   let mVisibleTx = 0;
 
-  // First: mark all senders (they were reached in a previous hop)
+  // First: mark all senders and check delivery
   for (const ev of mEvents) {
     if (ev.to === simState.pickedDst) mDeliveredThisHop = true;
-    if (ev.overHidden) continue;
     rendererManaged.markReached(ev.from);
   }
 
-  // Then: launch all packets as one wave — they all fly simultaneously
+  // Animate all packets as one wave
   for (const ev of mEvents) {
-    if (ev.overHidden) continue;
     mVisibleTx++;
     rendererManaged.addPacket(ev.from, ev.to, '#fb923c', () => {
       if (simState.generation !== gen) return;
@@ -1735,8 +1776,8 @@ function advanceOneHop() {
     // Animate as wave (like managed flooding)
     for (const ev of dEvents) {
       if (ev.to === simState.pickedDst) dDelivered = true;
-      const pktColor = ev.mode === 's5' ? '#22d3ee' : '#fb923c'; // cyan for S5-to-S5, orange for flood
       rendererSystem5.markReached(ev.from);
+      const pktColor = ev.mode === 's5' ? '#22d3ee' : '#fb923c';
       rendererSystem5.addPacket(ev.from, ev.to, pktColor, () => {
         if (simState.generation !== gen) return;
         rendererSystem5.markReached(ev.to);
@@ -1756,7 +1797,7 @@ function advanceOneHop() {
       s5Html += ` (all <span class="log-managed">flood</span> — no S5 nodes in this hop)`;
     }
     if (dDelivered) s5Html += `<br><span class="log-good">DST reached!</span>`;
-    s5Html += `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. S5 nodes suppress 70% vs Legacy's 40%.</span>`;
+    s5Html += `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. S5 nodes send directed (1 TX), Legacy nodes flood to all neighbors.</span>`;
 
   } else if (hop < hp.s5Hops && hp.s5Path) {
     // Pure System 5 directed routing — 1 TX per hop
