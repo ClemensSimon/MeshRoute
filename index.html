@@ -98,135 +98,109 @@
 
 <!-- APPROACHES -->
 <section id="approaches">
-  <div class="section-tag reveal">02 — Solution Approaches</div>
-  <h2 class="section-title reveal">Five Routing Strategies Compared</h2>
-  <p class="section-desc reveal">From the simplest baseline to our optimized hybrid. Each visualized with live simulation.</p>
+  <div class="section-tag reveal">02 — Routing Approaches</div>
+  <h2 class="section-title reveal">State of the Art vs. New Proposal</h2>
+  <p class="section-desc reveal">Same network topology, four different routing strategies. Watch the TX counter — it tells the whole story.</p>
 
-  <!-- FLOODING -->
-  <div class="algo-section flood reveal" id="algo-flood">
+  <!-- STATE OF THE ART DIVIDER -->
+  <div class="approach-divider reveal">
+    <span class="divider-label sota-label">STATE OF THE ART — Meshtastic Today</span>
+  </div>
+
+  <!-- NAIVE FLOODING -->
+  <div class="algo-section flood reveal" id="algo-naive-flood">
     <div class="algo-header">
-      <span class="algo-number">SYS 1</span>
-      <h3 class="algo-name">Flooding</h3>
+      <span class="algo-number sota-badge">BASELINE</span>
+      <h3 class="algo-name">Naive Flooding</h3>
     </div>
-    <p class="algo-subtitle">The status quo — every node rebroadcasts everything to everyone.</p>
+    <p class="algo-subtitle">Theoretical worst case — every node rebroadcasts everything. Not actually used by Meshtastic, but useful as a reference.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
-        <canvas class="algo-canvas" id="canvas-flood"></canvas>
-        <span class="canvas-label">Live simulation — Flooding</span>
+        <canvas class="algo-canvas" id="canvas-naive-flood"></canvas>
+        <span class="canvas-label">Live — every node lights up red</span>
       </div>
       <div class="algo-details">
         <h4>How It Works</h4>
-        <p>Source sends a packet. Every receiving node rebroadcasts it once (duplicate detection prevents loops). The packet reaches all nodes within the hop limit.</p>
-        <h4>Packets Per Message</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--orange);">P<sub>flood</sub> = n <span style="color:var(--text-muted)">(one per node)</span></p>
-        <h4>Delivery Probability</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--green);">R = 1 − (1−p)<sup>k</sup> ≈ 0.99</p>
+        <p>Source sends a packet. <strong>Every</strong> receiving node rebroadcasts it once. The entire network participates in every message.</p>
+        <h4>Cost Per Message</h4>
+        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--red);">TX = n <span style="color:var(--text-muted)">(one per node)</span></p>
         <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>Maximum reliability</li><li>Zero setup required</li><li>Tolerates 60% node failure</li></ul></div>
-          <div class="con"><h5>− Weaknesses</h5><ul><li>O(n) packets per message</li><li>Bandwidth efficiency: 1/n</li><li>Drains all batteries equally</li></ul></div>
+          <div class="pro"><h5>+ Strengths</h5><ul><li>Maximum reliability</li><li>Zero setup</li></ul></div>
+          <div class="con"><h5>− Weaknesses</h5><ul><li>O(n) TX per message</li><li>All batteries drain equally</li><li>Collapses at ~40 nodes</li></ul></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- SPANNING TREE -->
-  <div class="algo-section tree reveal" id="algo-tree">
+  <!-- MANAGED FLOODING -->
+  <div class="algo-section managed reveal" id="algo-managed-flood">
     <div class="algo-header">
-      <span class="algo-number">SYS 2</span>
-      <h3 class="algo-name">Spanning Tree</h3>
+      <span class="algo-number sota-badge">MESHTASTIC CURRENT</span>
+      <h3 class="algo-name">Managed Flooding</h3>
     </div>
-    <p class="algo-subtitle">Hierarchical tree — efficient but fragile. One path, one gateway, one point of failure.</p>
+    <p class="algo-subtitle">The actual Meshtastic approach. SNR-based suppression: distant nodes rebroadcast first, close nodes suppress. ROUTER nodes always rebroadcast.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
-        <canvas class="algo-canvas" id="canvas-tree"></canvas>
-        <span class="canvas-label">Live simulation — Tree routing</span>
+        <canvas class="algo-canvas" id="canvas-managed-flood"></canvas>
+        <span class="canvas-label">Live — gray nodes = suppressed (saved a TX)</span>
       </div>
       <div class="algo-details">
         <h4>How It Works</h4>
-        <p>One node becomes the root. Every other node picks a parent (best signal toward root). Messages travel up to common ancestor, then down to destination.</p>
-        <h4>Packets Per Message</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--yellow);">P<sub>tree</sub> = d(u,v) ≤ 2·log(n)</p>
-        <h4>Delivery Probability</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--red);">R = p<sup>d</sup> <span style="color:var(--text-muted)">— at p=0.95, d=5: R=0.77</span></p>
+        <p>Before rebroadcasting, each node <strong>listens briefly</strong>. If it hears another node already rebroadcast, it <strong>suppresses</strong> its own transmission. Distant nodes (low SNR) get shorter delays and rebroadcast first. Close nodes wait and often suppress.</p>
+        <p style="margin-top:0.5rem"><strong>ROUTER</strong>-role nodes (marked R) override suppression — they always rebroadcast to ensure backbone coverage.</p>
+        <h4>Cost Per Message</h4>
+        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--yellow);">TX &asymp; 0.4n – 0.6n <span style="color:var(--text-muted)">(~50% suppression)</span></p>
         <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>Minimal bandwidth</li><li>Predictable latency</li><li>Tiny routing tables</li></ul></div>
-          <div class="con"><h5>− Weaknesses</h5><ul><li>Root = single point of failure</li><li>No alternative paths</li><li>Root node overloaded</li></ul></div>
+          <div class="pro"><h5>+ Strengths</h5><ul><li>~50% less TX than naive</li><li>Self-organizing</li><li>Proven in 100+ node meshes</li></ul></div>
+          <div class="con"><h5>− Weaknesses</h5><ul><li>Still O(n) per message</li><li>Hop limit still needed</li><li>No path intelligence</li></ul></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MULTI-PATH -->
-  <div class="algo-section multi reveal" id="algo-multi">
+  <!-- NEXT-HOP ROUTING -->
+  <div class="algo-section nexthop reveal" id="algo-next-hop">
     <div class="algo-header">
-      <span class="algo-number">SYS 3</span>
-      <h3 class="algo-name">Multi-Path Routing</h3>
+      <span class="algo-number sota-badge">MESHTASTIC v2.6</span>
+      <h3 class="algo-name">Next-Hop Routing</h3>
     </div>
-    <p class="algo-subtitle">AODV / OSPF-style — discover and maintain 2–3 independent routes per destination.</p>
+    <p class="algo-subtitle">New in v2.6 — for direct messages only. Learns the relay node, then sends only via that one node. Falls back to flooding if it fails.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
-        <canvas class="algo-canvas" id="canvas-multi"></canvas>
-        <span class="canvas-label">Live simulation — Multi-path with failover</span>
+        <canvas class="algo-canvas" id="canvas-next-hop"></canvas>
+        <span class="canvas-label">Live — watch the 3 phases: learn, direct, fallback</span>
       </div>
       <div class="algo-details">
         <h4>How It Works</h4>
-        <p>The source node broadcasts a <strong>Route Request (RREQ)</strong> that floods outward. Each forwarding node appends its own ID and the RSSI of the link it received the RREQ on, building a complete path record as it propagates.</p>
-        <p style="margin-top:0.5rem">The <strong>destination</strong> collects multiple RREQs arriving via different paths — each carrying a full hop-by-hop quality profile. It selects the <strong>best 2–3 paths</strong> (by hop count, cumulative RSSI, or composite metric) and sends a <strong>Route Reply (RREP)</strong> back along each chosen path.</p>
-        <p style="margin-top:0.5rem">The <strong>source</strong> now has 2–3 cached routes, sorted by quality. Data packets flow along the primary route. On link failure — detected by a missing ACK — the source <strong>instantly switches</strong> to the next cached route with no new discovery flood needed.</p>
-        <h4>Delivery Probability</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--green);">R = 1 − <span style="font-size:1.1rem">∏</span>(1 − p<sup>d<sub>i</sub></sup>) <span style="color:var(--text-muted)">— 3 paths: 0.988</span></p>
-        <h4>Failover Time</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--teal);">O(1) <span style="color:var(--text-muted)">— next path from cache, no rediscovery</span></p>
+        <p><strong>Phase 1:</strong> First message uses managed flooding. The system tracks which node successfully relayed.</p>
+        <p style="margin-top:0.5rem"><strong>Phase 2:</strong> Subsequent messages go only via the learned <strong>next-hop</strong> node (marked NH). One relay instead of the whole network.</p>
+        <p style="margin-top:0.5rem"><strong>Phase 3:</strong> If the next-hop dies, the system <strong>falls back</strong> to managed flooding and learns a new relay.</p>
+        <h4>Limitations</h4>
+        <p style="color:var(--text-muted)">Only works for <strong>direct messages</strong> (unicast). Broadcasts still use managed flooding. Only learns one hop — not a full path.</p>
         <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>High reliability (0.988)</li><li>Instant failover</li><li>Optimal paths via Dijkstra</li></ul></div>
-          <div class="con"><h5>− Weaknesses</h5><ul><li>Discovery is still a flood</li><li>O(n×k) routing table</li><li>Doesn't scale past ~500 nodes</li></ul></div>
+          <div class="pro"><h5>+ Strengths</h5><ul><li>Huge TX reduction for DMs</li><li>Graceful fallback</li><li>Backward compatible</li></ul></div>
+          <div class="con"><h5>− Weaknesses</h5><ul><li>Broadcasts unchanged</li><li>Single relay, not full path</li><li>No load balancing</li></ul></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- GEO-CLUSTERED -->
-  <div class="algo-section geo reveal" id="algo-geo">
-    <div class="algo-header">
-      <span class="algo-number">SYS 4</span>
-      <h3 class="algo-name">Geo-Clustered Multi-Path</h3>
-    </div>
-    <p class="algo-subtitle">OSPF areas meet geohash — full graph within clusters, border nodes between them.</p>
-    <div class="algo-body">
-      <div class="algo-canvas-wrap">
-        <canvas class="algo-canvas" id="canvas-geo"></canvas>
-        <span class="canvas-label">Live simulation — Geo-clustered routing</span>
-      </div>
-      <div class="algo-details">
-        <h4>How It Works</h4>
-        <p>Nodes self-organize into geographic clusters (geohash prefix). Each cluster maintains a full internal topology. Multiple border nodes connect clusters — no single gateway bottleneck.</p>
-        <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--purple-dim,var(--border));background:rgba(168,85,247,0.04);border-radius:8px">
-          <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--purple);margin-bottom:0.4rem">How Geohash Works</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Geohash encodes latitude/longitude into a short string by recursively halving the world into a grid. Each character narrows the area: <strong>'u'</strong> = Central Europe (~5000 km), <strong>'u0'</strong> = Southern Germany (~1250 km), <strong>'u0x'</strong> = Upper Bavaria (~150 km), <strong>'u0x8'</strong> = Munich area (~40 km). Nodes sharing the same prefix are geographically close and form a cluster.</p>
-        </div>
-        <h4>Routing Table Size</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--purple);">O(c·k + m·b) <span style="color:var(--text-muted)">— at n=1000: ~210 entries vs 3000 flat</span></p>
-        <h4>Border Redundancy</h4>
-        <p style="font-family:var(--font-display);font-size:1.3rem;color:var(--cyan);">2–3 border nodes per cluster <span style="color:var(--text-muted)">— no SPOF</span></p>
-        <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>Scales to 10,000+ nodes</li><li>85% smaller routing tables</li><li>Multiple exits per cluster</li></ul></div>
-          <div class="con"><h5>− Weaknesses</h5><ul><li>Requires GPS on most nodes</li><li>Cluster boundaries are rigid</li><li>No load awareness</li></ul></div>
-        </div>
-      </div>
-    </div>
+  <!-- NEW PROPOSAL DIVIDER -->
+  <div class="approach-divider reveal" style="margin-top:3rem">
+    <span class="divider-label proposal-label">NEW PROPOSAL — System 5</span>
   </div>
 
-  <!-- SYSTEM 5 — WINNER -->
+  <!-- SYSTEM 5 -->
   <div class="algo-section winner reveal" id="algo-winner">
     <div class="algo-header">
-      <span class="algo-number">SYS 5 — WINNER</span>
-      <h3 class="algo-name">Adaptive Load-Balanced Mesh</h3>
+      <span class="algo-number proposal-badge">PROPOSED</span>
+      <h3 class="algo-name">System 5 — Adaptive Load-Balanced Mesh</h3>
     </div>
-    <p class="algo-subtitle">The best of all worlds: geo-clustering, multi-path, weighted load distribution, back-pressure, and self-optimizing pheromone decay.</p>
+    <p class="algo-subtitle">Geo-clustering + multi-path + weighted load balancing + adaptive QoS + self-healing. <strong>~1 TX per hop</strong> for all message types.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
-        <canvas class="algo-canvas" id="canvas-winner"></canvas>
-        <span class="canvas-label">Live simulation — Weighted load-balanced routing</span>
+        <canvas class="algo-canvas" id="canvas-system5"></canvas>
+        <span class="canvas-label">Live — packets follow weighted routes, load bars adapt</span>
       </div>
       <div class="algo-details">
         <h4>Weight Function</h4>
@@ -239,20 +213,20 @@
           <li>Back-pressure: overloaded nodes shed traffic automatically</li>
           <li>Battery-aware: low-power nodes get fewer packets</li>
           <li>Pheromone decay: unused paths fade, successful paths strengthen</li>
-          <li>Piggyback telemetry: 2 bytes overhead per packet (0.8%)</li>
+          <li>Works for <strong>all message types</strong> — unicast and broadcast</li>
+          <li><strong>~1 TX per hop</strong> — no hop limit needed</li>
         </ul>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.04);border-radius:8px">
-          <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--cyan);margin-bottom:0.4rem">Why Not Pure Pheromone Routing?</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Pure pheromone-based routing has a flaw: all ants follow the strongest trail, creating a traffic jam on the "best" path while alternatives sit idle. System 5 solves this with <strong>proportional distribution</strong> — good paths get MORE traffic but never ALL traffic. The weight function ensures every viable route carries a fair share.</p>
+          <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--cyan);margin-bottom:0.4rem">vs. Managed Flooding</h4>
+          <p style="font-size:0.9rem;line-height:1.6">Managed flooding suppresses ~50% of rebroadcasts but still scales as O(n). System 5 routes along <strong>specific paths</strong> — cost scales with <strong>hop count</strong>, not network size. At 100 nodes: managed flood = ~1,500 TX per message, System 5 = ~2 TX.</p>
         </div>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--teal,var(--cyan-dim));background:rgba(20,184,166,0.04);border-radius:8px">
-          <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--teal);margin-bottom:0.4rem">The Network "Breathes" — Self-Healing Feedback Loop</h4>
-          <p style="font-size:0.9rem;line-height:1.6;font-family:var(--font-mono)">Overloaded &rarr; NHS drops &rarr; QoS blocks low-priority &rarr; Less traffic &rarr; Fewer collisions &rarr; Links recover &rarr; NHS rises &rarr; More traffic allowed</p>
-          <p style="font-size:0.9rem;line-height:1.6;margin-top:0.5rem">This is a <strong>negative feedback loop</strong> = stable system. The network inhales (more traffic when healthy) and exhales (less traffic under stress). No central controller needed — each cluster self-regulates based on its local NHS.</p>
+          <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--teal);margin-bottom:0.4rem">vs. Next-Hop Routing</h4>
+          <p style="font-size:0.9rem;line-height:1.6">Next-hop learns a single relay node for direct messages. System 5 maintains <strong>2-3 full paths</strong> with weighted load distribution for <strong>all traffic types</strong>. When a path fails, the next cached path activates instantly — no flooding fallback needed.</p>
         </div>
         <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>Even load distribution</li><li>Self-optimizing</li><li>Battery-aware routing</li><li>Instant failover</li></ul></div>
-          <div class="con"><h5>− Complexity</h5><ul><li>Most complex to implement</li><li>Tuning parameters (&alpha;,&beta;,&gamma;)</li><li>Convergence time for weights</li></ul></div>
+          <div class="pro"><h5>+ Strengths</h5><ul><li>~1 TX/hop (not ~n)</li><li>No hop limit needed</li><li>Self-optimizing load balance</li><li>Works for all traffic types</li></ul></div>
+          <div class="con"><h5>− Complexity</h5><ul><li>Most complex to implement</li><li>Requires GPS for geo-clustering</li><li>Tuning parameters (&alpha;,&beta;,&gamma;)</li></ul></div>
         </div>
       </div>
     </div>

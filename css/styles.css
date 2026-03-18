@@ -870,6 +870,72 @@ footer {
 }
 
 /* ============================================================
+   APPROACH DIVIDERS & BADGES
+   ============================================================ */
+
+.approach-divider {
+  text-align: center;
+  margin: 2.5rem 0 1.5rem;
+  position: relative;
+}
+
+.approach-divider::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 1px;
+  background: var(--border);
+}
+
+.divider-label {
+  position: relative;
+  display: inline-block;
+  padding: 0.4rem 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  border-radius: 20px;
+}
+
+.sota-label {
+  background: var(--bg-surface);
+  color: var(--yellow);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.proposal-label {
+  background: var(--bg-surface);
+  color: var(--cyan);
+  border: 1px solid var(--cyan-dim);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+}
+
+.sota-badge {
+  background: rgba(251, 191, 36, 0.15) !important;
+  color: var(--yellow) !important;
+  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.proposal-badge {
+  background: rgba(34, 211, 238, 0.15) !important;
+  color: var(--cyan) !important;
+  border: 1px solid var(--cyan-dim) !important;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.15);
+}
+
+/* Visual distinction: SOTA sections have subtle warm tint, proposal has cyan glow */
+.algo-section.managed,
+.algo-section.nexthop {
+  border-left: 2px solid rgba(251, 191, 36, 0.2);
+}
+
+.algo-section.winner {
+  border-left: 2px solid var(--cyan-dim);
+  background: rgba(34, 211, 238, 0.02);
+}
+
+/* ============================================================
    HOP COST SECTION
    ============================================================ */
 

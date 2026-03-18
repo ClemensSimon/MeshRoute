@@ -1,314 +1,331 @@
-// Algorithm simulations: Flooding, Tree, Multi-Path, Geo-Cluster, System 5
+// Algorithm simulations — four routing approaches
+// State of the Art: Naive Flooding, Managed Flooding, Next-Hop
+// New Proposal: System 5
+
+// Shared node layout for fair comparison (same topology, different routing)
+function makeSharedNodes(sim) {
+  sim.nodes = []; sim.edges = []; sim.packets = [];
+  const pos = [
+    [0.08,0.35],[0.22,0.15],[0.22,0.5],[0.22,0.85],
+    [0.42,0.2],[0.42,0.5],[0.42,0.8],
+    [0.62,0.15],[0.62,0.5],[0.62,0.85],
+    [0.82,0.3],[0.82,0.7],[0.94,0.5],
+  ];
+  pos.forEach((p, i) => sim.addNode(p[0], p[1], {
+    r: (i === 0 || i === 12) ? 8 : 5,
+    color: '#334155',
+    stroke: 'rgba(148,163,184,0.3)',
+    label: i === 0 ? 'SRC' : i === 12 ? 'DST' : '',
+    suppressed: false,
+    isRouter: false,
+    nextHop: false,
+  }));
+  const edges = [
+    [0,1],[0,2],[0,3],[1,4],[1,2],[2,5],[2,3],[3,6],
+    [4,5],[4,7],[5,6],[5,8],[6,9],[7,8],[7,10],
+    [8,9],[8,11],[9,11],[10,12],[11,12],[10,8],[5,7]
+  ];
+  edges.forEach(e => sim.addEdge(e[0], e[1]));
+}
 
 // ============================================================
-//  1. FLOODING
+//  1. NAIVE FLOODING — every node rebroadcasts everything
 // ============================================================
-const floodSim = new MeshSim('canvas-flood', {
+const naiveSim = new MeshSim('canvas-naive-flood', {
   setup(sim) {
-    sim.nodes = []; sim.edges = []; sim.packets = [];
-    sim._floodTimer = 0; sim._visited = new Set();
-    const pos = [
-      [0.15,0.2],[0.35,0.15],[0.55,0.12],[0.78,0.2],[0.9,0.35],
-      [0.1,0.5],[0.3,0.45],[0.5,0.4],[0.7,0.45],[0.88,0.55],
-      [0.15,0.8],[0.35,0.75],[0.55,0.7],[0.75,0.78],[0.9,0.82],
-      [0.45,0.55],[0.25,0.6],[0.65,0.6]
-    ];
-    pos.forEach((p, i) => sim.addNode(p[0], p[1], { r: 5, color: '#334155', stroke: 'rgba(148,163,184,0.3)' }));
-    for (let i = 0; i < sim.nodes.length; i++)
-      for (let j = i + 1; j < sim.nodes.length; j++)
-        if (dist(sim.nodes[i], sim.nodes[j]) < sim.W * 0.28)
-          sim.addEdge(i, j);
+    makeSharedNodes(sim);
+    sim._timer = 0;
+    sim._visited = new Set();
+    sim._txCount = 0;
+  },
+  drawOverlay(sim, ctx) {
+    // TX counter
+    ctx.font = '12px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#f87171';
+    ctx.fillText('TX: ' + sim._txCount, 8, sim.H - 8);
+    // "every node lights up" indicator
+    ctx.fillStyle = 'rgba(248,113,113,0.15)';
+    ctx.fillRect(0, 0, sim.W, 3);
   },
   tick(sim) {
-    sim._floodTimer += 0.016;
-    if (sim._floodTimer > 4) {
-      sim._floodTimer = 0;
+    sim._timer += 0.016;
+    if (sim._timer > 4.5) {
+      sim._timer = 0;
       sim._visited = new Set();
-      sim.nodes.forEach(n => n.color = '#334155');
-      const src = 0;
-      sim.nodes[src].color = '#f87171';
-      sim._visited.add(src);
-      sim._floodFrom(src);
+      sim._txCount = 0;
+      sim.nodes.forEach(n => { n.color = '#334155'; n.stroke = 'rgba(148,163,184,0.3)'; });
+      sim.nodes[0].color = '#f87171'; sim.nodes[0].stroke = '#f87171';
+      sim._visited.add(0);
+      naiveFloodFrom(sim, 0);
     }
   }
 });
-floodSim._floodFrom = function(id) {
-  const neighbors = this.edges
+function naiveFloodFrom(sim, id) {
+  const neighbors = sim.edges
     .filter(e => e.a === id || e.b === id)
     .map(e => e.a === id ? e.b : e.a)
-    .filter(n => !this._visited.has(n));
+    .filter(n => !sim._visited.has(n));
   neighbors.forEach((n, i) => {
-    this._visited.add(n);
+    sim._visited.add(n);
     setTimeout(() => {
-      this.sendPacket(id, n, '#f87171', 0.025, (arrived) => {
-        this.nodes[arrived].color = '#f87171';
-        this._floodFrom(arrived);
+      sim._txCount++;
+      sim.sendPacket(id, n, '#f87171', 0.025, (arrived) => {
+        sim.nodes[arrived].color = '#f87171';
+        sim.nodes[arrived].stroke = '#f87171';
+        naiveFloodFrom(sim, arrived);
+      });
+    }, i * 60);
+  });
+}
+naiveSim.start();
+
+// ============================================================
+//  2. MANAGED FLOODING — SNR-based suppression
+// ============================================================
+const managedSim = new MeshSim('canvas-managed-flood', {
+  setup(sim) {
+    makeSharedNodes(sim);
+    sim._timer = 0;
+    sim._visited = new Set();
+    sim._suppressed = new Set();
+    sim._txCount = 0;
+    // Mark ~2 nodes as ROUTER role (always rebroadcast)
+    sim.nodes[5].isRouter = true;
+    sim.nodes[8].isRouter = true;
+    sim.nodes[5].label = 'R';
+    sim.nodes[8].label = 'R';
+  },
+  drawOverlay(sim, ctx) {
+    ctx.font = '12px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('TX: ' + sim._txCount, 8, sim.H - 8);
+    // Suppressed count
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Suppressed: ' + sim._suppressed.size, 80, sim.H - 8);
+  },
+  tick(sim) {
+    sim._timer += 0.016;
+    if (sim._timer > 4.5) {
+      sim._timer = 0;
+      sim._visited = new Set();
+      sim._suppressed = new Set();
+      sim._txCount = 0;
+      sim.nodes.forEach(n => {
+        n.color = '#334155'; n.stroke = 'rgba(148,163,184,0.3)'; n.suppressed = false;
+      });
+      sim.nodes[5].label = 'R'; sim.nodes[8].label = 'R';
+      sim.nodes[0].color = '#fbbf24'; sim.nodes[0].stroke = '#fbbf24';
+      sim._visited.add(0);
+      managedFloodFrom(sim, 0);
+    }
+  }
+});
+function managedFloodFrom(sim, id) {
+  const neighbors = sim.edges
+    .filter(e => e.a === id || e.b === id)
+    .map(e => e.a === id ? e.b : e.a)
+    .filter(n => !sim._visited.has(n));
+  neighbors.forEach((n, i) => {
+    sim._visited.add(n);
+    setTimeout(() => {
+      sim._txCount++;
+      sim.sendPacket(id, n, '#fbbf24', 0.025, (arrived) => {
+        const node = sim.nodes[arrived];
+        // SNR suppression: if a neighbor already rebroadcasted AND this node is not a router
+        const neighborAlreadyBroadcast = sim.edges
+          .filter(e => e.a === arrived || e.b === arrived)
+          .map(e => e.a === arrived ? e.b : e.a)
+          .some(nb => nb !== id && sim._visited.has(nb) && !sim._suppressed.has(nb) && nb !== 0);
+
+        if (!node.isRouter && neighborAlreadyBroadcast && Math.random() < 0.55) {
+          // SUPPRESSED — node heard a rebroadcast, doesn't rebroadcast
+          node.color = '#475569'; // dim gray = suppressed
+          node.stroke = '#64748b';
+          node.suppressed = true;
+          sim._suppressed.add(arrived);
+        } else {
+          // REBROADCAST
+          node.color = '#fbbf24';
+          node.stroke = '#fbbf24';
+          managedFloodFrom(sim, arrived);
+        }
       });
     }, i * 80);
   });
-};
-floodSim.start();
+}
+managedSim.start();
 
 // ============================================================
-//  2. SPANNING TREE
+//  3. NEXT-HOP ROUTING — learn relay, then direct
 // ============================================================
-const treeSim = new MeshSim('canvas-tree', {
+const nextHopSim = new MeshSim('canvas-next-hop', {
   setup(sim) {
-    sim.nodes = []; sim.edges = []; sim.packets = [];
-    sim._treeTimer = 0;
-    const pos = [
-      [0.5, 0.1],
-      [0.25, 0.32], [0.75, 0.32],
-      [0.12, 0.56], [0.38, 0.56], [0.62, 0.56], [0.88, 0.56],
-      [0.06, 0.82], [0.2, 0.82], [0.35, 0.82], [0.5, 0.82], [0.65, 0.82], [0.8, 0.82], [0.94, 0.82]
-    ];
-    pos.forEach((p, i) => sim.addNode(p[0], p[1], {
-      r: i === 0 ? 8 : 5,
-      color: i === 0 ? '#fbbf24' : '#334155',
-      stroke: i === 0 ? '#fbbf24' : 'rgba(148,163,184,0.3)',
-      label: i === 0 ? 'ROOT' : ''
-    }));
-    const treeEdges = [[0,1],[0,2],[1,3],[1,4],[2,5],[2,6],[3,7],[3,8],[4,9],[4,10],[5,11],[5,12],[6,13]];
-    treeEdges.forEach(e => sim.addEdge(e[0], e[1], { color: 'rgba(251,191,36,0.2)' }));
+    makeSharedNodes(sim);
+    sim._timer = 0;
+    sim._phase = 0; // 0=flood-learn, 1=direct, 2=direct, 3=fail+fallback
+    sim._txCount = 0;
+    sim._learnedPath = [0, 2, 5, 8, 11, 12]; // path learned after first flood
+    sim._nextHopNode = 2; // first relay
+  },
+  drawOverlay(sim, ctx) {
+    ctx.font = '12px JetBrains Mono';
+    ctx.textAlign = 'left';
+    const phaseLabels = ['Phase 1: Flood & Learn', 'Phase 2: Next-Hop Direct', 'Phase 2: Next-Hop Direct', 'Phase 3: Fallback'];
+    const phaseColors = ['#fb923c', '#4ade80', '#4ade80', '#f87171'];
+    ctx.fillStyle = phaseColors[sim._phase % 4];
+    ctx.fillText(phaseLabels[sim._phase % 4], 8, sim.H - 8);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('TX: ' + sim._txCount, sim.W - 70, sim.H - 8);
   },
   tick(sim) {
-    sim._treeTimer += 0.016;
-    if (sim._treeTimer > 3.5) {
-      sim._treeTimer = 0;
-      sim.nodes.forEach((n, i) => { n.color = i === 0 ? '#fbbf24' : '#334155'; });
-      // send from leaf 8 to leaf 12: 8->3->1->0->2->5->12
-      const path = [8, 3, 1, 0, 2, 5, 12];
-      let delay = 0;
-      for (let i = 0; i < path.length - 1; i++) {
-        ((from, to, d) => {
-          setTimeout(() => {
-            sim.sendPacket(from, to, '#fbbf24', 0.03, (arrived) => {
-              sim.nodes[arrived].color = '#fbbf24';
-            });
-          }, d);
-        })(path[i], path[i + 1], delay);
-        delay += 450;
-      }
-    }
-  }
-});
-treeSim.start();
+    sim._timer += 0.016;
+    if (sim._timer > 4) {
+      sim._timer = 0;
+      sim._txCount = 0;
+      sim.nodes.forEach(n => { n.color = '#334155'; n.stroke = 'rgba(148,163,184,0.3)'; n.nextHop = false; });
+      sim.nodes[0].color = '#fb923c'; sim.nodes[0].stroke = '#fb923c';
+      sim.nodes[0].label = 'SRC';
+      sim.nodes[12].label = 'DST';
 
-// ============================================================
-//  3. MULTI-PATH
-// ============================================================
-const multiSim = new MeshSim('canvas-multi', {
-  setup(sim) {
-    sim.nodes = []; sim.edges = []; sim.packets = [];
-    sim._multiTimer = 0;
-    const pos = [
-      [0.08, 0.5], [0.25, 0.2], [0.25, 0.5], [0.25, 0.8],
-      [0.5, 0.2], [0.5, 0.5], [0.5, 0.8],
-      [0.75, 0.2], [0.75, 0.5], [0.75, 0.8],
-      [0.92, 0.5],
-    ];
-    pos.forEach((p, i) => sim.addNode(p[0], p[1], {
-      r: (i === 0 || i === 10) ? 8 : 5,
-      color: i === 0 ? '#4ade80' : i === 10 ? '#4ade80' : '#334155',
-      stroke: (i === 0 || i === 10) ? '#4ade80' : 'rgba(148,163,184,0.3)',
-      label: i === 0 ? 'SRC' : i === 10 ? 'DST' : ''
-    }));
-    const edges = [[0,1],[0,2],[0,3],[1,4],[2,5],[3,6],[4,7],[5,8],[6,9],[7,10],[8,10],[9,10],[1,2],[4,5],[5,6],[7,8],[8,9],[2,4],[5,7]];
-    edges.forEach(e => sim.addEdge(e[0], e[1]));
-    sim._paths = [[0,1,4,7,10],[0,2,5,8,10],[0,3,6,9,10]];
-    sim._pathColors = ['#4ade80', '#2dd4bf', '#22d3ee'];
-    sim._activePath = 0;
-  },
-  tick(sim) {
-    sim._multiTimer += 0.016;
-    if (sim._multiTimer > 3) {
-      sim._multiTimer = 0;
-      sim.nodes.forEach((n, i) => { if (i !== 0 && i !== 10) n.color = '#334155'; });
-      const pathIdx = sim._activePath % 4;
-      sim.edges.forEach(e => e.color = 'rgba(100,116,139,0.2)');
-      if (pathIdx < 3) {
-        const path = sim._paths[pathIdx];
-        for (let i = 0; i < path.length - 1; i++) {
-          const ei = sim.edges.findIndex(e =>
-            (e.a === path[i] && e.b === path[i+1]) || (e.a === path[i+1] && e.b === path[i])
-          );
-          if (ei >= 0) sim.edges[ei].color = sim._pathColors[pathIdx] + '80';
-        }
+      const phase = sim._phase % 4;
+
+      if (phase === 0) {
+        // Flood & learn — like managed flooding, then highlight learned path
+        sim._visited = new Set([0]);
+        nextHopFloodLearn(sim, 0);
+      } else if (phase === 1 || phase === 2) {
+        // Direct via next-hop — only the learned path lights up
+        sim.nodes[sim._nextHopNode].nextHop = true;
+        sim.nodes[sim._nextHopNode].label = 'NH';
+        const path = sim._learnedPath;
         let delay = 0;
         for (let i = 0; i < path.length - 1; i++) {
           ((from, to, d) => {
             setTimeout(() => {
-              sim.sendPacket(from, to, sim._pathColors[pathIdx], 0.03, (arrived) => {
-                sim.nodes[arrived].color = sim._pathColors[pathIdx];
+              sim._txCount++;
+              sim.sendPacket(from, to, '#4ade80', 0.03, (arrived) => {
+                sim.nodes[arrived].color = '#4ade80';
+                sim.nodes[arrived].stroke = '#4ade80';
               });
             }, d);
           })(path[i], path[i+1], delay);
-          delay += 400;
+          delay += 350;
         }
       } else {
-        // failover demo
-        const brokenEdge = sim.edges.findIndex(e => (e.a === 4 && e.b === 7) || (e.a === 7 && e.b === 4));
-        if (brokenEdge >= 0) sim.edges[brokenEdge].color = '#f8717180';
-        const failPath = [0, 1, 4]; // goes to node 4, then fails
-        let delay = 0;
-        for (let i = 0; i < failPath.length - 1; i++) {
-          ((from, to, d) => {
-            setTimeout(() => {
-              sim.sendPacket(from, to, '#f87171', 0.03, (arrived) => {
-                sim.nodes[arrived].color = '#f87171';
-                if (arrived === 4) {
-                  sim.nodes[4].color = '#f87171';
-                  setTimeout(() => {
-                    // reroute via edge 4->5, 5->8, 8->10
-                    const repath = [4, 5, 8, 10];
-                    let rd = 0;
-                    for (let ri = 0; ri < repath.length - 1; ri++) {
-                      ((rf, rt, rdd) => {
-                        setTimeout(() => {
-                          sim.sendPacket(rf, rt, '#4ade80', 0.03, (a) => { sim.nodes[a].color = '#4ade80'; });
-                        }, rdd);
-                      })(repath[ri], repath[ri+1], rd);
-                      rd += 350;
-                    }
-                  }, 200);
-                }
-              });
-            }, d);
-          })(failPath[i], failPath[i+1], delay);
-          delay += 400;
-        }
-      }
-      sim._activePath++;
-    }
-  }
-});
-multiSim.start();
-
-// ============================================================
-//  4. GEO-CLUSTER
-// ============================================================
-const geoSim = new MeshSim('canvas-geo', {
-  setup(sim) {
-    sim.nodes = []; sim.edges = []; sim.packets = [];
-    sim._geoTimer = 0;
-    const cA = [[0.1,0.3],[0.18,0.5],[0.12,0.7],[0.25,0.4],[0.22,0.65]];
-    const cB = [[0.42,0.25],[0.5,0.45],[0.45,0.65],[0.55,0.3],[0.52,0.7]];
-    const cC = [[0.75,0.3],[0.82,0.5],[0.78,0.7],[0.88,0.35],[0.85,0.65]];
-    const all = [...cA, ...cB, ...cC];
-    all.forEach((p, i) => {
-      const cluster = i < 5 ? 0 : i < 10 ? 1 : 2;
-      const colors = ['#a78bfa', '#22d3ee', '#fb923c'];
-      sim.addNode(p[0], p[1], {
-        r: 5, color: colors[cluster] + '40', stroke: colors[cluster],
-        cluster, label: (i === 3 || i === 4 || i === 6 || i === 8 || i === 10 || i === 12) ? 'B' : ''
-      });
-    });
-    for (let c = 0; c < 3; c++) {
-      const base = c * 5;
-      for (let i = base; i < base + 5; i++)
-        for (let j = i + 1; j < base + 5; j++)
-          if (dist(sim.nodes[i], sim.nodes[j]) < sim.W * 0.22)
-            sim.addEdge(i, j, { color: ['rgba(167,139,250,0.15)', 'rgba(34,211,238,0.15)', 'rgba(251,146,60,0.15)'][c] });
-    }
-    // inter-cluster border edges
-    sim.addEdge(3, 6, { color: 'rgba(148,163,184,0.3)', width: 2 });
-    sim.addEdge(4, 8, { color: 'rgba(148,163,184,0.3)', width: 2 });
-    sim.addEdge(9, 10, { color: 'rgba(148,163,184,0.3)', width: 2 });
-    sim.addEdge(7, 12, { color: 'rgba(148,163,184,0.3)', width: 2 });
-    sim._clusters = [
-      { nodes: [0,1,2,3,4], color: 'rgba(167,139,250,0.06)', cx: 0.17, cy: 0.5 },
-      { nodes: [5,6,7,8,9], color: 'rgba(34,211,238,0.06)', cx: 0.49, cy: 0.47 },
-      { nodes: [10,11,12,13,14], color: 'rgba(251,146,60,0.06)', cx: 0.82, cy: 0.5 },
-    ];
-  },
-  drawClusters(sim, ctx) {
-    sim._clusters.forEach(cl => {
-      ctx.beginPath();
-      ctx.arc(cl.cx * sim.W, cl.cy * sim.H, sim.W * 0.17, 0, PI2);
-      ctx.fillStyle = cl.color;
-      ctx.fill();
-      ctx.strokeStyle = cl.color.replace('0.06', '0.15');
-      ctx.lineWidth = 1; ctx.stroke();
-    });
-  },
-  tick(sim) {
-    sim._geoTimer += 0.016;
-    if (sim._geoTimer > 4) {
-      sim._geoTimer = 0;
-      // compute paths dynamically using BFS over actual edges
-      if (!sim._geoPaths) {
-        sim._geoPaths = findKPaths(sim.edges, 0, 14, 2);
-      }
-      const primary = sim._geoPaths[0] || [];
-      const backup = sim._geoPaths[1] || [];
-      let delay = 0;
-      for (let i = 0; i < primary.length - 1; i++) {
-        ((from, to, d) => {
-          setTimeout(() => {
-            sim.sendPacket(from, to, '#22d3ee', 0.025, () => {});
-          }, d);
-        })(primary[i], primary[i+1], delay);
-        delay += 500;
-      }
-      if (backup.length > 0) {
+        // Fail & fallback — next-hop dies, fall back to flood
+        sim.nodes[sim._nextHopNode].color = '#f87171';
+        sim.nodes[sim._nextHopNode].label = 'X';
+        sim.nodes[sim._nextHopNode].stroke = '#f87171';
+        // Try next-hop, fail
         setTimeout(() => {
-          let d2 = 0;
-          for (let i = 0; i < backup.length - 1; i++) {
-            ((from, to, d) => {
-              setTimeout(() => {
-                sim.sendPacket(from, to, 'rgba(34,211,238,0.4)', 0.02, () => {});
-              }, d);
-            })(backup[i], backup[i+1], d2);
-            d2 += 500;
-          }
+          sim._txCount++;
+          sim.sendPacket(0, sim._nextHopNode, '#f87171', 0.03, () => {
+            // Failed — fallback to flood
+            setTimeout(() => {
+              sim.nodes[0].color = '#fbbf24';
+              const altPath = [0, 1, 4, 7, 10, 12];
+              let d2 = 0;
+              for (let i = 0; i < altPath.length - 1; i++) {
+                ((from, to, d) => {
+                  setTimeout(() => {
+                    sim._txCount++;
+                    sim.sendPacket(from, to, '#fbbf24', 0.03, (arrived) => {
+                      sim.nodes[arrived].color = '#fbbf24';
+                      sim.nodes[arrived].stroke = '#fbbf24';
+                    });
+                  }, d);
+                })(altPath[i], altPath[i+1], d2);
+                d2 += 350;
+              }
+            }, 300);
+          });
         }, 200);
       }
+      sim._phase++;
     }
   }
 });
-geoSim.start();
+function nextHopFloodLearn(sim, id) {
+  const neighbors = sim.edges
+    .filter(e => e.a === id || e.b === id)
+    .map(e => e.a === id ? e.b : e.a)
+    .filter(n => !sim._visited.has(n));
+  neighbors.forEach((n, i) => {
+    sim._visited.add(n);
+    setTimeout(() => {
+      sim._txCount++;
+      const isOnPath = sim._learnedPath.includes(id) && sim._learnedPath.includes(n);
+      const color = isOnPath ? '#4ade80' : '#fb923c';
+      sim.sendPacket(id, n, color, 0.025, (arrived) => {
+        sim.nodes[arrived].color = isOnPath ? '#4ade80' : '#78716c';
+        sim.nodes[arrived].stroke = isOnPath ? '#4ade80' : '#78716c';
+        if (Math.random() < 0.6 || sim.nodes[arrived].isRouter) {
+          nextHopFloodLearn(sim, arrived);
+        }
+      });
+    }, i * 80);
+  });
+}
+nextHopSim.start();
 
 // ============================================================
-//  5. SYSTEM 5 — WINNER
+//  4. SYSTEM 5 — Geo-clustered multi-path load-balanced
 // ============================================================
-const winSim = new MeshSim('canvas-winner', {
+const sys5Sim = new MeshSim('canvas-system5', {
   setup(sim) {
-    sim.nodes = []; sim.edges = []; sim.packets = [];
-    sim._winTimer = 0;
-    const pos = [
-      [0.06,0.45],[0.22,0.2],[0.22,0.5],[0.22,0.8],
-      [0.42,0.15],[0.42,0.45],[0.42,0.75],
-      [0.62,0.2],[0.62,0.5],[0.62,0.8],
-      [0.82,0.3],[0.82,0.65],[0.94,0.48],
-    ];
-    pos.forEach((p, i) => sim.addNode(p[0], p[1], {
-      r: (i === 0 || i === 12) ? 9 : 5,
-      color: (i === 0 || i === 12) ? '#22d3ee' : '#334155',
-      stroke: (i === 0 || i === 12) ? '#22d3ee' : 'rgba(148,163,184,0.3)',
-      label: i === 0 ? 'SRC' : i === 12 ? 'DST' : '',
-      load: 0, battery: rand(0.4, 1)
-    }));
-    const edges = [[0,1],[0,2],[0,3],[1,4],[1,2],[2,5],[2,3],[3,6],[4,5],[4,7],[5,6],[5,8],[6,9],[7,8],[7,10],[8,9],[8,11],[9,11],[10,12],[11,12],[10,8],[5,7]];
-    edges.forEach(e => sim.addEdge(e[0], e[1]));
+    makeSharedNodes(sim);
+    sim._timer = 0;
+    // Assign clusters
+    sim.nodes.forEach((n, i) => {
+      if (i <= 3) { n._cluster = 0; n.stroke = 'rgba(167,139,250,0.5)'; }
+      else if (i <= 6) { n._cluster = 1; n.stroke = 'rgba(34,211,238,0.5)'; }
+      else if (i <= 9) { n._cluster = 2; n.stroke = 'rgba(20,184,166,0.5)'; }
+      else { n._cluster = 3; n.stroke = 'rgba(251,146,60,0.5)'; }
+    });
+    // Mark border nodes
+    [3,4,6,7,9,10].forEach(i => { sim.nodes[i].label = 'B'; });
+    sim.nodes[0].label = 'SRC'; sim.nodes[12].label = 'DST';
+
     sim._routes = [
       { path: [0,1,4,7,10,12], weight: 0.45, color: '#22d3ee' },
       { path: [0,2,5,8,11,12], weight: 0.35, color: '#2dd4bf' },
       { path: [0,3,6,9,11,12], weight: 0.20, color: '#a78bfa' },
     ];
+    sim.nodes.forEach(n => { n.load = 0; });
+  },
+  drawClusters(sim, ctx) {
+    const clusters = [
+      { nodes: [0,1,2,3], color: 'rgba(167,139,250,0.06)', cx: 0.15, cy: 0.46 },
+      { nodes: [4,5,6], color: 'rgba(34,211,238,0.06)', cx: 0.42, cy: 0.5 },
+      { nodes: [7,8,9], color: 'rgba(20,184,166,0.06)', cx: 0.62, cy: 0.5 },
+      { nodes: [10,11,12], color: 'rgba(251,146,60,0.06)', cx: 0.86, cy: 0.5 },
+    ];
+    clusters.forEach(cl => {
+      ctx.beginPath();
+      ctx.arc(cl.cx * sim.W, cl.cy * sim.H, sim.W * 0.13, 0, PI2);
+      ctx.fillStyle = cl.color;
+      ctx.fill();
+      ctx.strokeStyle = cl.color.replace('0.06', '0.12');
+      ctx.lineWidth = 1; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+    });
   },
   drawOverlay(sim, ctx) {
+    // Route weights
     const y = sim.H - 15;
-    ctx.font = '11px JetBrains Mono';
+    ctx.font = '10px JetBrains Mono';
     ctx.textAlign = 'left';
     sim._routes.forEach((r, i) => {
       ctx.fillStyle = r.color;
-      ctx.fillRect(10, y - 38 + i * 14, 8, 8);
+      ctx.fillRect(8, y - 36 + i * 13, 8, 8);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`Route ${i+1}: ${Math.round(r.weight*100)}%`, 24, y - 31 + i * 14);
+      ctx.fillText(`R${i+1}: ${Math.round(r.weight*100)}%`, 20, y - 29 + i * 13);
     });
+    // Load bars on nodes
     sim.nodes.forEach(n => {
-      if (n.load > 0) {
-        const bw = 20, bh = 3;
+      if (n.load > 0.01) {
+        const bw = 18, bh = 3;
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fillRect(n.x - bw/2, n.y + (n.r||6) + 3, bw, bh);
         const lc = n.load > 0.7 ? '#f87171' : n.load > 0.4 ? '#fbbf24' : '#4ade80';
@@ -316,12 +333,19 @@ const winSim = new MeshSim('canvas-winner', {
         ctx.fillRect(n.x - bw/2, n.y + (n.r||6) + 3, bw * n.load, bh);
       }
     });
+    // TX count
+    ctx.fillStyle = '#22d3ee';
+    ctx.font = '12px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText('TX: ' + (sim._txCount || 0), sim.W - 8, sim.H - 8);
   },
   tick(sim) {
-    sim._winTimer += 0.016;
+    sim._timer += 0.016;
     sim.nodes.forEach(n => { n.load = Math.max(0, n.load - 0.003); });
-    if (sim._winTimer > 0.8) {
-      sim._winTimer = 0;
+    if (sim._timer > 0.9) {
+      sim._timer = 0;
+      if (!sim._txCount) sim._txCount = 0;
+      // Select route proportionally
       const r = Math.random();
       let cumul = 0, route = sim._routes[0];
       for (const rt of sim._routes) { cumul += rt.weight; if (r <= cumul) { route = rt; break; } }
@@ -329,13 +353,16 @@ const winSim = new MeshSim('canvas-winner', {
       for (let i = 0; i < route.path.length - 1; i++) {
         ((from, to, d, col) => {
           setTimeout(() => {
+            sim._txCount++;
             sim.sendPacket(from, to, col, 0.035, (arrived) => {
               sim.nodes[arrived].load = Math.min(1, sim.nodes[arrived].load + 0.15);
+              sim.nodes[arrived].color = col;
             });
           }, d);
         })(route.path[i], route.path[i+1], delay, route.color);
-        delay += 250;
+        delay += 220;
       }
+      // Rebalance weights based on load
       sim._routes.forEach(rt => {
         let maxLoad = 0;
         rt.path.forEach(id => { maxLoad = Math.max(maxLoad, sim.nodes[id].load); });
@@ -346,4 +373,4 @@ const winSim = new MeshSim('canvas-winner', {
     }
   }
 });
-winSim.start();
+sys5Sim.start();

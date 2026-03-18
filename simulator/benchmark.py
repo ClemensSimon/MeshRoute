@@ -9,7 +9,7 @@ import random
 from collections import defaultdict
 
 from meshsim import MeshNetwork, Packet
-from routing import FloodingRouter, System5Router
+from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router
 
 
 class ScenarioConfig:
@@ -372,52 +372,44 @@ def run_scenario(config, scenario_num, verbose=True):
             print("  WARNING: Not enough alive nodes to generate messages!")
         return None
 
-    # --- Run Flooding ---
-    if verbose:
-        print(f"\n  --- Flooding ---")
+    # Define routers to benchmark
+    routers = [
+        ("naive_flooding", "Naive Flood", NaiveFloodingRouter),
+        ("managed_flooding", "Managed Flood", ManagedFloodingRouter),
+        ("next_hop", "Next-Hop", NextHopRouter),
+        ("system5", "System 5", System5Router),
+    ]
 
-    # Build fresh network for flooding (same topology)
-    net_flood = build_network(config, seed=42)
-    flooding = FloodingRouter(seed=42)
-    flood_result = run_router(flooding, net_flood, messages)
+    results_by_router = {}
+    for key, label, RouterClass in routers:
+        if verbose:
+            print(f"\n  --- {label} ---")
 
-    if verbose:
-        print(f"  Messages: {flood_result.messages_sent} | "
-              f"Delivered: {flood_result.messages_delivered} | "
-              f"Rate: {flood_result.delivery_rate:.1f}%")
-        print(f"  Total TX: {flood_result.total_tx} | "
-              f"TX/delivered: {flood_result.tx_per_delivered:.1f}")
-        print(f"  Avg hops: {flood_result.avg_hops:.1f} | "
-              f"Max node load: {flood_result.max_node_load}")
+        net_run = build_network(config, seed=42)
+        router = RouterClass(seed=42)
+        result = run_router(router, net_run, messages)
 
-    # --- Run System 5 ---
-    if verbose:
-        print(f"\n  --- System 5 ---")
+        if verbose:
+            print(f"  Messages: {result.messages_sent} | "
+                  f"Delivered: {result.messages_delivered} | "
+                  f"Rate: {result.delivery_rate:.1f}%")
+            print(f"  Total TX: {result.total_tx} | "
+                  f"TX/delivered: {result.tx_per_delivered:.1f}")
+            print(f"  Avg hops: {result.avg_hops:.1f} | "
+                  f"Max node load: {result.max_node_load}")
 
-    # Build fresh network for System 5
-    net_s5 = build_network(config, seed=42)
-    system5 = System5Router(seed=42)
-    s5_result = run_router(system5, net_s5, messages)
+        results_by_router[key] = result
 
-    if verbose:
-        print(f"  Messages: {s5_result.messages_sent} | "
-              f"Delivered: {s5_result.messages_delivered} | "
-              f"Rate: {s5_result.delivery_rate:.1f}%")
-        print(f"  Total TX: {s5_result.total_tx} | "
-              f"TX/delivered: {s5_result.tx_per_delivered:.1f}")
-        print(f"  Avg hops: {s5_result.avg_hops:.1f} | "
-              f"Max node load: {s5_result.max_node_load}")
+    # Comparison
+    naive = results_by_router["naive_flooding"]
+    managed = results_by_router["managed_flooding"]
+    s5 = results_by_router["system5"]
 
-    # --- Comparison ---
-    if verbose and flood_result.total_tx > 0 and s5_result.total_tx > 0:
-        bw_savings = (1 - s5_result.total_tx / flood_result.total_tx) * 100
-        load_reduction = (
-            (1 - s5_result.max_node_load / flood_result.max_node_load) * 100
-            if flood_result.max_node_load > 0
-            else 0
-        )
-        print(f"\n  -> System 5 uses {bw_savings:.1f}% less bandwidth")
-        print(f"  -> Max node load reduced by {load_reduction:.1f}%")
+    if verbose and managed.total_tx > 0 and s5.total_tx > 0:
+        bw_vs_managed = (1 - s5.total_tx / managed.total_tx) * 100
+        bw_vs_naive = (1 - s5.total_tx / naive.total_tx) * 100 if naive.total_tx > 0 else 0
+        print(f"\n  -> System 5 vs Managed Flood: {bw_vs_managed:.1f}% less TX")
+        print(f"  -> System 5 vs Naive Flood:   {bw_vs_naive:.1f}% less TX")
 
     # Compute category
     if config.link_degradation > 0 or config.node_kill_fraction > 0:
@@ -427,12 +419,8 @@ def run_scenario(config, scenario_num, verbose=True):
     else:
         category = "scale"
 
-    # Bandwidth savings
-    bw_savings = 0.0
-    if flood_result.total_tx > 0:
-        bw_savings = round((1 - s5_result.total_tx / flood_result.total_tx) * 100, 2)
-
-    return {
+    # Build result dict with all routers
+    result_dict = {
         "scenario": scenario_num,
         "name": config.name,
         "category": category,
@@ -445,18 +433,33 @@ def run_scenario(config, scenario_num, verbose=True):
             "node_kill_fraction": config.node_kill_fraction,
         },
         "network": net_stats,
-        "flooding": flood_result.to_dict(),
-        "system5": s5_result.to_dict(),
-        "comparison": {
-            "bw_savings_pct": bw_savings,
-            "load_reduction_pct": round(
-                (1 - s5_result.max_node_load / flood_result.max_node_load) * 100, 1
-            ) if flood_result.max_node_load > 0 else 0.0,
-            "tx_ratio": round(
-                s5_result.total_tx / flood_result.total_tx, 4
-            ) if flood_result.total_tx > 0 else 0.0,
-        },
     }
+
+    for key, label, _ in routers:
+        result_dict[key] = results_by_router[key].to_dict()
+
+    # Backward compat aliases
+    result_dict["flooding"] = result_dict["managed_flooding"]
+
+    # Comparison vs managed flooding (the real baseline)
+    bw_savings_vs_managed = 0.0
+    if managed.total_tx > 0:
+        bw_savings_vs_managed = round((1 - s5.total_tx / managed.total_tx) * 100, 2)
+
+    result_dict["comparison"] = {
+        "bw_savings_pct": bw_savings_vs_managed,
+        "bw_savings_vs_naive_pct": round(
+            (1 - s5.total_tx / naive.total_tx) * 100, 2
+        ) if naive.total_tx > 0 else 0.0,
+        "load_reduction_pct": round(
+            (1 - s5.max_node_load / managed.max_node_load) * 100, 1
+        ) if managed.max_node_load > 0 else 0.0,
+        "tx_ratio": round(
+            s5.total_tx / managed.total_tx, 4
+        ) if managed.total_tx > 0 else 0.0,
+    }
+
+    return result_dict
 
 
 def run_all_scenarios(verbose=True):
@@ -496,7 +499,15 @@ def print_summary_table(results):
     print("-" * 80)
 
     for r in results:
-        for router_key, label in [("flooding", "Flood"), ("system5", "Sys5")]:
+        router_keys = [
+            ("naive_flooding", "Naive"),
+            ("managed_flooding", "Managed"),
+            ("next_hop", "NextHop"),
+            ("system5", "Sys5"),
+        ]
+        for router_key, label in router_keys:
+            if router_key not in r:
+                continue
             d = r[router_key]
             name = r["name"][:33]
             print(
