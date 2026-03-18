@@ -283,6 +283,43 @@ function drawNetworkMap(data) {
   });
   // Off by default
 
+  // Cluster polygons (convex hull per cluster)
+  function convexHull(points) {
+    if (points.length < 3) return points;
+    points = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (O, A, B) => (A[0]-O[0])*(B[1]-O[1]) - (A[1]-O[1])*(B[0]-O[0]);
+    const lower = [];
+    for (const p of points) { while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop(); lower.push(p); }
+    const upper = [];
+    for (const p of points.reverse()) { while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop(); upper.push(p); }
+    return lower.slice(0, -1).concat(upper.slice(0, -1));
+  }
+
+  const clusterNodes = {};
+  data.nodes.forEach(n => { (clusterNodes[n.cluster] = clusterNodes[n.cluster] || []).push(n); });
+
+  Object.entries(clusterNodes).forEach(([cid, cnodes]) => {
+    const ci = clusterKeys.indexOf(String(cid));
+    const col = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
+    const pts = cnodes.map(n => [n.lat, n.lon]);
+    if (pts.length < 3) return;
+    const hull = convexHull(pts);
+    // Expand hull slightly outward for padding
+    const centLat = hull.reduce((s, p) => s + p[0], 0) / hull.length;
+    const centLon = hull.reduce((s, p) => s + p[1], 0) / hull.length;
+    const expanded = hull.map(p => [
+      centLat + (p[0] - centLat) * 1.15,
+      centLon + (p[1] - centLon) * 1.15,
+    ]);
+    L.polygon(expanded, {
+      color: col, weight: 1.5, opacity: 0.4, fillColor: col, fillOpacity: 0.07,
+      dashArray: '8 4', smoothFactor: 2,
+    }).addTo(map).bindTooltip(`Cluster ${cid} (${cnodes.length} nodes)`, {
+      permanent: false, direction: 'center',
+      className: 'node-tooltip',
+    });
+  });
+
   // Links
   data.nodes.forEach(n => {
     n.neighbors.forEach(nid => {
