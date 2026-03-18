@@ -267,6 +267,7 @@
       <span><span style="color:rgba(153,27,27,0.7)">- - -</span> Dead Link</span>
       <span><span style="color:var(--cyan)">——</span> Bridge Link</span>
       <span><span class="dot" style="background:#fbbf24"></span> Reached</span>
+      <span><span class="dot" style="background:#4ade80"></span> Delivery Path</span>
       <span><span class="dot" style="background:#4ade80"></span> SRC</span>
       <span><span class="dot" style="background:#f87171"></span> DST</span>
       <span><span class="dot" style="background:transparent;border:2px solid #22d3ee;width:6px;height:6px"></span> S5 Node</span>
@@ -915,6 +916,8 @@ class SimRenderer {
     this.flashNodes = {}; // nodeId -> {color, alpha}
     this.reachedNodes = new Map();  // nodeId -> intensity (0-1), fades with each new hop wave
     this.reachedEdges = new Map();  // "a-b" -> intensity (0-1)
+    this.deliveryNodes = new Set(); // nodes on the successful delivery path (green)
+    this.deliveryEdges = new Set(); // edges on the successful delivery path (green)
     this.markedSrc = -1;
     this.markedDst = -1;
     this.stats = { tx: 0, delivered: 0, sent: 0, totalHops: 0, lastHops: 0 };
@@ -976,6 +979,8 @@ class SimRenderer {
     this.flashNodes = {};
     this.reachedNodes = new Map();
     this.reachedEdges = new Map();
+    this.deliveryNodes = new Set();
+    this.deliveryEdges = new Set();
     this.stats = { tx: 0, delivered: 0, sent: 0, totalHops: 0, lastHops: 0 };
     this.fitNetwork();
   }
@@ -1002,6 +1007,16 @@ class SimRenderer {
   markEdgeReached(fromId, toId) {
     const key = Math.min(fromId, toId) + '-' + Math.max(fromId, toId);
     this.reachedEdges.set(key, 1.0);
+  }
+
+  markDeliveryPath(path) {
+    // Mark the successful delivery path in green
+    if (!path || path.length < 2) return;
+    for (const nid of path) this.deliveryNodes.add(nid);
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = Math.min(path[i], path[i+1]) + '-' + Math.max(path[i], path[i+1]);
+      this.deliveryEdges.add(key);
+    }
   }
 
   fitNetwork() {
@@ -1142,8 +1157,14 @@ class SimRenderer {
       const edgeIntensity = this.reachedEdges.get(edgeKey) || 0;
       const isBridge = bridges.has(li);
 
+      const isDelivery = this.deliveryEdges.has(edgeKey);
+
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-      if (edgeIntensity > 0.01) {
+      if (isDelivery) {
+        // Delivery path — bright green
+        ctx.strokeStyle = 'rgba(74,222,128,0.9)';
+        ctx.lineWidth = 3;
+      } else if (edgeIntensity > 0.01) {
         // Reached — yellow
         ctx.strokeStyle = `rgba(251,191,36,${0.15 + edgeIntensity * 0.55})`;
         ctx.lineWidth = 1 + edgeIntensity * 2;
@@ -1186,17 +1207,28 @@ class SimRenderer {
         ctx.stroke();
       }
 
-      // Node body — blend between cluster color and yellow based on intensity
+      // Node body
+      const isOnDelivery = this.deliveryNodes.has(n.id);
       ctx.beginPath(); ctx.arc(sx, sy, nodeR, 0, PI2);
-      if (nodeIntensity > 0.3) {
+      if (isOnDelivery) {
+        ctx.fillStyle = '#4ade80'; // green — successful delivery path
+      } else if (nodeIntensity > 0.3) {
         ctx.fillStyle = `rgba(251,191,36,${0.5 + nodeIntensity * 0.5})`;
       } else {
         ctx.fillStyle = color;
       }
       ctx.fill();
 
-      // Border node ring (white, only if not strongly reached)
-      if (n.border && n.battery > 0 && nodeIntensity < 0.3) {
+      // Delivery path node: green glow ring
+      if (isOnDelivery) {
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 4, 0, PI2);
+        ctx.strokeStyle = 'rgba(74,222,128,0.7)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Border node ring (white, only if not strongly reached and not on delivery path)
+      if (n.border && n.battery > 0 && nodeIntensity < 0.3 && !isOnDelivery) {
         ctx.beginPath(); ctx.arc(sx, sy, nodeR + 2, 0, PI2);
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 1.5;
@@ -1897,7 +1929,12 @@ function advanceOneHop() {
       rendererManaged.markEdgeReached(ev.from, ev.to);
     });
   }
-  if (mDeliveredThisHop) hp.mDelivered = true;
+  if (mDeliveredThisHop && !hp.mDelivered) {
+    hp.mDelivered = true;
+    // Mark the shortest path as delivery path (green)
+    const mPath = bfsPath(rendererManaged.net.nodes, rendererManaged.net.links, simState.pickedSrc, simState.pickedDst);
+    if (mPath) rendererManaged.markDeliveryPath(mPath);
+  }
 
   // --- Right side: System 5 or Dual-Mode for this hop ---
   let s5Html = '';
@@ -1921,7 +1958,12 @@ function advanceOneHop() {
         rendererSystem5.markEdgeReached(ev.from, ev.to);
       });
     }
-    if (dDelivered) hp.s5Delivered = true;
+    if (dDelivered && !hp.s5Delivered) {
+      hp.s5Delivered = true;
+      // Mark delivery path (BFS from src to dst)
+      const dPath = bfsPath(rendererSystem5.net.nodes, rendererSystem5.net.links, simState.pickedSrc, simState.pickedDst);
+      if (dPath) rendererSystem5.markDeliveryPath(dPath);
+    }
 
     const s5Txs = dEvents.filter(e => e.mode === 's5').length;
     const floodTxs = dEvents.filter(e => e.mode === 'flood').length;
@@ -1955,6 +1997,7 @@ function advanceOneHop() {
 
     if (hop + 1 === hp.s5Hops) {
       hp.s5Delivered = true;
+      rendererSystem5.markDeliveryPath(hp.s5Path);
       s5Html = `<span class="log-good">DELIVERED!</span> Node ${from} → Node ${to}. <b>1 TX</b>.`
         + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX for ${hp.s5Hops} hops.</span>`;
     } else if (crossingCluster) {
