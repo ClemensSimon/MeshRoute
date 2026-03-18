@@ -72,7 +72,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 <a href="../index.html" class="back-link">&larr; Back to Presentation</a>
 
 <h1>ESP32 Virtual Network Test Results</h1>
-<p>10 simulated ESP32 nodes running the actual firmware routing logic, communicating via a virtual LoRa radio model.</p>
+<p>100 simulated ESP32 nodes across 5 Munich districts, running the actual firmware routing logic. Mixed LoRa ranges: 20% rooftop nodes (3km) + 80% handheld (1.5km).</p>
 
 <h2>Summary</h2>
 <div class="summary-grid">
@@ -90,7 +90,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
   <span id="anim-status" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-left:1rem;">Click a node for details. Press Play to watch routing.</span>
 </div>
 <div id="leaflet-map" style="width:100%;height:550px;border-radius:12px;border:1px solid var(--border);"></div>
-<p>10 nodes across Munich. Click any node to see its routing table, neighbors, and message history. Press <b>Play</b> to watch all 20 messages routed step-by-step.</p>
+<p>100 nodes across 5 Munich districts: Altstadt, Schwabing, Haidhausen, Sendling, Neuhausen. Click any node to see its routing table and message history. Press <b>Play</b> to watch all 50 messages routed step-by-step. Larger circles = rooftop nodes (3km range).</p>
 
 <h2>Charts</h2>
 <div class="chart-row">
@@ -112,7 +112,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 
 <h2>Node Details</h2>
 <table id="node-table">
-  <thead><tr><th>ID</th><th>Location</th><th>Geohash</th><th>Cluster</th><th>Border</th><th>Battery</th><th>Neighbors</th><th>Routes</th></tr></thead>
+  <thead><tr><th>ID</th><th>Location</th><th>Cluster</th><th>Border</th><th>Range</th><th>Battery</th><th>Neighbors</th><th>Routes</th></tr></thead>
   <tbody></tbody>
 </table>
 
@@ -196,10 +196,13 @@ fetch('esp-test-results.json').then(r => {
     const ci = Object.keys(data.clusters).indexOf(String(n.cluster));
     const cc = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
     const row = document.createElement('tr');
-    row.innerHTML = `<td><b>N${n.id}</b></td><td>${n.name || ''}</td><td>${n.geohash}</td>
+    const range = n.lora_range || 2000;
+    const rangeLabel = range >= 3000 ? `<span style="color:#22d3ee">${range/1000}km</span>` : `${range/1000}km`;
+    row.innerHTML = `<td><b>N${n.id}</b></td><td>${n.name || ''}</td>
       <td style="color:${cc}">C${n.cluster}</td>
-      <td>${n.is_border ? '<span class="warn">BORDER</span>' : ''}</td>
-      <td>${n.battery}%</td><td>${n.neighbors.join(', ')}</td><td>${n.routes}/9</td>`;
+      <td>${n.is_border ? '<span class="warn">BRD</span>' : ''}</td>
+      <td>${rangeLabel}</td>
+      <td>${n.battery}%</td><td>${n.neighbors.length}</td><td>${n.routes}/99</td>`;
     ntbody.appendChild(row);
   });
 
@@ -235,9 +238,13 @@ function drawNetworkMap(data) {
   const clusterKeys = [...new Set(data.nodes.map(n => String(n.cluster)))];
   animLayer = L.layerGroup().addTo(map);
 
-  // LoRa range circles
+  // LoRa range circles (per-node range: 1500m handheld, 3000m rooftop)
   data.nodes.forEach(n => {
-    L.circle([n.lat, n.lon], { radius: 2000, color: '#64748b', weight: 0.5, fillOpacity: 0.03, dashArray: '4 4' }).addTo(map);
+    const range = n.lora_range || 2000;
+    L.circle([n.lat, n.lon], {
+      radius: range, color: range > 2000 ? '#22d3ee' : '#64748b',
+      weight: range > 2000 ? 0.8 : 0.3, fillOpacity: 0.02, dashArray: '4 4',
+    }).addTo(map);
   });
 
   // Links
@@ -263,8 +270,10 @@ function drawNetworkMap(data) {
       L.circleMarker([n.lat, n.lon], { radius: 12, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.9 }).addTo(map);
     }
 
+    const isRooftop = (n.lora_range || 2000) > 2000;
+    const nodeRadius = n.is_border ? 8 : isRooftop ? 6 : 4;
     const marker = L.circleMarker([n.lat, n.lon], {
-      radius: n.is_border ? 9 : 7, color: color, weight: 2, fillColor: color, fillOpacity: 0.9,
+      radius: nodeRadius, color: color, weight: isRooftop ? 2.5 : 1.5, fillColor: color, fillOpacity: 0.9,
     }).addTo(map);
 
     // Build popup content

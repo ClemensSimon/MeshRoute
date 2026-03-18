@@ -102,15 +102,23 @@ class VNode:
         return wire_pack(PKT_DATA, self.id, dst, self.pkt_counter, 0, 20, nhop, 3, msg.encode()[:200])
 
 class VLoRa:
-    def __init__(self, nodes, max_range=70000):
+    def __init__(self, nodes, max_range=2000):
         self.nodes = {n.id: n for n in nodes}; self.max_range = max_range; self.total_tx = 0
+
+    def _in_range(self, a_id, b_id):
+        """Check if two nodes can communicate (min of both ranges)."""
+        a, b = self.nodes[a_id], self.nodes[b_id]
+        d = a.distance_to(b)
+        effective_range = min(getattr(a, 'lora_range', self.max_range),
+                              getattr(b, 'lora_range', self.max_range))
+        return d <= effective_range, d
 
     def deliver_ogm(self, sid, pkt_bytes):
         pkt = wire_unpack(pkt_bytes)
         for n in self.nodes.values():
             if n.id == sid: continue
-            d = self.nodes[sid].distance_to(n)
-            if d > self.max_range: continue
+            in_range, d = self._in_range(sid, n.id)
+            if not in_range: continue
             rssi = 14 - (20*math.log10(max(1,d)) + 32)
             if random.random() > max(0, min(1, (rssi+120)/70)): continue
             n.receive_ogm(pkt, rssi, rssi+120)
@@ -126,6 +134,8 @@ class VLoRa:
             elif action == 'DIRECT':
                 tx += 1; path.append(nhop)
                 if nhop not in self.nodes: return False, tx, path
+                in_range, _ = self._in_range(cur.id, nhop)
+                if not in_range: return False, tx, path
                 pkt = dict(pkt); pkt['hops'] += 1; cur = self.nodes[nhop]
             elif action == 'FLOOD':
                 tx += len(cur.neighbors)
@@ -138,32 +148,54 @@ class VLoRa:
             else: return False, tx, path
         return False, tx, path
 
-# Create network — real Munich locations, ~3km spread, LoRa range 2km
-# Cluster 0: Munich Altstadt (city center)
-# Cluster 1: Munich Schwabing (north)
-# N4 and N5 are between clusters (bridge nodes)
-nodes = [
-    # Cluster 0: Altstadt — Marienplatz area
-    VNode(0, 48.1371, 11.5754, 95),  # N0: Marienplatz
-    VNode(1, 48.1352, 11.5700, 90),  # N1: Sendlinger Tor
-    VNode(2, 48.1330, 11.5820, 85),  # N2: Isartor
-    VNode(3, 48.1395, 11.5690, 88),  # N3: Stachus/Karlsplatz
-    # Bridge zone
-    VNode(4, 48.1450, 11.5750, 92),  # N4: Odeonsplatz (bridge south)
-    VNode(5, 48.1520, 11.5830, 80),  # N5: Englischer Garten Sued (bridge north)
-    # Cluster 1: Schwabing — north Munich
-    VNode(6, 48.1580, 11.5860, 87),  # N6: Muenchner Freiheit
-    VNode(7, 48.1620, 11.5780, 91),  # N7: Uni/LMU
-    VNode(8, 48.1560, 11.5720, 83),  # N8: Hohenzollernplatz
-    VNode(9, 48.1650, 11.5900, 89),  # N9: Nordfriedhof
+# ── Create 100-node network across Munich ──
+# 5 clusters based on real Munich districts, ~2km LoRa range
+
+MUNICH_CLUSTERS = {
+    'Altstadt':    (48.137, 11.575, 15),  # center lat, lon, node count
+    'Schwabing':   (48.160, 11.585, 20),
+    'Haidhausen':  (48.130, 11.600, 20),
+    'Sendling':    (48.118, 11.555, 20),
+    'Neuhausen':   (48.155, 11.540, 25),
+}
+
+MUNICH_LANDMARKS = [
+    # (id, lat, lon, name) — notable locations for labeling
+    (0, 48.1371, 11.5754, 'Marienplatz'),
+    (15, 48.1620, 11.5780, 'Uni/LMU'),
+    (35, 48.1310, 11.6050, 'Ostbahnhof'),
+    (55, 48.1190, 11.5500, 'Harras'),
+    (75, 48.1530, 11.5370, 'Rotkreuzplatz'),
+    (99, 48.1500, 11.5600, 'Hauptbahnhof'),
 ]
 
-# Node names for display
-NODE_NAMES = {
-    0: 'Marienplatz', 1: 'Sendlinger Tor', 2: 'Isartor', 3: 'Karlsplatz',
-    4: 'Odeonsplatz', 5: 'Engl. Garten S', 6: 'Muenchner Freiheit',
-    7: 'Uni/LMU', 8: 'Hohenzollernplatz', 9: 'Nordfriedhof',
-}
+random.seed(42)
+nodes = []
+nid = 0
+for district, (clat, clon, count) in MUNICH_CLUSTERS.items():
+    for i in range(count):
+        lat = clat + random.gauss(0, 0.006)  # ~600m std dev
+        lon = clon + random.gauss(0, 0.008)
+        batt = random.randint(40, 100)
+        node = VNode(nid, round(lat, 6), round(lon, 6), batt)
+        # 20% are rooftop nodes (3km range), 80% handheld (1.5km range)
+        node.lora_range = 3000 if random.random() < 0.2 else 1500
+        nodes.append(node)
+        nid += 1
+
+# Apply landmark names
+NODE_NAMES = {}
+for lid, llat, llon, lname in MUNICH_LANDMARKS:
+    if lid < len(nodes):
+        nodes[lid].lat = llat; nodes[lid].lon = llon
+        NODE_NAMES[lid] = lname
+# Name remaining by district
+nid = 0
+for district, (_, _, count) in MUNICH_CLUSTERS.items():
+    for i in range(count):
+        if nid not in NODE_NAMES:
+            NODE_NAMES[nid] = f'{district} #{i+1}'
+        nid += 1
 
 random.seed(42)
 lora = VLoRa(nodes, max_range=2000)  # 2km LoRa range — realistic urban
@@ -174,7 +206,8 @@ for n in nodes: n.build_routes(nodes)
 # Run 20 messages
 random.seed(42)
 messages = []
-for i in range(20):
+N_MESSAGES = 50
+for i in range(N_MESSAGES):
     src = random.choice(nodes)
     dst = random.choice([n for n in nodes if n.id != src.id])
     d, tx, path = lora.deliver_data(src.id, src.create_data(dst.id, f'M{i}'))
@@ -191,7 +224,9 @@ for i in range(20):
 
 node_info = [{'id':n.id,'name':NODE_NAMES.get(n.id, f'Node {n.id}'),
               'lat':n.lat,'lon':n.lon,'cluster':n.cluster,'geohash':n.geohash,
-              'is_border':n.is_border,'battery':n.battery,'neighbors':sorted(n.neighbors.keys()),
+              'is_border':n.is_border,'battery':n.battery,
+              'lora_range': getattr(n, 'lora_range', 2000),
+              'neighbors':sorted(n.neighbors.keys()),
               'routes':len(n.routing_table)} for n in nodes]
 clusters = {}
 for n in nodes: clusters.setdefault(str(n.cluster), []).append(n.id)
@@ -205,11 +240,11 @@ output = {
     'description': 'Firmware logic running on 10 simulated ESP32 nodes with LoRa radio model',
     'nodes': node_info, 'clusters': clusters, 'messages': messages,
     'summary': {
-        'total_messages': 20, 's5_delivered': s5d,
-        's5_delivery_rate': round(s5d/20*100, 1),
+        'total_messages': N_MESSAGES, 's5_delivered': s5d,
+        's5_delivery_rate': round(s5d/N_MESSAGES*100, 1),
         's5_total_tx': s5tx, 's5_avg_tx': round(s5tx/max(s5d,1), 1),
         's5_avg_hops': round(sum(m['s5_hops'] for m in messages if m['s5_delivered'])/max(s5d,1), 1),
-        'flood_total_tx': ftx, 'flood_avg_tx': round(ftx/20, 1),
+        'flood_total_tx': ftx, 'flood_avg_tx': round(ftx/N_MESSAGES, 1),
         'tx_savings_pct': round((1-s5tx/max(ftx,1))*100, 1),
     }
 }
