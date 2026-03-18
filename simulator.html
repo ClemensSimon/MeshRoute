@@ -305,6 +305,7 @@ const CLUSTER_BORDER_PASTEL = [
   'rgba(129, 140, 248, 0.15)',
 ];
 const PI2 = Math.PI * 2;
+const S5_MAX_HOPS = 20; // Safety cap — S5 has no hop limit, but cap for loop prevention
 
 // Polyfill for roundRect (older browsers)
 if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -752,8 +753,8 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
   const srcNode = net.nodes[src], dstNode = net.nodes[dst];
   const bothS5 = srcNode.isS5 && dstNode.isS5;
 
-  // Check if there's an all-S5 path (every hop goes through S5 nodes)
-  if (bothS5) {
+  // Check if there's an all-S5 path (SRC must be S5; intermediates must be S5; DST can be anything)
+  if (srcNode.isS5) {
     const s5Path = bfsPathS5Only(net.nodes, net.links, src, dst);
     if (s5Path) {
       // Pure S5 directed routing — like System 5
@@ -800,48 +801,65 @@ function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
 
   while (queue.length) {
     const [cur, hop] = queue.shift();
-    if (hop >= 15 || hop >= hopLimit) continue;
     const node = net.nodes[cur];
 
+    // Hop limit: S5 nodes ignore it (directed routing = 1 TX/hop, no broadcast storm)
+    // Legacy nodes respect it (they flood, so hop limit prevents storm)
+    if (!node.isS5) {
+      if (hop >= hopLimit) continue;
+    }
+    if (hop >= S5_MAX_HOPS) continue; // safety cap for all nodes
+
     if (cur !== src) {
-      const neighborRebroadcasted = Object.keys(node.neighbors).some(
-        nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
-      );
-      // Same suppression as legacy — backward compatible
-      if (neighborRebroadcasted && rng.next() < 0.4) {
-        suppressed++;
-        continue;
+      // Suppression: only for legacy nodes. S5 nodes don't suppress — they route directed.
+      if (!node.isS5) {
+        const neighborRebroadcasted = Object.keys(node.neighbors).some(
+          nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
+        );
+        if (neighborRebroadcasted && rng.next() < 0.4) {
+          suppressed++;
+          continue;
+        }
       }
     }
 
     rebroadcast.add(cur);
 
-    // S5 optimization: if this node is S5 and knows the next hop toward DST,
-    // send ONLY to that neighbor (directed) instead of broadcasting to all.
-    const nextHopTarget = (node.isS5 && s5NextHop[cur] != null) ? s5NextHop[cur] : null;
-
-    if (nextHopTarget != null && net.nodes[nextHopTarget].battery > 0) {
-      // Directed send — 1 TX only
-      const nid = nextHopTarget;
-      const link = net.links.find(l => l.alive &&
-        ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
-      if (link) {
-        txEvents.push({ from: cur, to: nid, time: tick++, hop, mode: 's5' });
-        if (rng.next() <= link.quality && !seen.has(nid)) {
-          seen.add(nid); nodesReached.add(nid);
-          if (nid === dst) { delivered = true; }
-          else if (net.nodes[nid].battery > 0) queue.push([nid, hop + 1]);
+    // S5 node: directed routing via routing table (1 TX)
+    if (node.isS5 && s5NextHop[cur] != null) {
+      const nid = s5NextHop[cur];
+      if (net.nodes[nid].battery > 0) {
+        const link = net.links.find(l => l.alive &&
+          ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+        if (link) {
+          txEvents.push({ from: cur, to: nid, time: tick++, hop, mode: 's5' });
+          if (rng.next() <= link.quality && !seen.has(nid)) {
+            seen.add(nid); nodesReached.add(nid);
+            if (nid === dst) { delivered = true; }
+            else if (net.nodes[nid].battery > 0) queue.push([nid, hop + 1]);
+          }
         }
       }
     } else {
-      // Legacy flood — broadcast to ALL neighbors
-      for (const [nidStr, quality] of Object.entries(node.neighbors)) {
-        const nid = +nidStr;
+      // Legacy node (or S5 without routing info): flood to ALL neighbors
+      // But prefer S5 neighbors first (they can route further without flooding)
+      const neighborIds = Object.keys(node.neighbors).map(Number);
+      neighborIds.sort((a, b) => {
+        // S5 neighbors first, then by link quality
+        const aS5 = net.nodes[a].isS5 ? 1 : 0;
+        const bS5 = net.nodes[b].isS5 ? 1 : 0;
+        if (aS5 !== bS5) return bS5 - aS5;
+        return (node.neighbors[b] || 0) - (node.neighbors[a] || 0);
+      });
+
+      for (const nid of neighborIds) {
+        const quality = node.neighbors[nid];
         const link = net.links.find(l => l.alive &&
           ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
         if (!link) continue;
 
-        txEvents.push({ from: cur, to: nid, time: tick++, hop, mode: 'flood' });
+        const mode = (node.isS5 && net.nodes[nid].isS5) ? 's5' : 'flood';
+        txEvents.push({ from: cur, to: nid, time: tick++, hop, mode });
         if (rng.next() > quality) continue;
         if (seen.has(nid)) continue;
         seen.add(nid); nodesReached.add(nid);
