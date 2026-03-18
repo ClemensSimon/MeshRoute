@@ -2,6 +2,8 @@
 
 **Replacing Meshtastic's naive flooding with intelligent geo-clustered multi-path routing.**
 
+**[Live Demo](https://clemenssimon.github.io/MeshRoute/)** — Interactive presentation with algorithm visualizations, resilience testing, and scale scenarios.
+
 Meshtastic uses blind flooding: every node rebroadcasts every message. One message to one recipient causes *n* transmissions across the entire network. With LoRa's constraints (1-50 kbps, 1% EU duty cycle, half-duplex), this collapses beyond ~100 nodes.
 
 MeshRoute proposes **System 5**, a routing protocol that combines ideas from OSPF, B.A.T.M.A.N., ECMP, ant colony optimization, and DNS into one self-healing system.
