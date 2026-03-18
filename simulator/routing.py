@@ -121,6 +121,7 @@ class System5Router:
     - Proportional load distribution across routes
     - QoS gate based on local Network Health Score
     - Back-pressure: avoids overloaded nodes
+    - Fallback: scoped cluster flooding when all routes fail
     """
 
     # Weight parameters
@@ -141,8 +142,15 @@ class System5Router:
     # Back-pressure: skip nodes with queue load above this
     BACKPRESSURE_THRESHOLD = 0.8
 
+    # Max retries per hop before giving up on a route
+    MAX_RETRIES = 2
+
     def __init__(self, seed=42):
         self.rng = random.Random(seed)
+        # Stats tracking for QoS analysis
+        self.qos_stats = defaultdict(lambda: {"sent": 0, "delivered": 0})
+        self.fallback_used = 0
+        self.route_switches = 0
 
     def _qos_gate(self, node, packet):
         """Check if packet passes the QoS gate based on local NHS.
@@ -236,8 +244,139 @@ class System5Router:
 
         return valid_routes[-1]
 
+    def _try_route(self, network, packet, path, stats):
+        """Attempt to forward a packet along a specific route path.
+
+        Returns True if delivered, False if failed mid-route.
+        """
+        current_path = [path[0]]
+
+        for i in range(len(path) - 1):
+            current_id = path[i]
+            next_id = path[i + 1]
+
+            current_node = network.nodes[current_id]
+            link = network.get_link(current_id, next_id)
+
+            # Transmit
+            stats.total_tx += 1
+            stats.node_tx_counts[current_id] += 1
+            current_node.packets_forwarded += 1
+
+            # Simulate battery drain
+            current_node.battery = max(0, current_node.battery - 0.01)
+
+            # Check link success with retries
+            quality = link.quality if link else 0.1
+            delivered_hop = False
+            for retry in range(self.MAX_RETRIES):
+                if self.rng.random() <= quality:
+                    delivered_hop = True
+                    break
+                stats.total_tx += 1
+                stats.node_tx_counts[current_id] += 1
+
+            if not delivered_hop:
+                return False
+
+            next_node = network.nodes[next_id]
+            if next_node.battery <= 0:
+                return False
+
+            current_path.append(next_id)
+
+            # Add to queue (simulate processing)
+            next_node.queue.append(packet.id)
+            if len(next_node.queue) > 50:
+                next_node.queue.pop(0)  # drop oldest
+
+            if next_id == packet.dst:
+                # Delivered!
+                stats.delivered = True
+                stats.hops = len(current_path) - 1
+                stats.path = current_path
+                packet.hops = current_path
+                packet.delivered_at = network.tick
+                next_node.packets_received += 1
+                return True
+
+            # QoS gate at intermediate node
+            if not self._qos_gate(next_node, packet):
+                return False
+
+        return False
+
+    def _fallback_cluster_flood(self, network, packet, stats):
+        """Scoped flooding within the source node's cluster and immediate neighbors.
+
+        Used when all pre-computed routes fail. Much cheaper than full flooding
+        because it's limited to the local cluster + border nodes of adjacent clusters.
+        """
+        src_node = network.nodes[packet.src]
+        cluster_id = src_node.cluster_id
+
+        # Gather nodes to flood: own cluster + border nodes of neighbor clusters
+        flood_nodes = set()
+        if cluster_id is not None and cluster_id in network.clusters:
+            for nid in network.clusters[cluster_id].members:
+                if network.nodes[nid].battery > 0:
+                    flood_nodes.add(nid)
+
+        # Also include border nodes of neighboring clusters
+        for nid in flood_nodes.copy():
+            for neighbor_id in network.nodes[nid].neighbors:
+                neighbor = network.nodes[neighbor_id]
+                if neighbor.battery > 0 and neighbor.is_border:
+                    flood_nodes.add(neighbor_id)
+
+        # BFS flood within this scope
+        seen = {packet.src}
+        queue = [(packet.src, 0, [packet.src])]
+        delivery_path = None
+
+        while queue:
+            current_id, hop_count, path = queue.pop(0)
+            if hop_count >= min(packet.ttl, 10):  # cap at 10 hops for scoped flood
+                continue
+
+            current_node = network.nodes[current_id]
+            for neighbor_id, quality in current_node.neighbors.items():
+                if neighbor_id not in flood_nodes:
+                    continue
+
+                stats.total_tx += 1
+                stats.node_tx_counts[current_id] += 1
+
+                if self.rng.random() > quality:
+                    continue
+
+                if neighbor_id in seen:
+                    continue
+                seen.add(neighbor_id)
+                new_path = path + [neighbor_id]
+
+                if neighbor_id == packet.dst:
+                    if delivery_path is None or len(new_path) < len(delivery_path):
+                        delivery_path = new_path
+                    continue
+
+                queue.append((neighbor_id, hop_count + 1, new_path))
+
+        if delivery_path:
+            stats.delivered = True
+            stats.hops = len(delivery_path) - 1
+            stats.path = delivery_path
+            packet.hops = delivery_path
+            packet.delivered_at = network.tick
+            network.nodes[packet.dst].packets_received += 1
+            return True
+        return False
+
     def route(self, network, packet):
         """Route a packet using System 5 algorithm.
+
+        Tries pre-computed routes first (up to 3 alternatives), then falls back
+        to scoped cluster flooding if all routes fail.
 
         Args:
             network: MeshNetwork instance
@@ -256,79 +395,50 @@ class System5Router:
         if dst_id not in network.nodes:
             return stats
 
+        # Track QoS stats
+        self.qos_stats[packet.priority]["sent"] += 1
+
         # QoS gate at source
         if not self._qos_gate(src_node, packet):
             return stats  # packet dropped by QoS
 
         # Look up routes (use get_routes for lazy computation in large networks)
         routes = network.get_routes(src_node.id, dst_id)
-        if not routes:
-            return stats  # no route known
 
-        # Select best route
-        selected = self._select_route(routes, network)
-        if not selected:
-            return stats  # all routes dead
+        # Try each available route
+        if routes:
+            # Get sorted routes by weight
+            valid_routes = []
+            for route in routes:
+                # Quick check: are all nodes alive?
+                alive = all(
+                    network.nodes[nid].battery > 0 for nid in route.path
+                )
+                if alive:
+                    valid_routes.append(route)
 
-        # Forward packet along selected route
-        path = selected.path
-        current_path = [path[0]]
-
-        for i in range(len(path) - 1):
-            current_id = path[i]
-            next_id = path[i + 1]
-
-            current_node = network.nodes[current_id]
-            link = network.get_link(current_id, next_id)
-
-            # Transmit
-            stats.total_tx += 1
-            stats.node_tx_counts[current_id] += 1
-            current_node.packets_forwarded += 1
-
-            # Simulate battery drain
-            current_node.battery = max(0, current_node.battery - 0.01)
-
-            # Check link success
-            quality = link.quality if link else 0.1
-            if self.rng.random() > quality:
-                # Transmission failed — try retransmit once
-                stats.total_tx += 1
-                stats.node_tx_counts[current_id] += 1
-                if self.rng.random() > quality:
-                    # Second attempt also failed — packet lost
+            # Try weighted selection first, then alternatives
+            tried = set()
+            for attempt in range(min(len(valid_routes), 3)):
+                remaining = [r for r in valid_routes if id(r) not in tried]
+                if not remaining:
                     break
+                selected = self._select_route(remaining, network)
+                if not selected:
+                    break
+                tried.add(id(selected))
 
-            next_node = network.nodes[next_id]
-            if next_node.battery <= 0:
-                break
+                if self._try_route(network, packet, selected.path, stats):
+                    if attempt > 0:
+                        self.route_switches += 1
+                    self.qos_stats[packet.priority]["delivered"] += 1
+                    stats.energy = stats.total_tx
+                    return stats
 
-            current_path.append(next_id)
-
-            # Add to queue (simulate processing)
-            next_node.queue.append(packet.id)
-            if len(next_node.queue) > 50:
-                next_node.queue.pop(0)  # drop oldest
-
-            if next_id == dst_id:
-                # Delivered!
-                stats.delivered = True
-                stats.hops = len(current_path) - 1
-                stats.path = current_path
-                packet.hops = current_path
-                packet.delivered_at = network.tick
-                next_node.packets_received += 1
-                break
-
-            # QoS gate at intermediate node
-            if not self._qos_gate(next_node, packet):
-                break  # dropped by QoS at intermediate
-
-        # Clean up queues
-        for nid in current_path:
-            node = network.nodes[nid]
-            if packet.id in node.queue:
-                node.queue.remove(packet.id)
+        # All pre-computed routes failed — fallback to scoped cluster flood
+        self.fallback_used += 1
+        if self._fallback_cluster_flood(network, packet, stats):
+            self.qos_stats[packet.priority]["delivered"] += 1
 
         stats.energy = stats.total_tx
         return stats

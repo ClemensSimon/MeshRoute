@@ -866,4 +866,129 @@ footer {
   .concl-results-grid { grid-template-columns: 1fr; }
   .bar-chart { height: 160px; gap: 0.3rem; }
   .tldr-stats { flex-direction: column; align-items: center; }
+  .sim-charts-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   SIMULATION RESULTS SECTION
+   ============================================================ */
+
+.sim-results-section {
+  padding-bottom: 4rem;
+}
+
+/* Summary table */
+.sim-table-wrap {
+  overflow-x: auto;
+  margin: 2rem 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.sim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.sim-table th {
+  background: var(--bg-elevated);
+  color: var(--cyan);
+  padding: 0.75rem 1rem;
+  text-align: right;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.sim-table th:first-child {
+  text-align: left;
+}
+
+.sim-table td {
+  padding: 0.6rem 1rem;
+  text-align: right;
+  color: var(--text-dim);
+  border-bottom: 1px solid rgba(42, 54, 84, 0.5);
+}
+
+.sim-table td:first-child {
+  text-align: left;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.sim-table tr:hover td {
+  background: rgba(34, 211, 238, 0.03);
+}
+
+.sim-table .flood-val {
+  color: var(--red);
+}
+
+.sim-table .sys5-val {
+  color: var(--cyan);
+}
+
+.sim-table .stress-row td {
+  background: rgba(248, 113, 113, 0.03);
+}
+
+.sim-table .stress-row td:first-child {
+  border-left: 2px solid var(--orange);
+}
+
+/* Charts grid */
+.sim-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.sim-chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.sim-chart-card h4 {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.chart-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.sim-chart-wrap {
+  width: 100%;
+  height: 280px;
+  position: relative;
+}
+
+.sim-chart-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .sim-charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .sim-chart-wrap {
+    height: 240px;
+  }
 }

@@ -30,6 +30,7 @@ class ScenarioConfig:
 
 # Standard scenarios
 SCENARIOS = [
+    # --- Scale tests ---
     ScenarioConfig(
         name="Small Local Mesh",
         n_nodes=20,
@@ -54,6 +55,16 @@ SCENARIOS = [
         n_messages=100,
         geohash_prefix=4,
     ),
+    # --- Stress tests ---
+    ScenarioConfig(
+        name="Stress Test (30% degraded links)",
+        n_nodes=100,
+        area_size=5000,
+        lora_range=2000,
+        n_messages=100,
+        link_degradation=0.3,
+        geohash_prefix=5,
+    ),
     ScenarioConfig(
         name="Stress Test (50% degraded links)",
         n_nodes=100,
@@ -70,6 +81,25 @@ SCENARIOS = [
         lora_range=2000,
         n_messages=100,
         node_kill_fraction=0.2,
+        geohash_prefix=5,
+    ),
+    ScenarioConfig(
+        name="Combined Stress (30% links + 10% nodes)",
+        n_nodes=100,
+        area_size=5000,
+        lora_range=2000,
+        n_messages=100,
+        link_degradation=0.3,
+        node_kill_fraction=0.1,
+        geohash_prefix=5,
+    ),
+    # --- Dense urban ---
+    ScenarioConfig(
+        name="Dense Urban (high connectivity)",
+        n_nodes=200,
+        area_size=3000,
+        lora_range=2000,
+        n_messages=100,
         geohash_prefix=5,
     ),
 ]
@@ -90,6 +120,10 @@ class BenchmarkResult:
         self.tx_per_delivered = 0.0
         self.avg_hops = 0.0
         self.energy_score = 0.0
+        # Extended stats
+        self.qos_stats = {}  # priority -> {sent, delivered}
+        self.fallback_used = 0
+        self.route_switches = 0
 
     def compute_derived(self):
         """Compute derived metrics after all messages are processed."""
@@ -113,8 +147,21 @@ class BenchmarkResult:
             max(self.node_tx_counts.values()) if self.node_tx_counts else 0
         )
 
+    def _load_distribution(self):
+        """Compute load distribution buckets for visualization."""
+        if not self.node_tx_counts:
+            return []
+        counts = sorted(self.node_tx_counts.values())
+        max_load = max(counts) if counts else 1
+        # Create 10 buckets
+        buckets = [0] * 10
+        for c in counts:
+            bucket = min(int(c / max(max_load, 1) * 9), 9)
+            buckets[bucket] += 1
+        return buckets
+
     def to_dict(self):
-        return {
+        result = {
             "router": self.router_name,
             "messages_sent": self.messages_sent,
             "messages_delivered": self.messages_delivered,
@@ -124,7 +171,23 @@ class BenchmarkResult:
             "avg_hops": round(self.avg_hops, 1),
             "energy_score": round(self.energy_score, 1),
             "max_node_load": self.max_node_load,
+            "load_distribution": self._load_distribution(),
         }
+        if self.qos_stats:
+            result["qos_breakdown"] = {}
+            for priority in range(8):
+                ps = self.qos_stats.get(priority, {"sent": 0, "delivered": 0})
+                if ps["sent"] > 0:
+                    result["qos_breakdown"][str(priority)] = {
+                        "sent": ps["sent"],
+                        "delivered": ps["delivered"],
+                        "rate": round(ps["delivered"] / ps["sent"] * 100, 1),
+                    }
+        if self.fallback_used > 0:
+            result["fallback_used"] = self.fallback_used
+        if self.route_switches > 0:
+            result["route_switches"] = self.route_switches
+        return result
 
 
 def build_network(config, seed=42):
@@ -220,6 +283,12 @@ def run_router(router, network, messages):
         node.packets_received = 0
         node.queue.clear()
 
+    # Reset router stats if System5
+    if hasattr(router, 'qos_stats'):
+        router.qos_stats.clear()
+        router.fallback_used = 0
+        router.route_switches = 0
+
     for i, (src, dst, priority) in enumerate(messages):
         packet = Packet(src, dst, priority=priority)
         packet.created_at = i
@@ -237,6 +306,13 @@ def run_router(router, network, messages):
             result.node_tx_counts[nid] += count
 
     result.compute_derived()
+
+    # Copy extended stats from System5Router
+    if hasattr(router, 'qos_stats'):
+        result.qos_stats = {k: dict(v) for k, v in router.qos_stats.items()}
+        result.fallback_used = router.fallback_used
+        result.route_switches = router.route_switches
+
     return result
 
 
@@ -326,9 +402,23 @@ def run_scenario(config, scenario_num, verbose=True):
         print(f"\n  -> System 5 uses {bw_savings:.1f}% less bandwidth")
         print(f"  -> Max node load reduced by {load_reduction:.1f}%")
 
+    # Compute category
+    if config.link_degradation > 0 or config.node_kill_fraction > 0:
+        category = "stress"
+    elif config.n_nodes >= 200:
+        category = "dense"
+    else:
+        category = "scale"
+
+    # Bandwidth savings
+    bw_savings = 0.0
+    if flood_result.total_tx > 0:
+        bw_savings = round((1 - s5_result.total_tx / flood_result.total_tx) * 100, 2)
+
     return {
         "scenario": scenario_num,
         "name": config.name,
+        "category": category,
         "config": {
             "n_nodes": config.n_nodes,
             "area_size": config.area_size,
@@ -340,6 +430,15 @@ def run_scenario(config, scenario_num, verbose=True):
         "network": net_stats,
         "flooding": flood_result.to_dict(),
         "system5": s5_result.to_dict(),
+        "comparison": {
+            "bw_savings_pct": bw_savings,
+            "load_reduction_pct": round(
+                (1 - s5_result.max_node_load / flood_result.max_node_load) * 100, 1
+            ) if flood_result.max_node_load > 0 else 0.0,
+            "tx_ratio": round(
+                s5_result.total_tx / flood_result.total_tx, 4
+            ) if flood_result.total_tx > 0 else 0.0,
+        },
     }
 
 

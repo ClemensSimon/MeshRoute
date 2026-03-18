@@ -22,6 +22,7 @@
       <li><a href="#formation">Formation</a></li>
       <li><a href="#scenarios">Scenarios</a></li>
       <li><a href="#resilience">Resilience</a></li>
+      <li><a href="#sim-results">Results</a></li>
       <li><a href="#glossary">Glossary</a></li>
       <li><a href="summary.html">Summary</a></li>
     </ul>
@@ -619,9 +620,72 @@
   </div>
 </section>
 
+<!-- SIMULATION RESULTS -->
+<section id="sim-results" class="sim-results-section">
+  <div class="section-tag reveal">09 — Simulation Results</div>
+  <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
+  <p class="section-desc reveal">Python simulation comparing naive flooding vs System 5 across 8 scenarios — from a 20-node neighborhood to a 500-node region, including stress tests with degraded links and killed nodes.</p>
+
+  <!-- Summary Table -->
+  <div class="sim-table-wrap reveal">
+    <table class="sim-table">
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>Nodes</th>
+          <th>Flood TX</th>
+          <th>Sys5 TX</th>
+          <th>Delivery</th>
+          <th>BW Saved</th>
+          <th>Hops</th>
+          <th>Max Load</th>
+        </tr>
+      </thead>
+      <tbody id="sim-table-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="sim-charts-grid">
+    <div class="sim-chart-card reveal">
+      <h4>Transmissions: Flooding vs System 5</h4>
+      <p class="chart-subtitle">Log scale — orders of magnitude difference</p>
+      <div class="sim-chart-wrap">
+        <canvas id="chart-bandwidth"></canvas>
+      </div>
+    </div>
+    <div class="sim-chart-card reveal">
+      <h4>Delivery Rate Under Stress</h4>
+      <p class="chart-subtitle">System 5 maintains high delivery even under failures</p>
+      <div class="sim-chart-wrap">
+        <canvas id="chart-delivery"></canvas>
+      </div>
+    </div>
+    <div class="sim-chart-card reveal">
+      <h4>Node Load Distribution</h4>
+      <p class="chart-subtitle">How evenly traffic is spread across nodes</p>
+      <div class="sim-chart-wrap">
+        <canvas id="chart-load"></canvas>
+      </div>
+    </div>
+    <div class="sim-chart-card reveal">
+      <h4>QoS Priority Gate (Stress Test)</h4>
+      <p class="chart-subtitle">High-priority traffic gets through even when the network is degraded</p>
+      <div class="sim-chart-wrap">
+        <canvas id="chart-qos"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key insight -->
+  <div class="tldr-card reveal" style="margin-top:2rem">
+    <p class="tldr-text">Under normal conditions, System 5 delivers <strong>100% of messages</strong> using <strong>99.6–99.97% less bandwidth</strong> than flooding. Under extreme stress (50% degraded links), delivery drops to 73% — but still uses <strong>95% less bandwidth</strong>. The fallback mechanism (scoped cluster flooding) catches packets that pre-computed routes miss.</p>
+  </div>
+</section>
+
 <!-- GLOSSARY -->
 <section id="glossary">
-  <div class="section-tag reveal">09 — Glossary</div>
+  <div class="section-tag reveal">10 — Glossary</div>
   <h2 class="section-title reveal">Key Terms Explained</h2>
   <p class="section-desc reveal">Quick reference for the technical terminology used throughout this document.</p>
   <div class="glossary-grid">
@@ -645,7 +709,7 @@
 
 <!-- CONCLUSION TEASER -->
 <section id="conclusion">
-  <div class="section-tag reveal">10 — Conclusion</div>
+  <div class="section-tag reveal">11 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
   <p class="section-desc reveal">From naive flooding to an intelligent, self-healing mesh — System 5 scores 8.8/10, delivering 98% reliability with 92% less bandwidth.</p>
 
@@ -694,6 +758,7 @@
 <script src="js/scenario-sims.js"></script>
 <script src="js/formation.js"></script>
 <script src="js/resilience.js"></script>
+<script src="js/sim-results.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
