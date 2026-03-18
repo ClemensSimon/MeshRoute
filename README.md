@@ -107,7 +107,7 @@ The simulator compares all four approaches on identical networks (100 messages e
 
 ## ESP32 Firmware Prototype
 
-Working standalone firmware for three LoRa boards — no Meshtastic fork needed. **[Installation Guide](firmware/README.md)**
+Working standalone firmware for three LoRa boards — no Meshtastic fork needed. **[Installation Guide](firmware/README.md)** | **[Virtual Network Test Results](https://clemenssimon.github.io/MeshRoute/docs/esp-test-results.html)**
 
 ```
 firmware/

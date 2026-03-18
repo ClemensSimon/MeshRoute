@@ -1,0 +1,558 @@
+{
+  "test_name": "Virtual ESP32 Network \u2014 10 Nodes",
+  "description": "Firmware logic running on 10 simulated ESP32 nodes with LoRa radio model",
+  "nodes": [
+    {
+      "id": 0,
+      "lat": 48.13,
+      "lon": 11.58,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": true,
+      "battery": 95,
+      "neighbors": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        8
+      ],
+      "routes": 9
+    },
+    {
+      "id": 1,
+      "lat": 48.132,
+      "lon": 11.582,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": false,
+      "battery": 90,
+      "neighbors": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "routes": 9
+    },
+    {
+      "id": 2,
+      "lat": 48.134,
+      "lon": 11.584,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": false,
+      "battery": 85,
+      "neighbors": [
+        0,
+        1,
+        3,
+        4,
+        5
+      ],
+      "routes": 9
+    },
+    {
+      "id": 3,
+      "lat": 48.128,
+      "lon": 11.58,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": true,
+      "battery": 88,
+      "neighbors": [
+        0,
+        1,
+        4,
+        5,
+        8
+      ],
+      "routes": 9
+    },
+    {
+      "id": 4,
+      "lat": 48.13,
+      "lon": 11.582,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": true,
+      "battery": 92,
+      "neighbors": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        7,
+        8
+      ],
+      "routes": 9
+    },
+    {
+      "id": 5,
+      "lat": 48.133,
+      "lon": 11.59,
+      "cluster": 22,
+      "geohash": "u281",
+      "is_border": true,
+      "battery": 80,
+      "neighbors": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        9
+      ],
+      "routes": 9
+    },
+    {
+      "id": 6,
+      "lat": 48.37,
+      "lon": 10.9,
+      "cluster": 138,
+      "geohash": "u0xg",
+      "is_border": true,
+      "battery": 87,
+      "neighbors": [
+        4,
+        5,
+        7,
+        8,
+        9
+      ],
+      "routes": 9
+    },
+    {
+      "id": 7,
+      "lat": 48.372,
+      "lon": 10.905,
+      "cluster": 138,
+      "geohash": "u0xg",
+      "is_border": true,
+      "battery": 91,
+      "neighbors": [
+        6,
+        8,
+        9
+      ],
+      "routes": 9
+    },
+    {
+      "id": 8,
+      "lat": 48.365,
+      "lon": 10.895,
+      "cluster": 136,
+      "geohash": "u0xe",
+      "is_border": true,
+      "battery": 83,
+      "neighbors": [
+        0,
+        3,
+        6,
+        7,
+        9
+      ],
+      "routes": 9
+    },
+    {
+      "id": 9,
+      "lat": 48.368,
+      "lon": 10.91,
+      "cluster": 138,
+      "geohash": "u0xg",
+      "is_border": true,
+      "battery": 89,
+      "neighbors": [
+        1,
+        2,
+        4,
+        6,
+        7,
+        8
+      ],
+      "routes": 9
+    }
+  ],
+  "clusters": {
+    "22": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "138": [
+      6,
+      7,
+      9
+    ],
+    "136": [
+      8
+    ]
+  },
+  "messages": [
+    {
+      "msg": 1,
+      "src": 1,
+      "dst": 0,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        1,
+        0
+      ],
+      "flood_tx": 11,
+      "flood_hops": 1
+    },
+    {
+      "msg": 2,
+      "src": 4,
+      "dst": 3,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        4,
+        3
+      ],
+      "flood_tx": 12,
+      "flood_hops": 1
+    },
+    {
+      "msg": 3,
+      "src": 3,
+      "dst": 2,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        3,
+        0,
+        2
+      ],
+      "flood_tx": 16,
+      "flood_hops": 2
+    },
+    {
+      "msg": 4,
+      "src": 1,
+      "dst": 9,
+      "src_cluster": 22,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        1,
+        5,
+        9
+      ],
+      "flood_tx": 17,
+      "flood_hops": 2
+    },
+    {
+      "msg": 5,
+      "src": 1,
+      "dst": 7,
+      "src_cluster": 22,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        1,
+        4,
+        7
+      ],
+      "flood_tx": 15,
+      "flood_hops": 2
+    },
+    {
+      "msg": 6,
+      "src": 0,
+      "dst": 1,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        0,
+        1
+      ],
+      "flood_tx": 11,
+      "flood_hops": 1
+    },
+    {
+      "msg": 7,
+      "src": 1,
+      "dst": 4,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        1,
+        4
+      ],
+      "flood_tx": 12,
+      "flood_hops": 1
+    },
+    {
+      "msg": 8,
+      "src": 3,
+      "dst": 9,
+      "src_cluster": 22,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        3,
+        5,
+        9
+      ],
+      "flood_tx": 17,
+      "flood_hops": 2
+    },
+    {
+      "msg": 9,
+      "src": 9,
+      "dst": 0,
+      "src_cluster": 138,
+      "dst_cluster": 22,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        9,
+        1,
+        0
+      ],
+      "flood_tx": 17,
+      "flood_hops": 2
+    },
+    {
+      "msg": 10,
+      "src": 8,
+      "dst": 3,
+      "src_cluster": 136,
+      "dst_cluster": 22,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        8,
+        3
+      ],
+      "flood_tx": 10,
+      "flood_hops": 1
+    },
+    {
+      "msg": 11,
+      "src": 8,
+      "dst": 6,
+      "src_cluster": 136,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        8,
+        6
+      ],
+      "flood_tx": 10,
+      "flood_hops": 1
+    },
+    {
+      "msg": 12,
+      "src": 3,
+      "dst": 8,
+      "src_cluster": 22,
+      "dst_cluster": 136,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        3,
+        8
+      ],
+      "flood_tx": 10,
+      "flood_hops": 1
+    },
+    {
+      "msg": 13,
+      "src": 9,
+      "dst": 4,
+      "src_cluster": 138,
+      "dst_cluster": 22,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        9,
+        4
+      ],
+      "flood_tx": 13,
+      "flood_hops": 1
+    },
+    {
+      "msg": 14,
+      "src": 0,
+      "dst": 3,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        0,
+        3
+      ],
+      "flood_tx": 11,
+      "flood_hops": 1
+    },
+    {
+      "msg": 15,
+      "src": 6,
+      "dst": 5,
+      "src_cluster": 138,
+      "dst_cluster": 22,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        6,
+        5
+      ],
+      "flood_tx": 11,
+      "flood_hops": 1
+    },
+    {
+      "msg": 16,
+      "src": 4,
+      "dst": 2,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        4,
+        2
+      ],
+      "flood_tx": 12,
+      "flood_hops": 1
+    },
+    {
+      "msg": 17,
+      "src": 3,
+      "dst": 6,
+      "src_cluster": 22,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        3,
+        8,
+        6
+      ],
+      "flood_tx": 15,
+      "flood_hops": 2
+    },
+    {
+      "msg": 18,
+      "src": 1,
+      "dst": 2,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
+      "s5_delivered": true,
+      "s5_tx": 1,
+      "s5_hops": 1,
+      "s5_path": [
+        1,
+        2
+      ],
+      "flood_tx": 10,
+      "flood_hops": 1
+    },
+    {
+      "msg": 19,
+      "src": 6,
+      "dst": 1,
+      "src_cluster": 138,
+      "dst_cluster": 22,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        6,
+        4,
+        1
+      ],
+      "flood_tx": 17,
+      "flood_hops": 2
+    },
+    {
+      "msg": 20,
+      "src": 5,
+      "dst": 6,
+      "src_cluster": 22,
+      "dst_cluster": 138,
+      "cross_cluster": true,
+      "s5_delivered": true,
+      "s5_tx": 2,
+      "s5_hops": 2,
+      "s5_path": [
+        5,
+        9,
+        6
+      ],
+      "flood_tx": 17,
+      "flood_hops": 2
+    }
+  ],
+  "summary": {
+    "total_messages": 20,
+    "s5_delivered": 20,
+    "s5_delivery_rate": 100.0,
+    "s5_total_tx": 28,
+    "s5_avg_tx": 1.4,
+    "s5_avg_hops": 1.4,
+    "flood_total_tx": 264,
+    "flood_avg_tx": 13.2,
+    "tx_savings_pct": 89.4
+  }
+}
