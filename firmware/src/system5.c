@@ -173,6 +173,7 @@ void s5_update_neighbor(s5_node_state_t *state, s5_node_id_t id,
 void s5_remove_neighbor(s5_node_state_t *state, s5_node_id_t id) {
     int idx = _find_neighbor(state, id);
     if (idx < 0) return;
+    if (state->neighbor_count == 0) return; // guard against underflow
 
     // Shift remaining neighbors
     for (uint8_t i = idx; i < state->neighbor_count - 1; i++) {

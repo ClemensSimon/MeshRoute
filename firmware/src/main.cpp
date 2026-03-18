@@ -14,6 +14,10 @@
  */
 
 #include <Arduino.h>
+#if defined(ESP32) || defined(ESP_PLATFORM)
+#include <esp_task_wdt.h>
+#define WDT_TIMEOUT_S 30
+#endif
 #include "board_config.h"
 #include "system5.h"
 #include "lora_hal.h"
@@ -48,7 +52,7 @@ static uint32_t packetsTx = 0;
 static uint32_t packetsRouted = 0;
 
 // Dedup ring buffer (last 64 packet IDs)
-#define DEDUP_SIZE 64
+#define DEDUP_SIZE 128
 static uint32_t dedupRing[DEDUP_SIZE];
 static uint8_t dedupIdx = 0;
 
@@ -294,7 +298,8 @@ static void updateDisplay(void) {
     // Line 4: Position source
     position_t pos = gps_get_position();
     const char *src_str[] = {"NONE", "GPS", "MANUAL", "TRIANG", "INHERIT"};
-    snprintf(line, sizeof(line), "Pos: %s", pos.valid ? src_str[pos.source] : "NONE");
+    const char *ps = (pos.valid && pos.source < 5) ? src_str[pos.source] : "???";
+    snprintf(line, sizeof(line), "Pos: %s", ps);
     display.drawStr(0, 46, line);
 
     // Line 5: Stats
@@ -312,6 +317,13 @@ void setup() {
     delay(1000);
     Serial.printf("\n\n=== MeshRoute System 5 v%s ===\n", S5_FIRMWARE_VERSION);
     Serial.printf("Board: %s\n", BOARD_NAME);
+
+    // Watchdog (30s timeout, reboot on hang)
+#if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_init(WDT_TIMEOUT_S, true);
+    esp_task_wdt_add(NULL);
+    Serial.println("[WDT] Watchdog enabled (30s)");
+#endif
 
     // LED
     pinMode(LED_PIN, OUTPUT);
@@ -331,6 +343,7 @@ void setup() {
     s5_init(&nodeState);
     nodeState.my_id = getNodeId();
     nodeState.my_battery_pct = 100; // TODO: read from ADC/AXP
+    s5_wire_seed_packet_id(nodeState.my_id, millis());
     Serial.printf("Node ID: %08X\n", nodeState.my_id);
 
     // Init GPS
@@ -338,8 +351,13 @@ void setup() {
 
     // Init LoRa
     if (!lora_init()) {
-        Serial.println("FATAL: LoRa init failed!");
-        while (1) { delay(1000); }
+        Serial.println("FATAL: LoRa init failed! Rebooting in 5s...");
+        delay(5000);
+#if defined(ESP32) || defined(ESP_PLATFORM)
+        ESP.restart();
+#else
+        NVIC_SystemReset();
+#endif
     }
     lora_start_receive();
 
@@ -424,4 +442,9 @@ void loop() {
 
     // Serial commands
     handleSerial();
+
+    // Feed watchdog
+#if defined(ESP32) || defined(ESP_PLATFORM)
+    esp_task_wdt_reset();
+#endif
 }

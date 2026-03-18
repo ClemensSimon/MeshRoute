@@ -60,6 +60,11 @@ typedef struct __attribute__((packed)) {
  * Serialize a header + payload into a wire buffer.
  * @return total length (header + payload)
  */
+/**
+ * Seed packet ID generator (call once at boot with unique values).
+ */
+void s5_wire_seed_packet_id(uint32_t node_id, uint32_t boot_time);
+
 uint8_t s5_wire_pack(const s5_wire_header_t *hdr, const uint8_t *payload,
                       uint8_t *out_buf, uint8_t max_len);
 

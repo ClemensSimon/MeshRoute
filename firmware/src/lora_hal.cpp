@@ -17,8 +17,10 @@
     static SPIClass loraSPI(SPI2_HOST);
   #elif defined(ESP32)
     static SPIClass loraSPI(HSPI);
+  #elif defined(NRF52_SERIES) || defined(ARDUINO_ARCH_NRF52)
+    // RAK4631: use SPI with explicit pins
+    static SPIClass loraSPI(NRF_SPIM2, LORA_MISO, LORA_SCK, LORA_MOSI);
   #else
-    // nRF52: use default SPI
     #define loraSPI SPI
   #endif
   static SX1262 radio = new Module(LORA_CS, LORA_DIO1, LORA_RST, LORA_BUSY, loraSPI);
