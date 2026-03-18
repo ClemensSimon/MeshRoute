@@ -186,6 +186,13 @@
             <option value="disaster">Disaster Relief (60 nodes, failures)</option>
             <option value="partition">Partition Recovery (120 nodes, 40% loss)</option>
           </optgroup>
+          <optgroup label="Mixed Mode (Backward Compat.)">
+            <option value="mixed10">10% S5 + 90% Legacy</option>
+            <option value="mixed30">30% S5 + 70% Legacy</option>
+            <option value="mixed50">50% S5 + 50% Legacy</option>
+            <option value="mixed70">70% S5 + 30% Legacy</option>
+            <option value="mixed90">90% S5 + 10% Legacy</option>
+          </optgroup>
         </select>
       </div>
       <div style="flex-shrink:0;">
@@ -262,6 +269,7 @@
       <span><span class="dot" style="background:#fbbf24"></span> Reached</span>
       <span><span class="dot" style="background:#4ade80"></span> SRC</span>
       <span><span class="dot" style="background:#f87171"></span> DST</span>
+      <span style="color:#fff;font-size:0.9rem;">&#9670;</span> S5 Node</span>
     </div>
     <a href="index.html" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--cyan);text-decoration:none;margin-left:auto;">Back to Presentation</a>
   </div>
@@ -331,6 +339,12 @@ const SCENARIOS = {
   highway:   { nodes: 50,  area: 10000, range: 3000, terrain:'rural',       placement:'linear',    mobile:0.9, kills:0,   degrade:0 },
   community: { nodes: 80,  area: 8000,  range: 2500, terrain:'suburban',    placement:'clustered', mobile:0,   kills:0,   degrade:0 },
   partition: { nodes: 120, area: 8000,  range: 2500, terrain:'urban',       placement:'random',    mobile:0,   kills:0.4, degrade:0.4 },
+  // Mixed-mode: S5 nodes coexist with legacy flooding nodes
+  mixed10:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.1 },
+  mixed30:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.3 },
+  mixed50:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.5 },
+  mixed70:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.7 },
+  mixed90:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.9 },
 };
 
 // ---- RNG (seedable) ----
@@ -367,7 +381,7 @@ function buildNetwork(scenarioKey, rng) {
         id: i, x: t * cfg.area,
         y: cfg.area / 2 + rng.gauss(0, cfg.area * 0.05),
         cluster: -1, border: false, battery: rng.uniform(50, 100),
-        mobile: false, speed: 0, heading: 0, neighbors: {},
+        mobile: false, speed: 0, heading: 0, isS5: false, neighbors: {},
       });
     }
   } else if (cfg.placement === 'clustered') {
@@ -382,7 +396,7 @@ function buildNetwork(scenarioKey, rng) {
         id: i, x: Math.max(0, Math.min(cfg.area, cx + rng.gauss(0, spread))),
         y: Math.max(0, Math.min(cfg.area, cy + rng.gauss(0, spread))),
         cluster: -1, border: false, battery: rng.uniform(50, 100),
-        mobile: false, speed: 0, heading: 0, neighbors: {},
+        mobile: false, speed: 0, heading: 0, isS5: false, neighbors: {},
       });
     }
   } else {
@@ -390,7 +404,7 @@ function buildNetwork(scenarioKey, rng) {
       nodes.push({
         id: i, x: rng.uniform(0, cfg.area), y: rng.uniform(0, cfg.area),
         cluster: -1, border: false, battery: rng.uniform(50, 100),
-        mobile: false, speed: 0, heading: 0, neighbors: {},
+        mobile: false, speed: 0, heading: 0, isS5: false, neighbors: {},
       });
     }
   }
@@ -404,6 +418,14 @@ function buildNetwork(scenarioKey, rng) {
       nodes[id].speed = rng.uniform(0.5, 2);
       nodes[id].heading = rng.uniform(0, PI2);
     }
+  }
+
+  // Mixed-mode: assign S5 capability to a fraction of nodes
+  const s5ratio = cfg.s5ratio || 0;
+  if (s5ratio > 0) {
+    const nS5 = Math.max(1, Math.floor(cfg.nodes * s5ratio));
+    const s5Ids = rng.sample(nodes.map(n => n.id), nS5);
+    for (const id of s5Ids) nodes[id].isS5 = true;
   }
 
   // Create links
@@ -616,6 +638,120 @@ function simulateSystem5(net, src, dst, rng) {
     }
   }
   return { txEvents, delivered, totalTx: txEvents.length, path, retries, failHop };
+}
+
+// Dual-mode routing: S5 nodes route directly between each other,
+// Legacy nodes flood. When an S5 node needs to reach a legacy node
+// (or vice versa), it falls back to flooding through that segment.
+function simulateDualMode(net, src, dst, rng, hopLimit = 7) {
+  const srcNode = net.nodes[src], dstNode = net.nodes[dst];
+  const bothS5 = srcNode.isS5 && dstNode.isS5;
+
+  // Check if there's an all-S5 path (every hop goes through S5 nodes)
+  if (bothS5) {
+    const s5Path = bfsPathS5Only(net.nodes, net.links, src, dst);
+    if (s5Path) {
+      // Pure S5 directed routing — like System 5
+      const txEvents = [];
+      let tick = 0, delivered = true, retries = 0, failHop = -1;
+      for (let i = 0; i < s5Path.length - 1; i++) {
+        const from = s5Path[i], to = s5Path[i+1];
+        txEvents.push({ from, to, time: tick++, hop: i, mode: 's5' });
+        const link = net.links.find(l => l.alive && !l.hidden &&
+          ((l.a===from && l.b===to) || (l.a===to && l.b===from)));
+        const q = link ? link.quality : 0.1;
+        if (rng.next() > q) {
+          retries++;
+          txEvents.push({ from, to, time: tick++, hop: i, mode: 's5' });
+          if (rng.next() > q) { delivered = false; failHop = i; break; }
+        }
+      }
+      return {
+        txEvents, delivered, totalTx: txEvents.length,
+        path: s5Path, retries, failHop, mode: 'direct',
+        s5Hops: s5Path.length - 1,
+      };
+    }
+  }
+
+  // Fallback: mixed flooding — S5 nodes still rebroadcast, but suppress
+  // more aggressively between each other (they know who has the packet)
+  const txEvents = [];
+  const seen = new Set([src]);
+  const rebroadcast = new Set([src]);
+  const queue = [[src, 0]];
+  let delivered = false, tick = 0, suppressed = 0;
+  const nodesReached = new Set([src]);
+
+  while (queue.length) {
+    const [cur, hop] = queue.shift();
+    if (hop >= 15 || hop > hopLimit) continue;
+    const node = net.nodes[cur];
+
+    if (cur !== src) {
+      const neighborRebroadcasted = Object.keys(node.neighbors).some(
+        nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
+      );
+      // S5 nodes suppress more aggressively (they have routing knowledge)
+      const suppressChance = node.isS5 ? 0.7 : 0.4;
+      if (neighborRebroadcasted && rng.next() < suppressChance) {
+        suppressed++;
+        continue;
+      }
+    }
+
+    rebroadcast.add(cur);
+    for (const [nidStr, quality] of Object.entries(node.neighbors)) {
+      const nid = +nidStr;
+      const link = net.links.find(l => l.alive && !l.hidden &&
+        ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+      if (!link) continue;
+
+      const mode = (node.isS5 && net.nodes[nid].isS5) ? 's5' : 'flood';
+      txEvents.push({ from: cur, to: nid, time: tick++, hop, mode });
+
+      if (rng.next() > quality) continue;
+      if (seen.has(nid)) continue;
+      seen.add(nid);
+      nodesReached.add(nid);
+      if (nid === dst) { delivered = true; continue; }
+      if (net.nodes[nid].battery <= 0) continue;
+      queue.push([nid, hop + 1]);
+    }
+  }
+
+  return {
+    txEvents, delivered, totalTx: txEvents.length,
+    suppressed, nodesReached: nodesReached.size,
+    rebroadcasters: rebroadcast.size,
+    mode: 'mixed', hopLimit,
+  };
+}
+
+// BFS that only routes through S5 nodes (and visible links)
+function bfsPathS5Only(nodes, links, src, dst) {
+  if (src === dst) return [src];
+  const visited = new Set([src]);
+  const queue = [[src, [src]]];
+  while (queue.length) {
+    const [cur, path] = queue.shift();
+    for (const l of links) {
+      if (!l.alive || l.hidden) continue;
+      let neighbor = -1;
+      if (l.a === cur) neighbor = l.b;
+      else if (l.b === cur) neighbor = l.a;
+      else continue;
+      if (visited.has(neighbor)) continue;
+      if (nodes[neighbor].battery <= 0) continue;
+      // Must pass through S5 nodes (except destination can be anything)
+      if (neighbor !== dst && !nodes[neighbor].isS5) continue;
+      const newPath = [...path, neighbor];
+      if (neighbor === dst) return newPath;
+      visited.add(neighbor);
+      queue.push([neighbor, newPath]);
+    }
+  }
+  return null;
 }
 
 // ---- Canvas Renderer ----
@@ -926,6 +1062,17 @@ class SimRenderer {
         ctx.strokeStyle = 'rgba(251,191,36,0.6)';
         ctx.lineWidth = 1;
         ctx.stroke();
+      }
+
+      // S5 node indicator — small diamond inside
+      if (n.isS5 && n.battery > 0 && nodeIntensity < 0.3) {
+        const d = nodeR * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - d); ctx.lineTo(sx + d, sy);
+        ctx.lineTo(sx, sy + d); ctx.lineTo(sx - d, sy);
+        ctx.closePath();
+        ctx.fillStyle = '#fff';
+        ctx.fill();
       }
     }
 
@@ -1397,45 +1544,82 @@ function ensureStartable() {
 // Pre-compute both routing results and group Managed Flooding TX events by hop
 function prepareHopByHop() {
   const src = simState.pickedSrc, dst = simState.pickedDst;
+  const cfg = SCENARIOS[simState.scenario];
+  const isMixed = (cfg.s5ratio || 0) > 0;
 
-  // Managed Flooding — full simulation, then group by hop
+  // --- LEFT SIDE: Always Managed Flooding ---
   const mResult = simulateManagedFlood(rendererManaged.net, src, dst, new RNG(42));
-  const mHopGroups = {}; // hop -> [txEvent]
+  const mHopGroups = {};
   let mMaxHop = 0;
-
-  // Build a quick lookup for hidden links
-  const hiddenEdges = new Set();
-  for (const l of rendererManaged.net.links) {
-    if (l.hidden) hiddenEdges.add(Math.min(l.a, l.b) + '-' + Math.max(l.a, l.b));
-  }
-
   for (const ev of mResult.txEvents) {
-    const h = ev.hop;
-    // Mark whether this TX goes over a hidden link
-    ev.overHidden = hiddenEdges.has(Math.min(ev.from, ev.to) + '-' + Math.max(ev.from, ev.to));
-    if (!mHopGroups[h]) mHopGroups[h] = [];
-    mHopGroups[h].push(ev);
-    if (h > mMaxHop) mMaxHop = h;
+    if (!mHopGroups[ev.hop]) mHopGroups[ev.hop] = [];
+    mHopGroups[ev.hop].push(ev);
+    if (ev.hop > mMaxHop) mMaxHop = ev.hop;
   }
 
-  // System 5 — BFS path, each hop is one TX
-  const s5Path = bfsPath(rendererSystem5.net.nodes, rendererSystem5.net.links, src, dst, true);
+  // --- RIGHT SIDE: System 5 (pure) or Dual-Mode (mixed) ---
+  let s5Path = null, dualResult = null, s5Hops = 0;
+  let rightTitle = 'System 5', rightIntro = '';
 
-  // Compute total hops
-  const totalHops = Math.max(mMaxHop + 1, s5Path ? s5Path.length - 1 : 0);
+  if (isMixed) {
+    // Dual-mode simulation
+    dualResult = simulateDualMode(rendererSystem5.net, src, dst, new RNG(42));
+    rightTitle = `Dual-Mode (${Math.round(cfg.s5ratio*100)}% S5)`;
+
+    if (dualResult.mode === 'direct' && dualResult.path) {
+      s5Path = dualResult.path;
+      s5Hops = dualResult.s5Hops;
+      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'S5' : 'Legacy';
+      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'S5' : 'Legacy';
+      rightIntro = `Both nodes are S5-capable. Direct S5 route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).<br>`
+        + `<span class="log-dim">All intermediate nodes are S5 — no flooding needed. Pure directed routing.</span>`;
+    } else {
+      // Mixed flooding with S5 suppression
+      // Group dual-mode events by hop for animation
+      const dHopGroups = {};
+      let dMaxHop = 0;
+      for (const ev of dualResult.txEvents) {
+        if (!dHopGroups[ev.hop]) dHopGroups[ev.hop] = [];
+        dHopGroups[ev.hop].push(ev);
+        if (ev.hop > dMaxHop) dMaxHop = ev.hop;
+      }
+      // Store for animation
+      dualResult._hopGroups = dHopGroups;
+      dualResult._maxHop = dMaxHop;
+      s5Hops = dMaxHop + 1;
+
+      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'S5' : 'Legacy';
+      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'S5' : 'Legacy';
+      const nS5 = rendererSystem5.net.nodes.filter(n => n.isS5).length;
+      rightIntro = `SRC is <b>${srcS5}</b>, DST is <b>${dstS5}</b>. No all-S5 path exists.<br>`
+        + `Falling back to <b>smart flooding</b>: ${nS5} S5 nodes suppress 70% (vs 40% for legacy).<br>`
+        + `<span class="log-dim">S5 nodes still rebroadcast for backward compatibility, but suppress more aggressively using their routing knowledge.</span>`;
+    }
+  } else {
+    // Pure System 5
+    s5Path = bfsPath(rendererSystem5.net.nodes, rendererSystem5.net.links, src, dst, true);
+    s5Hops = s5Path ? s5Path.length - 1 : 0;
+    rightIntro = s5Path
+      ? `Route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).<br>`
+        + `<span class="log-dim">The routing table was built during cluster formation. Each node knows the best path to every other node via border nodes between clusters.</span>`
+      : `<span class="log-bad">No route found!</span>`;
+  }
+
+  const totalHops = Math.max(mMaxHop + 1, s5Hops);
 
   simState.hopPlan = {
-    mResult,
-    mHopGroups,
-    mMaxHop,
+    isMixed,
+    mResult, mHopGroups, mMaxHop,
     s5Path,
-    s5Hops: s5Path ? s5Path.length - 1 : 0,
+    s5Hops,
+    dualResult,
     totalHops,
-    currentHop: -1,   // will become 0 on first step
+    currentHop: -1,
     mTotalTxSoFar: 0,
     s5TotalTxSoFar: 0,
     mDelivered: false,
     s5Delivered: false,
+    rightTitle,
   };
 
   // Mark SRC
@@ -1443,6 +1627,10 @@ function prepareHopByHop() {
   rendererSystem5.clearReached();
   rendererManaged.markReached(src);
   rendererSystem5.markReached(src);
+
+  // Update right panel title for mixed mode
+  const titleEl = document.querySelector('.sim-panel-title.system5');
+  if (titleEl) titleEl.textContent = isMixed ? rightTitle : 'System 5 (MeshRoute)';
 
   // Write initial log
   const srcNode = rendererManaged.net.nodes[src];
@@ -1455,22 +1643,19 @@ function prepareHopByHop() {
   introDiv.innerHTML = `<div class="log-header">Sending: Node ${src} (C${srcNode.cluster}) → Node ${dst} (C${dstNode.cluster})</div>
     <div class="log-columns">
       <div class="log-col left">
-        <div class="log-col-title log-managed">Managed Flooding</div>
+        <div class="log-col-title log-managed">Managed Flooding (Legacy Only)</div>
         No routing table. Node ${src} doesn't know where Node ${dst} is.<br>
         <b>Only option: broadcast to ALL neighbors</b> and hope it arrives.<br>
         Hop limit: <b>${mResult.hopLimit}</b> — after that, packet is dropped.
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">System 5</div>
-        Node ${src} looks up Node ${dst} in its <b>routing table</b>.<br>
-        ${s5Path
-          ? `Route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Path.length - 1} hops).<br>
-             <span class="log-dim">The routing table was built during cluster formation. Each node knows the best path
-             to every other node via border nodes between clusters.</span>`
-          : `<span class="log-bad">No route found!</span>`}
+        <div class="log-col-title log-system5">${rightTitle}</div>
+        ${isMixed
+          ? `Node ${src} checks: am I S5-capable? ${rendererSystem5.net.nodes[src].isS5 ? 'Yes' : 'No'}.<br>${rightIntro}`
+          : `Node ${src} looks up Node ${dst} in its <b>routing table</b>.<br>${rightIntro}`}
       </div>
     </div>
-    <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance one hop at a time, or <b>Run</b> for auto-play.</div>`;
+    <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance one hop at a time, or <b>Run</b> for auto-play.${isMixed ? '<br>Nodes with <b>white diamond</b> = S5-capable. Others = Legacy (flood only).' : ''}</div>`;
   log.appendChild(introDiv);
   log.scrollTop = log.scrollHeight;
 }
@@ -1536,23 +1721,55 @@ function advanceOneHop() {
   }
   if (mDeliveredThisHop) hp.mDelivered = true;
 
-  // --- System 5 for this hop ---
+  // --- Right side: System 5 or Dual-Mode for this hop ---
   let s5Html = '';
   let s5TxThisHop = 0;
-  if (hop < hp.s5Hops && hp.s5Path) {
+
+  if (hp.isMixed && hp.dualResult && hp.dualResult.mode === 'mixed') {
+    // Mixed flooding mode — animate dual-mode events for this hop
+    const dEvents = (hp.dualResult._hopGroups || {})[hop] || [];
+    s5TxThisHop = dEvents.length;
+    hp.s5TotalTxSoFar += s5TxThisHop;
+    let dDelivered = false;
+
+    // Animate as wave (like managed flooding)
+    for (const ev of dEvents) {
+      if (ev.to === simState.pickedDst) dDelivered = true;
+      const pktColor = ev.mode === 's5' ? '#22d3ee' : '#fb923c'; // cyan for S5-to-S5, orange for flood
+      rendererSystem5.markReached(ev.from);
+      rendererSystem5.addPacket(ev.from, ev.to, pktColor, () => {
+        if (simState.generation !== gen) return;
+        rendererSystem5.markReached(ev.to);
+        rendererSystem5.markEdgeReached(ev.from, ev.to);
+      });
+    }
+    if (dDelivered) hp.s5Delivered = true;
+
+    const s5Txs = dEvents.filter(e => e.mode === 's5').length;
+    const floodTxs = dEvents.filter(e => e.mode === 'flood').length;
+    s5Html = `<span class="log-flood">${s5TxThisHop} TX</span>`;
+    if (s5Txs > 0 && floodTxs > 0) {
+      s5Html += ` (<span class="log-path">${s5Txs} S5-direct</span> + <span class="log-managed">${floodTxs} flood</span>)`;
+    } else if (s5Txs > 0) {
+      s5Html += ` (all <span class="log-path">S5-direct</span>)`;
+    } else {
+      s5Html += ` (all <span class="log-managed">flood</span> — no S5 nodes in this hop)`;
+    }
+    if (dDelivered) s5Html += `<br><span class="log-good">DST reached!</span>`;
+    s5Html += `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. S5 nodes suppress 70% vs Legacy's 40%.</span>`;
+
+  } else if (hop < hp.s5Hops && hp.s5Path) {
+    // Pure System 5 directed routing — 1 TX per hop
     const from = hp.s5Path[hop];
     const to = hp.s5Path[hop + 1];
     s5TxThisHop = 1;
     hp.s5TotalTxSoFar += 1;
-    setTimeout(() => {
+    rendererSystem5.markReached(from);
+    rendererSystem5.addPacket(from, to, '#22d3ee', () => {
       if (simState.generation !== gen) return;
-      rendererSystem5.addPacket(from, to, '#22d3ee', () => {
-        if (simState.generation !== gen) return;
-        rendererSystem5.markReached(to);
-        rendererSystem5.markEdgeReached(from, to);
-      });
-      rendererSystem5.markReached(from);
-    }, 0);
+      rendererSystem5.markReached(to);
+      rendererSystem5.markEdgeReached(from, to);
+    });
 
     const fromNode = rendererSystem5.net.nodes[from];
     const toNode = rendererSystem5.net.nodes[to];
@@ -1561,20 +1778,19 @@ function advanceOneHop() {
     if (hop + 1 === hp.s5Hops) {
       hp.s5Delivered = true;
       s5Html = `<span class="log-good">DELIVERED!</span> Node ${from} → Node ${to}. <b>1 TX</b>.`
-        + `<br><span class="log-dim">Packet arrived at destination. Total: ${hp.s5TotalTxSoFar} TX for ${hp.s5Hops} hops.</span>`;
+        + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX for ${hp.s5Hops} hops.</span>`;
     } else if (crossingCluster) {
       s5Html = `Node ${from} (C${fromNode.cluster}) → Node ${to} (C${toNode.cluster}). <b>1 TX</b>.`
-        + `<br><span class="log-dim">Crossing cluster boundary via border node ${toNode.border ? to : from}. `
-        + `The routing table knows which border node connects to the destination's cluster.</span>`;
+        + `<br><span class="log-dim">Crossing cluster boundary via border node. Routing table knows the path.</span>`;
     } else {
       s5Html = `Node ${from} → Node ${to} (within C${fromNode.cluster}). <b>1 TX</b>.`
         + `<br><span class="log-dim">Intra-cluster hop — direct neighbor in routing table.</span>`;
     }
-  } else if (hop >= hp.s5Hops && hp.s5Delivered) {
-    s5Html = `<span class="log-good">Already delivered</span> in ${hp.s5Hops} hops, ${hp.s5TotalTxSoFar} TX.`
-      + `<br><span class="log-dim">System 5 is done — watching Managed Flooding continue...</span>`;
+  } else if (hp.s5Delivered) {
+    s5Html = `<span class="log-good">Already delivered</span> in ${hp.s5TotalTxSoFar} TX.`
+      + `<br><span class="log-dim">${hp.rightTitle} is done — watching Managed Flooding continue...</span>`;
   } else {
-    s5Html = `<span class="log-bad">No route</span>`;
+    s5Html = `<span class="log-dim">No transmissions at this hop.</span>`;
   }
 
   // --- Managed Flooding log ---
