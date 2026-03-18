@@ -149,14 +149,14 @@ class VLoRa:
         return False, tx, path
 
 # ── Create 100-node network across Munich ──
-# 5 clusters based on real Munich districts, ~2km LoRa range
+# 5 clusters based on real Munich districts, clearly separated
 
 MUNICH_CLUSTERS = {
-    'Altstadt':    (48.137, 11.575, 15),  # center lat, lon, node count
-    'Schwabing':   (48.160, 11.585, 20),
-    'Haidhausen':  (48.130, 11.600, 20),
-    'Sendling':    (48.118, 11.555, 20),
-    'Neuhausen':   (48.155, 11.540, 25),
+    'Altstadt':    (48.137, 11.575, 20, 0),  # center
+    'Schwabing':   (48.155, 11.582, 20, 1),  # ~2km north
+    'Haidhausen':  (48.128, 11.598, 20, 2),  # ~2km east
+    'Sendling':    (48.120, 11.560, 20, 3),  # ~2km south
+    'Neuhausen':   (48.148, 11.545, 20, 4),  # ~2.5km northwest
 }
 
 MUNICH_LANDMARKS = [
@@ -172,10 +172,10 @@ MUNICH_LANDMARKS = [
 random.seed(42)
 nodes = []
 nid = 0
-for district, (clat, clon, count) in MUNICH_CLUSTERS.items():
+for district, (clat, clon, count, cid) in MUNICH_CLUSTERS.items():
     for i in range(count):
-        lat = clat + random.gauss(0, 0.006)  # ~600m std dev
-        lon = clon + random.gauss(0, 0.008)
+        lat = clat + random.gauss(0, 0.004)  # ~450m std dev (tighter clusters)
+        lon = clon + random.gauss(0, 0.005)
         batt = random.randint(40, 100)
         node = VNode(nid, round(lat, 6), round(lon, 6), batt)
         # Varied ranges: 10% rooftop (2.5-3.5km), 25% outdoor fixed (1.5-2.5km),
@@ -189,6 +189,8 @@ for district, (clat, clon, count) in MUNICH_CLUSTERS.items():
             node.lora_range = random.randint(1000, 1800)   # handheld outdoor
         else:
             node.lora_range = random.randint(600, 1000)    # indoor/pocket
+        # Force cluster by district (don't rely on geohash at this scale)
+        node.cluster = cid
         nodes.append(node)
         nid += 1
 
@@ -200,14 +202,30 @@ for lid, llat, llon, lname in MUNICH_LANDMARKS:
         NODE_NAMES[lid] = lname
 # Name remaining by district
 nid = 0
-for district, (_, _, count) in MUNICH_CLUSTERS.items():
+for district, (_, _, count, _) in MUNICH_CLUSTERS.items():
     for i in range(count):
         if nid not in NODE_NAMES:
             NODE_NAMES[nid] = f'{district} #{i+1}'
         nid += 1
 
+# Add dedicated bridge nodes between clusters (rooftop, 3.5km range)
+bridge_positions = [
+    (48.146, 11.578, 0, 'Bridge Altstadt-Schwabing'),    # midpoint
+    (48.132, 11.588, 0, 'Bridge Altstadt-Haidhausen'),
+    (48.128, 11.567, 0, 'Bridge Altstadt-Sendling'),
+    (48.143, 11.558, 0, 'Bridge Altstadt-Neuhausen'),
+    (48.153, 11.560, 1, 'Bridge Schwabing-Neuhausen'),
+]
+for blat, blon, bcid, bname in bridge_positions:
+    node = VNode(nid, blat, blon, 95)
+    node.lora_range = 3500
+    node.cluster = bcid
+    NODE_NAMES[nid] = bname
+    nodes.append(node)
+    nid += 1
+
 random.seed(42)
-lora = VLoRa(nodes, max_range=2000)  # 2km LoRa range — realistic urban
+lora = VLoRa(nodes, max_range=3500)  # max range = rooftop nodes
 for r in range(3):
     for n in nodes: lora.deliver_ogm(n.id, n.create_ogm())
 
