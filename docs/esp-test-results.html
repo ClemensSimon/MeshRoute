@@ -47,6 +47,9 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 .leaflet-control-zoom a { background: var(--bg-card) !important; color: var(--text) !important; border-color: var(--border) !important; }
 .node-tooltip { background: var(--bg-card) !important; color: var(--text) !important; border: 1px solid var(--border) !important; font-family: var(--font-mono) !important; font-size: 11px !important; padding: 6px 10px !important; }
 .node-tooltip .leaflet-tooltip-tip { display: none; }
+.dark-popup .leaflet-popup-content-wrapper { background: #1a2236 !important; color: #e2e8f0 !important; border: 1px solid #2a3654 !important; border-radius: 10px !important; }
+.dark-popup .leaflet-popup-tip { background: #1a2236 !important; border: 1px solid #2a3654 !important; }
+.dark-popup .leaflet-popup-close-button { color: #94a3b8 !important; }
 .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
 .chart-box { position: relative; }
 .chart-box h3 { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); margin-bottom: 0.5rem; }
@@ -80,8 +83,14 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 </div>
 
 <h2>Network Topology — Munich</h2>
-<div id="leaflet-map" style="width:100%;height:500px;border-radius:12px;border:1px solid var(--border);"></div>
-<p>10 nodes across Munich city center and Schwabing. Cluster 0 (green) = Altstadt, Cluster 1 (cyan/purple) = Schwabing. Bridge nodes N4 (Odeonsplatz) and N5 (Englischer Garten) connect the clusters. Gray circles show LoRa range (2km).</p>
+<div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;align-items:center;">
+  <button id="btn-play" onclick="toggleAnimation()" style="background:var(--bg-card);color:var(--cyan);border:1px solid var(--cyan);padding:0.4rem 1rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Play Messages</button>
+  <button onclick="stepAnimation()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Step</button>
+  <button onclick="resetAnimation()" style="background:var(--bg-card);color:var(--orange);border:1px solid var(--border);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.8rem;cursor:pointer;">Reset</button>
+  <span id="anim-status" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-left:1rem;">Click a node for details. Press Play to watch routing.</span>
+</div>
+<div id="leaflet-map" style="width:100%;height:550px;border-radius:12px;border:1px solid var(--border);"></div>
+<p>10 nodes across Munich. Click any node to see its routing table, neighbors, and message history. Press <b>Play</b> to watch all 20 messages routed step-by-step.</p>
 
 <h2>Charts</h2>
 <div class="chart-row">
@@ -204,30 +213,31 @@ fetch('esp-test-results.json').then(r => {
   drawCumulativeChart(data);
 });
 
-function drawNetworkMap(data) {
-  const map = L.map('leaflet-map', {
-    zoomControl: true,
-    attributionControl: true,
-  });
+// Global state for animation
+let mapInstance = null;
+let mapData = null;
+let animLayer = null;
+let animMsgIdx = 0;
+let animPlaying = false;
+let animTimer = null;
 
-  // Dark tile layer
+function drawNetworkMap(data) {
+  mapData = data;
+  const map = L.map('leaflet-map', { zoomControl: true, attributionControl: true });
+  mapInstance = map;
+
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-    maxZoom: 19,
+    attribution: '&copy; OSM &copy; CARTO', maxZoom: 19,
   }).addTo(map);
 
-  // Fit to node bounds
-  const bounds = data.nodes.map(n => [n.lat, n.lon]);
-  map.fitBounds(bounds, { padding: [40, 40] });
+  map.fitBounds(data.nodes.map(n => [n.lat, n.lon]), { padding: [40, 40] });
 
-  // Cluster grouping
   const clusterKeys = [...new Set(data.nodes.map(n => String(n.cluster)))];
+  animLayer = L.layerGroup().addTo(map);
 
-  // LoRa range circles (2km)
+  // LoRa range circles
   data.nodes.forEach(n => {
-    L.circle([n.lat, n.lon], {
-      radius: 2000, color: '#64748b', weight: 0.5, fillOpacity: 0.03, dashArray: '4 4',
-    }).addTo(map);
+    L.circle([n.lat, n.lon], { radius: 2000, color: '#64748b', weight: 0.5, fillOpacity: 0.03, dashArray: '4 4' }).addTo(map);
   });
 
   // Links
@@ -235,42 +245,79 @@ function drawNetworkMap(data) {
     n.neighbors.forEach(nid => {
       const other = data.nodes.find(x => x.id === nid);
       if (!other || nid < n.id) return;
-      const crossCluster = n.cluster !== other.cluster;
+      const cross = n.cluster !== other.cluster;
       L.polyline([[n.lat, n.lon], [other.lat, other.lon]], {
-        color: crossCluster ? '#22d3ee' : '#64748b',
-        weight: crossCluster ? 3 : 1.5,
-        opacity: crossCluster ? 0.7 : 0.3,
-        dashArray: crossCluster ? null : '3 3',
+        color: cross ? '#22d3ee' : '#64748b', weight: cross ? 3 : 1.5,
+        opacity: cross ? 0.7 : 0.3, dashArray: cross ? null : '3 3',
       }).addTo(map);
     });
   });
 
-  // Nodes as circle markers
+  // Nodes with click popups
   data.nodes.forEach(n => {
     const ci = clusterKeys.indexOf(String(n.cluster));
     const color = CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
-    const name = n.name || `Node ${n.id}`;
+    const name = n.name || 'Node ' + n.id;
 
-    // Border node: larger with white outline
     if (n.is_border) {
-      L.circleMarker([n.lat, n.lon], {
-        radius: 12, color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 0.9,
-      }).addTo(map);
+      L.circleMarker([n.lat, n.lon], { radius: 12, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.9 }).addTo(map);
     }
 
     const marker = L.circleMarker([n.lat, n.lon], {
-      radius: n.is_border ? 9 : 7,
-      color: color, weight: 2, fillColor: color, fillOpacity: 0.9,
+      radius: n.is_border ? 9 : 7, color: color, weight: 2, fillColor: color, fillOpacity: 0.9,
     }).addTo(map);
 
-    // Tooltip
-    marker.bindTooltip(
-      `<b>N${n.id}: ${name}</b><br>` +
-      `Cluster: ${n.cluster} ${n.is_border ? '(BORDER)' : ''}<br>` +
-      `Battery: ${n.battery}% | Neighbors: ${n.neighbors.length}<br>` +
-      `Geohash: ${n.geohash}`,
-      { permanent: false, direction: 'top', className: 'node-tooltip' }
-    );
+    // Build popup content
+    const sent = data.messages.filter(m => m.src === n.id);
+    const recv = data.messages.filter(m => m.dst === n.id);
+    const relayed = data.messages.filter(m => m.s5_path.includes(n.id) && m.src !== n.id && m.dst !== n.id);
+
+    let popupHtml = `<div style="font-family:monospace;font-size:12px;max-width:350px;color:#e2e8f0;">`;
+    popupHtml += `<b style="font-size:14px;color:${color};">N${n.id}: ${name}</b><br>`;
+    popupHtml += `<span style="color:#94a3b8;">Cluster ${n.cluster} ${n.is_border ? '<b style="color:#fb923c;">BORDER NODE</b>' : ''}</span><br>`;
+    popupHtml += `Battery: ${n.battery}% | Geohash: ${n.geohash}<br>`;
+    popupHtml += `<br><b style="color:#22d3ee;">Neighbors (${n.neighbors.length}):</b><br>`;
+    n.neighbors.forEach(nid => {
+      const nb = data.nodes.find(x => x.id === nid);
+      const nbName = nb ? (nb.name || 'N'+nb.id) : 'N'+nid;
+      const sameCl = nb && nb.cluster === n.cluster;
+      popupHtml += `&nbsp;&nbsp;→ N${nid} (${nbName}) ${sameCl ? '' : '<span style="color:#22d3ee;">[cross-cluster]</span>'}<br>`;
+    });
+    popupHtml += `<br><b style="color:#4ade80;">Routing Table:</b><br>`;
+    // Show routes from this node's messages
+    const routeTargets = [...new Set(data.messages.filter(m => m.src === n.id).map(m => m.dst))];
+    routeTargets.forEach(dst => {
+      const msg = data.messages.find(m => m.src === n.id && m.dst === dst);
+      if (msg) {
+        const dstName = data.nodes.find(x => x.id === dst)?.name || 'N'+dst;
+        popupHtml += `&nbsp;&nbsp;→ N${dst} (${dstName}): <span style="color:#22d3ee;">${msg.s5_path.join('→')}</span> [${msg.s5_hops}hop, ${msg.s5_tx}TX]<br>`;
+      }
+    });
+    if (routeTargets.length === 0) popupHtml += `&nbsp;&nbsp;<span style="color:#64748b;">No messages sent from this node</span><br>`;
+    popupHtml += `<br><b>Activity:</b> Sent: ${sent.length} | Received: ${recv.length} | Relayed: ${relayed.length}`;
+    if (sent.length > 0) {
+      popupHtml += `<br><br><b style="color:#fb923c;">Messages Sent:</b><br>`;
+      sent.forEach(m => {
+        const dstName = data.nodes.find(x => x.id === m.dst)?.name || 'N'+m.dst;
+        popupHtml += `&nbsp;&nbsp;#${m.msg} → N${m.dst} (${dstName}) | ${m.s5_tx}TX vs ${m.flood_tx}TX flood<br>`;
+      });
+    }
+    if (recv.length > 0) {
+      popupHtml += `<br><b style="color:#4ade80;">Messages Received:</b><br>`;
+      recv.forEach(m => {
+        const srcName = data.nodes.find(x => x.id === m.src)?.name || 'N'+m.src;
+        popupHtml += `&nbsp;&nbsp;#${m.msg} ← N${m.src} (${srcName}) via ${m.s5_path.join('→')}<br>`;
+      });
+    }
+    if (relayed.length > 0) {
+      popupHtml += `<br><b style="color:#a78bfa;">Messages Relayed:</b><br>`;
+      relayed.forEach(m => {
+        popupHtml += `&nbsp;&nbsp;#${m.msg} N${m.src}→N${m.dst} through me<br>`;
+      });
+    }
+    popupHtml += `</div>`;
+
+    marker.bindPopup(popupHtml, { maxWidth: 380, className: 'dark-popup' });
 
     // Label
     L.marker([n.lat, n.lon], {
@@ -281,6 +328,105 @@ function drawNetworkMap(data) {
       }),
     }).addTo(map);
   });
+}
+
+// ── Animation: step through messages one by one ──
+
+function showMessage(idx) {
+  if (!mapData || idx >= mapData.messages.length) return;
+  animLayer.clearLayers();
+  const m = mapData.messages[idx];
+  const path = m.s5_path;
+  const srcName = mapData.nodes.find(n => n.id === m.src)?.name || 'N'+m.src;
+  const dstName = mapData.nodes.find(n => n.id === m.dst)?.name || 'N'+m.dst;
+
+  // Draw path
+  const pathCoords = path.map(nid => {
+    const n = mapData.nodes.find(x => x.id === nid);
+    return n ? [n.lat, n.lon] : null;
+  }).filter(Boolean);
+
+  if (pathCoords.length >= 2) {
+    L.polyline(pathCoords, { color: '#4ade80', weight: 4, opacity: 0.9 }).addTo(animLayer);
+  }
+
+  // Highlight nodes on path
+  path.forEach((nid, i) => {
+    const n = mapData.nodes.find(x => x.id === nid);
+    if (!n) return;
+    const isStart = i === 0, isEnd = i === path.length - 1;
+    const col = isStart ? '#4ade80' : isEnd ? '#f87171' : '#fbbf24';
+    const label = isStart ? 'SRC' : isEnd ? 'DST' : 'HOP';
+
+    L.circleMarker([n.lat, n.lon], {
+      radius: 14, color: col, weight: 3, fillColor: col, fillOpacity: 0.2,
+    }).addTo(animLayer);
+
+    L.marker([n.lat, n.lon], {
+      icon: L.divIcon({
+        className: '',
+        html: `<span style="color:${col};font:bold 9px monospace;text-shadow:0 0 3px #000;">${label}</span>`,
+        iconSize: [30, 12], iconAnchor: [15, 22],
+      }),
+    }).addTo(animLayer);
+  });
+
+  // Animate packet along path
+  let hopIdx = 0;
+  const animateHop = () => {
+    if (hopIdx >= pathCoords.length - 1) return;
+    const from = pathCoords[hopIdx], to = pathCoords[hopIdx + 1];
+    const pkt = L.circleMarker(from, { radius: 6, color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 1, weight: 0 }).addTo(animLayer);
+
+    let t = 0;
+    const step = () => {
+      t += 0.04;
+      if (t >= 1) { pkt.remove(); hopIdx++; setTimeout(animateHop, 200); return; }
+      const lat = from[0] + (to[0] - from[0]) * t;
+      const lng = from[1] + (to[1] - from[1]) * t;
+      pkt.setLatLng([lat, lng]);
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  setTimeout(animateHop, 300);
+
+  // Status text
+  const saving = m.flood_tx > 0 ? Math.round((1 - m.s5_tx / m.flood_tx) * 100) : 0;
+  document.getElementById('anim-status').innerHTML =
+    `<b>Message #${m.msg}:</b> N${m.src} (${srcName}) → N${m.dst} (${dstName}) | ` +
+    `Path: <span style="color:#22d3ee">${path.join('→')}</span> | ` +
+    `<span style="color:#22d3ee">${m.s5_tx} TX</span> vs <span style="color:#fb923c">${m.flood_tx} TX flood</span> | ` +
+    `<span style="color:#4ade80">${saving}% saved</span>`;
+}
+
+function stepAnimation() {
+  if (!mapData) return;
+  showMessage(animMsgIdx);
+  animMsgIdx = (animMsgIdx + 1) % mapData.messages.length;
+}
+
+function toggleAnimation() {
+  animPlaying = !animPlaying;
+  document.getElementById('btn-play').textContent = animPlaying ? 'Pause' : 'Play Messages';
+  if (animPlaying) {
+    showMessage(animMsgIdx);
+    animTimer = setInterval(() => {
+      animMsgIdx = (animMsgIdx + 1) % mapData.messages.length;
+      showMessage(animMsgIdx);
+    }, 2500);
+  } else {
+    clearInterval(animTimer);
+  }
+}
+
+function resetAnimation() {
+  animPlaying = false;
+  clearInterval(animTimer);
+  animMsgIdx = 0;
+  if (animLayer) animLayer.clearLayers();
+  document.getElementById('btn-play').textContent = 'Play Messages';
+  document.getElementById('anim-status').textContent = 'Click a node for details. Press Play to watch routing.';
 }
 
 function drawTxChart(data) {
