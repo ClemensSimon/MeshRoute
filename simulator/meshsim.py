@@ -14,6 +14,11 @@ from lora_model import (
     link_quality_from_distance,
     packet_success_rate,
     max_range_meters,
+    max_range_for_sf,
+    time_on_air,
+    DutyCycleTracker,
+    CollisionModel,
+    TERRAIN_PL_EXPONENTS,
 )
 
 
@@ -32,10 +37,17 @@ class Node:
         self.neighbors = {}  # node_id -> link_quality (0-1)
         self.routing_table = {}  # dest_id -> list of Route
         self.nhs = 1.0  # network health score (0-1)
+        self.mobile = False  # whether this node can move
+        self.speed = 0.0  # m/s movement speed
+        self.heading = 0.0  # radians
+        self.terrain = "urban"  # terrain type at this node's location
+        self.sf = 7  # spreading factor (7-12)
+        self.airtime_used = 0.0  # total airtime in seconds
         # Stats
         self.packets_sent = 0
         self.packets_forwarded = 0
         self.packets_received = 0
+        self.duty_cycle_blocked = 0  # count of duty-cycle rejections
 
     def distance_to(self, other):
         """Euclidean distance to another node in meters."""
@@ -56,16 +68,27 @@ class Node:
 
 
 class Link:
-    """A bidirectional radio link between two nodes."""
+    """A radio link between two nodes, potentially asymmetric."""
 
-    def __init__(self, node_a_id, node_b_id, distance):
+    def __init__(self, node_a_id, node_b_id, distance, terrain="urban", asymmetry=0.0):
         self.node_a = node_a_id
         self.node_b = node_b_id
         self.distance = distance
-        self.rssi = rssi_from_distance(distance)
+        self.terrain = terrain
+        self.rssi = rssi_from_distance(distance, terrain=terrain)
         self.snr = snr_from_rssi(self.rssi)
-        self.quality = link_quality_from_distance(distance)
+        self.quality = link_quality_from_distance(distance, terrain=terrain)
+        # Asymmetric quality: quality_ab != quality_ba
+        # asymmetry is a random offset applied differently per direction
+        self.quality_ab = max(0.01, min(1.0, self.quality * (1.0 + asymmetry)))
+        self.quality_ba = max(0.01, min(1.0, self.quality * (1.0 - asymmetry)))
         self.alive = True
+
+    def quality_from(self, node_id):
+        """Get link quality in the direction from node_id."""
+        if node_id == self.node_a:
+            return self.quality_ab
+        return self.quality_ba
 
     def other(self, node_id):
         """Return the other end of the link."""
@@ -153,19 +176,65 @@ class MeshNetwork:
         self.link_map = {}  # (a,b) -> Link (sorted tuple keys)
         self.clusters = {}  # id -> Cluster
         self.tick = 0
+        self.sim_time = 0.0  # simulation time in seconds
+        self.terrain = "urban"  # default terrain
+        self.asymmetry = 0.0  # link asymmetry factor (0=symmetric, 0.3=moderate)
+        self.duty_cycle = DutyCycleTracker()
+        self.collisions = CollisionModel()
+        self.enable_duty_cycle = False
+        self.enable_collisions = False
+        self.mobile_fraction = 0.0  # fraction of mobile nodes
 
-    def build_topology(self, n_nodes, area_size, lora_range=2000):
-        """Build a random mesh topology.
+    def build_topology(self, n_nodes, area_size, lora_range=2000,
+                       terrain="urban", asymmetry=0.0, mobile_fraction=0.0,
+                       placement="random"):
+        """Build a mesh topology.
 
         Args:
             n_nodes: Number of nodes to place
             area_size: Side length of square area in meters
             lora_range: Maximum LoRa communication range in meters
+            terrain: Default terrain type
+            asymmetry: Link asymmetry factor (0=symmetric, 0.3=moderate)
+            mobile_fraction: Fraction of nodes that are mobile (0-1)
+            placement: Node placement strategy (random, grid, linear, clustered)
         """
         self.area_size = area_size
         self.lora_range = lora_range
+        self.terrain = terrain
+        self.asymmetry = asymmetry
+        self.mobile_fraction = mobile_fraction
 
-        # Place nodes randomly
+        # Place nodes based on strategy
+        if placement == "linear":
+            self._place_linear(n_nodes, area_size)
+        elif placement == "clustered":
+            self._place_clustered(n_nodes, area_size)
+        else:
+            self._place_random(n_nodes, area_size)
+
+        # Set terrain and mobility
+        for node in self.nodes.values():
+            node.terrain = terrain
+
+        # Mark mobile nodes
+        if mobile_fraction > 0:
+            n_mobile = max(1, int(n_nodes * mobile_fraction))
+            mobile_ids = self.rng.sample(list(self.nodes.keys()), n_mobile)
+            for nid in mobile_ids:
+                node = self.nodes[nid]
+                node.mobile = True
+                node.speed = self.rng.uniform(0.5, 2.0)  # 0.5-2.0 m/s (walking)
+                node.heading = self.rng.uniform(0, 2 * math.pi)
+
+        # Create links between nodes within range
+        self._create_links()
+
+        # Ensure connectivity: connect isolated nodes to nearest
+        self._ensure_connectivity()
+
+    def _place_random(self, n_nodes, area_size):
+        """Place nodes randomly in the area."""
         for i in range(n_nodes):
             x = self.rng.uniform(0, area_size)
             y = self.rng.uniform(0, area_size)
@@ -173,24 +242,51 @@ class MeshNetwork:
             node.battery = self.rng.uniform(50, 100)
             self.nodes[i] = node
 
-        # Create links between nodes within range
+    def _place_linear(self, n_nodes, area_size):
+        """Place nodes along a line (trail/road scenario) with some scatter."""
+        for i in range(n_nodes):
+            # Main line from (0,h/2) to (w,h/2) with perpendicular scatter
+            t = i / max(n_nodes - 1, 1)
+            x = t * area_size
+            y = area_size / 2 + self.rng.gauss(0, area_size * 0.05)
+            y = max(0, min(area_size, y))
+            node = Node(i, x, y)
+            node.battery = self.rng.uniform(50, 100)
+            self.nodes[i] = node
+
+    def _place_clustered(self, n_nodes, area_size):
+        """Place nodes in natural clusters (villages/buildings)."""
+        n_clusters = max(3, n_nodes // 15)
+        centers = [(self.rng.uniform(area_size * 0.1, area_size * 0.9),
+                     self.rng.uniform(area_size * 0.1, area_size * 0.9))
+                    for _ in range(n_clusters)]
+
+        for i in range(n_nodes):
+            cx, cy = self.rng.choice(centers)
+            spread = area_size * 0.08
+            x = max(0, min(area_size, cx + self.rng.gauss(0, spread)))
+            y = max(0, min(area_size, cy + self.rng.gauss(0, spread)))
+            node = Node(i, x, y)
+            node.battery = self.rng.uniform(50, 100)
+            self.nodes[i] = node
+
+    def _create_links(self):
+        """Create links between nodes within range."""
         node_list = list(self.nodes.values())
         for i in range(len(node_list)):
             for j in range(i + 1, len(node_list)):
                 na = node_list[i]
                 nb = node_list[j]
                 dist = na.distance_to(nb)
-                if dist <= lora_range:
-                    link = Link(na.id, nb.id, dist)
-                    if link.quality > 0.01:  # only keep usable links
+                if dist <= self.lora_range:
+                    asym = self.rng.uniform(-self.asymmetry, self.asymmetry) if self.asymmetry > 0 else 0.0
+                    link = Link(na.id, nb.id, dist, terrain=self.terrain, asymmetry=asym)
+                    if link.quality > 0.01:
                         self.links.append(link)
                         key = (min(na.id, nb.id), max(na.id, nb.id))
                         self.link_map[key] = link
-                        na.neighbors[nb.id] = link.quality
-                        nb.neighbors[na.id] = link.quality
-
-        # Ensure connectivity: connect isolated nodes to nearest
-        self._ensure_connectivity()
+                        na.neighbors[nb.id] = link.quality_ab
+                        nb.neighbors[na.id] = link.quality_ba
 
     def _ensure_connectivity(self):
         """Connect isolated nodes to their nearest neighbor."""
@@ -244,6 +340,80 @@ class MeshNetwork:
                 self.link_map[key] = link
                 self.nodes[a_id].neighbors[b_id] = link.quality
                 self.nodes[b_id].neighbors[a_id] = link.quality
+
+    def move_mobile_nodes(self, dt=1.0):
+        """Move mobile nodes by one time step.
+
+        Nodes bounce off area boundaries. After movement, links are
+        recalculated for all mobile nodes.
+
+        Args:
+            dt: Time step in seconds
+        """
+        moved = []
+        for node in self.nodes.values():
+            if not node.mobile or node.battery <= 0:
+                continue
+
+            # Random walk with momentum
+            node.heading += self.rng.gauss(0, 0.3)  # slight direction change
+            dx = math.cos(node.heading) * node.speed * dt
+            dy = math.sin(node.heading) * node.speed * dt
+
+            new_x = node.x + dx
+            new_y = node.y + dy
+
+            # Bounce off boundaries
+            if new_x < 0 or new_x > self.area_size:
+                node.heading = math.pi - node.heading
+                new_x = max(0, min(self.area_size, new_x))
+            if new_y < 0 or new_y > self.area_size:
+                node.heading = -node.heading
+                new_y = max(0, min(self.area_size, new_y))
+
+            node.x = new_x
+            node.y = new_y
+            moved.append(node.id)
+
+        if moved:
+            self._refresh_links_for(moved)
+
+    def _refresh_links_for(self, node_ids):
+        """Recalculate links for specific nodes after movement."""
+        node_set = set(node_ids)
+
+        # Remove old links involving moved nodes
+        old_links = [l for l in self.links
+                     if l.node_a in node_set or l.node_b in node_set]
+        for link in old_links:
+            self.links.remove(link)
+            key = (min(link.node_a, link.node_b), max(link.node_a, link.node_b))
+            self.link_map.pop(key, None)
+            na = self.nodes[link.node_a]
+            nb = self.nodes[link.node_b]
+            na.neighbors.pop(link.node_b, None)
+            nb.neighbors.pop(link.node_a, None)
+
+        # Create new links
+        for nid in node_ids:
+            node = self.nodes[nid]
+            if node.battery <= 0:
+                continue
+            for other in self.nodes.values():
+                if other.id == nid or other.battery <= 0:
+                    continue
+                key = (min(nid, other.id), max(nid, other.id))
+                if key in self.link_map:
+                    continue
+                dist = node.distance_to(other)
+                if dist <= self.lora_range:
+                    asym = self.rng.uniform(-self.asymmetry, self.asymmetry) if self.asymmetry > 0 else 0.0
+                    link = Link(nid, other.id, dist, terrain=self.terrain, asymmetry=asym)
+                    if link.quality > 0.01:
+                        self.links.append(link)
+                        self.link_map[key] = link
+                        node.neighbors[other.id] = link.quality_ab if nid == link.node_a else link.quality_ba
+                        other.neighbors[nid] = link.quality_ba if nid == link.node_a else link.quality_ab
 
     def compute_geohash_clusters(self, prefix_length=4):
         """Assign nodes to clusters based on geohash prefix.
@@ -310,26 +480,25 @@ class MeshNetwork:
         """Simulate a B.A.T.M.A.N. OGM (Originator Message) round.
 
         Each node broadcasts an OGM, and neighbors update link quality
-        based on reception probability. This simulates the link quality
-        measurement that happens over time in real B.A.T.M.A.N.
+        based on reception probability. Asymmetric — each direction gets
+        independent noise.
         """
         for link in self.links:
             if not link.alive:
                 continue
-            # Simulate OGM reception with some randomness
-            base_quality = link.quality
-            # Add small random variation (simulates changing conditions)
-            noise = self.rng.gauss(0, 0.05)
-            measured = max(0.01, min(1.0, base_quality + noise))
-            link.quality = measured
+            # Independent noise per direction (asymmetric fading)
+            noise_ab = self.rng.gauss(0, 0.05)
+            noise_ba = self.rng.gauss(0, 0.05)
+            link.quality_ab = max(0.01, min(1.0, link.quality_ab + noise_ab))
+            link.quality_ba = max(0.01, min(1.0, link.quality_ba + noise_ba))
+            link.quality = (link.quality_ab + link.quality_ba) / 2.0
 
-            # Update neighbor quality in both directions
             na = self.nodes[link.node_a]
             nb = self.nodes[link.node_b]
             if link.node_b in na.neighbors:
-                na.neighbors[link.node_b] = measured
+                na.neighbors[link.node_b] = link.quality_ab
             if link.node_a in nb.neighbors:
-                nb.neighbors[link.node_a] = measured
+                nb.neighbors[link.node_a] = link.quality_ba
 
     def compute_routes(self, max_routes=5, max_hops=15):
         """Compute multi-path routes using BFS for all node pairs.
@@ -549,9 +718,12 @@ class MeshNetwork:
         n_degrade = int(len(self.links) * loss_fraction)
         targets = self.rng.sample(self.links, min(n_degrade, len(self.links)))
         for link in targets:
-            link.quality *= self.rng.uniform(0.1, 0.5)
-            self.nodes[link.node_a].neighbors[link.node_b] = link.quality
-            self.nodes[link.node_b].neighbors[link.node_a] = link.quality
+            factor = self.rng.uniform(0.1, 0.5)
+            link.quality *= factor
+            link.quality_ab *= factor
+            link.quality_ba *= factor
+            self.nodes[link.node_a].neighbors[link.node_b] = link.quality_ab
+            self.nodes[link.node_b].neighbors[link.node_a] = link.quality_ba
 
     def stats_summary(self):
         """Return a summary dict of network statistics."""

@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshRoute — Live Simulator</title>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+/* Simulator-specific styles */
+.sim-page { padding-top: 70px; min-height: 100vh; }
+
+.sim-controls-bar {
+  position: sticky; top: 60px; z-index: 100;
+  background: rgba(10, 14, 26, 0.95); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.sim-controls {
+  max-width: 1600px; margin: 0 auto; padding: 0.6rem 2rem;
+  display: flex; flex-wrap: nowrap; gap: 1rem; align-items: center;
+}
+.sim-controls label {
+  font-family: var(--font-mono); font-size: 0.75rem;
+  color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em;
+}
+.sim-controls select, .sim-controls button, .sim-controls input {
+  font-family: var(--font-mono); font-size: 0.8rem;
+  background: var(--bg-card); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer;
+  transition: all 0.2s;
+}
+.sim-controls select:hover, .sim-controls button:hover {
+  border-color: var(--cyan-dim); color: var(--cyan);
+}
+.sim-controls button.primary {
+  background: var(--cyan-dim); color: #fff; border-color: var(--cyan);
+}
+.sim-controls button.primary:hover { background: var(--cyan); color: var(--bg-deep); }
+.sim-controls button.danger { border-color: var(--red-dim); color: var(--red); }
+.sim-controls button.danger:hover { background: var(--red-dim); }
+
+.sim-split {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 2px; max-width: 1600px; margin: 0 auto; padding: 0 2rem;
+  height: calc(100vh - 420px); min-height: 350px;
+}
+.sim-panel {
+  position: relative; background: var(--bg-surface);
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+.sim-panel canvas { width: 100%; height: 100%; display: block; }
+.sim-panel-header {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 0.6rem 1rem; display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(to bottom, rgba(10,14,26,0.9) 0%, transparent 100%);
+  pointer-events: none;
+}
+.sim-panel-title {
+  font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600;
+}
+.sim-panel-title.managed { color: var(--orange); }
+.sim-panel-title.system5 { color: var(--cyan); }
+
+.sim-stats {
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim);
+  display: flex; gap: 1rem;
+}
+.sim-stats .stat-val { color: var(--text); font-weight: 600; }
+
+.sim-footer {
+  max-width: 1600px; margin: 0 auto; padding: 0.8rem 2rem;
+  display: flex; gap: 2rem; align-items: center;
+}
+.sim-legend {
+  display: flex; gap: 1rem; font-family: var(--font-mono); font-size: 0.7rem;
+  color: var(--text-dim);
+}
+.sim-legend .dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 4px; vertical-align: middle;
+}
+.speed-control {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim);
+}
+.speed-control input[type="range"] {
+  width: 80px; accent-color: var(--cyan);
+}
+
+/* Step-by-step log panel */
+.sim-log-wrapper {
+  max-width: 1600px; margin: 0 auto; padding: 0.5rem 2rem;
+}
+.sim-log {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.8rem 1rem; max-height: 220px; overflow-y: auto;
+  font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.7;
+  scrollbar-color: var(--cyan-dim) var(--bg-card);
+}
+.sim-log:empty::before {
+  content: 'Press "Step" to send one message, or "Run" to start automatic dispatch...';
+  color: var(--text-muted); font-style: italic;
+}
+.sim-log .log-step {
+  border-bottom: 1px solid var(--border); padding: 0.5rem 0; margin-bottom: 0.3rem;
+}
+.sim-log .log-step:last-child { border-bottom: none; margin-bottom: 0; }
+.sim-log .log-header {
+  color: var(--text); font-weight: 600; font-size: 0.8rem; margin-bottom: 0.4rem;
+}
+.sim-log .log-columns {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+}
+.sim-log .log-col {
+  padding: 0.4rem 0.6rem; border-radius: 6px;
+}
+.sim-log .log-col.left {
+  background: rgba(251, 146, 60, 0.04); border-left: 2px solid var(--orange-dim);
+}
+.sim-log .log-col.right {
+  background: rgba(34, 211, 238, 0.04); border-left: 2px solid var(--cyan-dim);
+}
+.sim-log .log-col-title {
+  font-weight: 600; font-size: 0.75rem; margin-bottom: 0.2rem;
+}
+.sim-log .log-comparison {
+  margin-top: 0.3rem; padding: 0.25rem 0.5rem;
+  background: rgba(74, 222, 128, 0.05); border-radius: 4px;
+}
+.sim-log .log-managed { color: var(--orange); }
+.sim-log .log-system5 { color: var(--cyan); }
+.sim-log .log-dim { color: var(--text-muted); }
+.sim-log .log-good { color: var(--green); }
+.sim-log .log-bad { color: var(--red); }
+.sim-log .log-arrow { color: var(--text-dim); }
+.sim-log .log-savings { color: var(--green); font-weight: 600; }
+.sim-log .log-path { color: var(--cyan); }
+.sim-log .log-flood { color: var(--orange); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sim-split { grid-template-columns: 1fr; height: auto; }
+  .sim-panel { height: 50vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar" class="scrolled">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul id="nav-menu">
+      <li><a href="index.html">Presentation</a></li>
+      <li><a href="simulator.html" class="active">Live Simulator</a></li>
+      <li><a href="summary.html">Summary</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="sim-page">
+
+  <!-- Controls (sticky bar) -->
+  <div class="sim-controls-bar">
+    <div class="sim-controls">
+      <div style="flex-shrink:0;">
+        <label>Scenario</label><br>
+        <select id="scenario-select">
+          <optgroup label="Scale Tests">
+            <option value="small">Small Local (20 nodes, 1km)</option>
+            <option value="medium" selected>Medium City (80 nodes, 5km)</option>
+            <option value="large">Large Regional (200 nodes, 15km)</option>
+            <option value="dense">Dense Urban (120 nodes, short range)</option>
+          </optgroup>
+          <optgroup label="Terrain &amp; Topology">
+            <option value="trail">Hiking Trail (30 nodes, linear)</option>
+            <option value="mountain">Mountain Valley (60 nodes, poor propagation)</option>
+            <option value="maritime">Maritime / Coastal (30 nodes, line of sight)</option>
+            <option value="community">Community Mesh (80 nodes, stable)</option>
+          </optgroup>
+          <optgroup label="Mobile &amp; Events">
+            <option value="festival">Festival / Event (100 nodes, mobile)</option>
+            <option value="building">Building Emergency (150 nodes, indoor)</option>
+            <option value="highway">Highway Convoy (50 nodes, fast mobile)</option>
+          </optgroup>
+          <optgroup label="Stress Tests">
+            <option value="disaster">Disaster Relief (60 nodes, failures)</option>
+            <option value="partition">Partition Recovery (120 nodes, 40% loss)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="flex-shrink:0;">
+        <label>Msgs</label><br>
+        <input type="number" id="msg-count" value="20" min="1" max="200" style="width:50px">
+      </div>
+      <div style="flex-shrink:0;min-width:280px;">
+        <label>Endpoints</label><br>
+        <span id="endpoint-display" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);">
+          Click nodes to set <span style="color:#4ade80">SRC</span> &amp; <span style="color:#f87171">DST</span>
+        </span>
+      </div>
+      <div style="display:flex; gap:0.5rem; flex-shrink:0; align-self:flex-end;">
+        <button id="btn-build" style="min-width:110px">Build Network</button>
+        <button class="primary" id="btn-start" style="min-width:80px">Run</button>
+        <button id="btn-step" style="min-width:55px">Step</button>
+        <button id="btn-stop" style="min-width:55px">Stop</button>
+        <button class="danger" id="btn-reset" style="min-width:60px">Reset</button>
+      </div>
+      <div class="speed-control" style="flex-shrink:0; align-self:flex-end;">
+        <label>Speed</label>
+        <input type="range" id="speed-slider" min="1" max="20" value="4">
+        <span id="speed-label">1.0x</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-side canvases -->
+  <div class="sim-split">
+    <div class="sim-panel">
+      <div class="sim-panel-header">
+        <span class="sim-panel-title managed">Managed Flooding (Meshtastic)</span>
+        <div class="sim-stats" id="stats-managed">
+          <span>TX: <span class="stat-val" id="tx-managed">0</span></span>
+          <span>Hops: <span class="stat-val" id="hops-managed">-</span></span>
+          <span>Del: <span class="stat-val" id="del-managed">0</span></span>
+          <span>Rate: <span class="stat-val" id="rate-managed">-</span></span>
+          <span>Limit: <span class="stat-val" id="limit-managed" style="color:var(--orange)">3-7 hops</span></span>
+        </div>
+      </div>
+      <canvas id="canvas-managed"></canvas>
+    </div>
+    <div class="sim-panel">
+      <div class="sim-panel-header">
+        <span class="sim-panel-title system5">System 5 (MeshRoute)</span>
+        <div class="sim-stats" id="stats-system5">
+          <span>TX: <span class="stat-val" id="tx-system5">0</span></span>
+          <span>Hops: <span class="stat-val" id="hops-system5">-</span></span>
+          <span>Del: <span class="stat-val" id="del-system5">0</span></span>
+          <span>Rate: <span class="stat-val" id="rate-system5">-</span></span>
+          <span>Limit: <span class="stat-val" id="limit-system5" style="color:var(--cyan)">none</span></span>
+        </div>
+      </div>
+      <canvas id="canvas-system5"></canvas>
+    </div>
+  </div>
+
+  <!-- Step-by-step explanation log — split left/right -->
+  <div class="sim-log-wrapper">
+    <div class="sim-log" id="sim-log"></div>
+  </div>
+
+  <!-- Footer legend -->
+  <div class="sim-footer">
+    <div class="sim-legend">
+      <span><span class="dot" style="background:#4ade80"></span> Cluster 0</span>
+      <span><span class="dot" style="background:#22d3ee"></span> Cluster 1</span>
+      <span><span class="dot" style="background:#a78bfa"></span> Cluster 2</span>
+      <span><span class="dot" style="background:#fb923c"></span> Cluster 3</span>
+      <span><span class="dot" style="background:#fff;border:2px solid #94a3b8;width:6px;height:6px"></span> Border</span>
+      <span><span class="dot" style="background:#991b1b"></span> Dead Node</span>
+      <span style="color:rgba(153,27,27,0.7)">- - -</span> Dead Link</span>
+      <span style="color:var(--cyan)">——</span> Bridge Link</span>
+      <span><span class="dot" style="background:#fbbf24"></span> Reached</span>
+      <span><span class="dot" style="background:#4ade80"></span> SRC</span>
+      <span><span class="dot" style="background:#f87171"></span> DST</span>
+    </div>
+    <a href="index.html" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--cyan);text-decoration:none;margin-left:auto;">Back to Presentation</a>
+  </div>
+
+</div>
+
+<script>
+// ==========================================================================
+//  MeshRoute Live Simulator — Canvas-based network visualization
+// ==========================================================================
+
+const CLUSTER_COLORS = ['#4ade80','#22d3ee','#a78bfa','#fb923c','#f472b6','#fbbf24','#34d399','#818cf8'];
+const CLUSTER_DIM    = ['#166534','#0e7490','#5b21b6','#c2410c','#9d174d','#92400e','#065f46','#3730a3'];
+// Pastel backgrounds for cluster regions (low alpha)
+const CLUSTER_PASTEL = [
+  'rgba(74, 222, 128, 0.06)',   // green
+  'rgba(34, 211, 238, 0.06)',   // cyan
+  'rgba(167, 139, 250, 0.06)',  // purple
+  'rgba(251, 146, 60, 0.06)',   // orange
+  'rgba(244, 114, 182, 0.06)', // pink
+  'rgba(251, 191, 36, 0.06)',  // yellow
+  'rgba(52, 211, 153, 0.06)',  // teal
+  'rgba(129, 140, 248, 0.06)', // indigo
+];
+const CLUSTER_BORDER_PASTEL = [
+  'rgba(74, 222, 128, 0.15)',
+  'rgba(34, 211, 238, 0.15)',
+  'rgba(167, 139, 250, 0.15)',
+  'rgba(251, 146, 60, 0.15)',
+  'rgba(244, 114, 182, 0.15)',
+  'rgba(251, 191, 36, 0.15)',
+  'rgba(52, 211, 153, 0.15)',
+  'rgba(129, 140, 248, 0.15)',
+];
+const PI2 = Math.PI * 2;
+
+// Polyfill for roundRect (older browsers)
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = [r, r, r, r];
+    const [tl, tr, br, bl] = r;
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br);
+    this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl);
+    this.quadraticCurveTo(x, y, x + tl, y);
+    this.closePath();
+  };
+}
+
+// ---- Scenario Definitions ----
+const SCENARIOS = {
+  small:     { nodes: 20,  area: 1000,  range: 800,  terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0 },
+  medium:    { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0 },
+  large:     { nodes: 200, area: 15000, range: 3000, terrain:'suburban',    placement:'random',    mobile:0,   kills:0,   degrade:0 },
+  trail:     { nodes: 30,  area: 8000,  range: 2000, terrain:'rural',       placement:'linear',    mobile:0,   kills:0,   degrade:0 },
+  festival:  { nodes: 100, area: 2000,  range: 1500, terrain:'suburban',    placement:'clustered', mobile:0.5, kills:0,   degrade:0 },
+  disaster:  { nodes: 60,  area: 10000, range: 3000, terrain:'suburban',    placement:'random',    mobile:0.2, kills:0.2, degrade:0.3 },
+  dense:     { nodes: 120, area: 2000,  range: 1000, terrain:'dense_urban', placement:'random',    mobile:0,   kills:0,   degrade:0 },
+  mountain:  { nodes: 60,  area: 12000, range: 2000, terrain:'dense_urban', placement:'random',    mobile:0,   kills:0,   degrade:0.2 },
+  maritime:  { nodes: 30,  area: 25000, range: 8000, terrain:'rural',       placement:'random',    mobile:0,   kills:0,   degrade:0 },
+  building:  { nodes: 150, area: 500,   range: 300,  terrain:'dense_urban', placement:'clustered', mobile:0.8, kills:0,   degrade:0 },
+  highway:   { nodes: 50,  area: 10000, range: 3000, terrain:'rural',       placement:'linear',    mobile:0.9, kills:0,   degrade:0 },
+  community: { nodes: 80,  area: 8000,  range: 2500, terrain:'suburban',    placement:'clustered', mobile:0,   kills:0,   degrade:0 },
+  partition: { nodes: 120, area: 8000,  range: 2500, terrain:'urban',       placement:'random',    mobile:0,   kills:0.4, degrade:0.4 },
+};
+
+// ---- RNG (seedable) ----
+class RNG {
+  constructor(seed=42) { this.s = seed; }
+  next() { this.s = (this.s * 16807 + 0) % 2147483647; return this.s / 2147483647; }
+  uniform(a, b) { return a + this.next() * (b - a); }
+  gauss(mu, sigma) {
+    let u1 = this.next(), u2 = this.next();
+    return mu + sigma * Math.sqrt(-2*Math.log(u1||0.001)) * Math.cos(PI2*u2);
+  }
+  choice(arr) { return arr[Math.floor(this.next() * arr.length)]; }
+  sample(arr, n) {
+    const copy = [...arr]; const result = [];
+    for (let i = 0; i < Math.min(n, copy.length); i++) {
+      const j = Math.floor(this.next() * copy.length);
+      result.push(copy.splice(j, 1)[0]);
+    }
+    return result;
+  }
+}
+
+// ---- Network Builder ----
+function buildNetwork(scenarioKey, rng) {
+  const cfg = SCENARIOS[scenarioKey];
+  const nodes = [];
+  const links = [];
+
+  // Place nodes
+  if (cfg.placement === 'linear') {
+    for (let i = 0; i < cfg.nodes; i++) {
+      const t = i / Math.max(cfg.nodes - 1, 1);
+      nodes.push({
+        id: i, x: t * cfg.area,
+        y: cfg.area / 2 + rng.gauss(0, cfg.area * 0.05),
+        cluster: -1, border: false, battery: rng.uniform(50, 100),
+        mobile: false, speed: 0, heading: 0, neighbors: {},
+      });
+    }
+  } else if (cfg.placement === 'clustered') {
+    const nClusters = Math.max(3, Math.floor(cfg.nodes / 15));
+    const centers = [];
+    for (let c = 0; c < nClusters; c++)
+      centers.push([rng.uniform(cfg.area*0.1, cfg.area*0.9), rng.uniform(cfg.area*0.1, cfg.area*0.9)]);
+    for (let i = 0; i < cfg.nodes; i++) {
+      const [cx, cy] = rng.choice(centers);
+      const spread = cfg.area * 0.08;
+      nodes.push({
+        id: i, x: Math.max(0, Math.min(cfg.area, cx + rng.gauss(0, spread))),
+        y: Math.max(0, Math.min(cfg.area, cy + rng.gauss(0, spread))),
+        cluster: -1, border: false, battery: rng.uniform(50, 100),
+        mobile: false, speed: 0, heading: 0, neighbors: {},
+      });
+    }
+  } else {
+    for (let i = 0; i < cfg.nodes; i++) {
+      nodes.push({
+        id: i, x: rng.uniform(0, cfg.area), y: rng.uniform(0, cfg.area),
+        cluster: -1, border: false, battery: rng.uniform(50, 100),
+        mobile: false, speed: 0, heading: 0, neighbors: {},
+      });
+    }
+  }
+
+  // Mobile nodes
+  if (cfg.mobile > 0) {
+    const nMobile = Math.max(1, Math.floor(cfg.nodes * cfg.mobile));
+    const mobileIds = rng.sample(nodes.map(n => n.id), nMobile);
+    for (const id of mobileIds) {
+      nodes[id].mobile = true;
+      nodes[id].speed = rng.uniform(0.5, 2);
+      nodes[id].heading = rng.uniform(0, PI2);
+    }
+  }
+
+  // Create links
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist <= cfg.range) {
+        const quality = Math.max(0, 1 - (dist / cfg.range) * (dist / cfg.range));
+        if (quality > 0.02) {
+          links.push({ a: i, b: j, dist, quality, alive: true });
+          nodes[i].neighbors[j] = quality;
+          nodes[j].neighbors[i] = quality;
+        }
+      }
+    }
+  }
+
+  // Kill nodes
+  if (cfg.kills > 0) {
+    const nKill = Math.floor(nodes.length * cfg.kills);
+    const killIds = rng.sample(nodes.map(n=>n.id), nKill);
+    for (const id of killIds) {
+      nodes[id].battery = 0;
+      for (const l of links) {
+        if (l.a === id || l.b === id) l.alive = false;
+      }
+    }
+  }
+
+  // Degrade links
+  if (cfg.degrade > 0) {
+    const nDeg = Math.floor(links.length * cfg.degrade);
+    const targets = rng.sample(links.filter(l=>l.alive), nDeg);
+    for (const l of targets) l.quality *= rng.uniform(0.1, 0.5);
+  }
+
+  // Simple quadrant clustering
+  const half = cfg.area / 2;
+  for (const n of nodes) {
+    n.cluster = (n.x < half ? 0 : 1) + (n.y < half ? 0 : 2);
+  }
+
+  // Push clusters apart for visual clarity (add gap between quadrants)
+  const gap = cfg.area * 0.08; // 8% gap
+  for (const n of nodes) {
+    if (n.x >= half) n.x += gap; else n.x -= gap;
+    if (n.y >= half) n.y += gap; else n.y -= gap;
+  }
+  // Expand area to account for gap
+  const expandedArea = cfg.area + gap * 2;
+
+  // Border detection
+  for (const n of nodes) {
+    for (const nid of Object.keys(n.neighbors)) {
+      if (nodes[+nid].cluster !== n.cluster) { n.border = true; break; }
+    }
+  }
+
+  // Limit inter-cluster links to 2 per cluster pair (best quality),
+  // mark them as bridge links (drawn in blue)
+  const bridgeLinks = new Set(); // edge indices that are bridge links
+  const interByPair = {}; // "c0-c1" -> [{index, quality}]
+  for (let i = 0; i < links.length; i++) {
+    const l = links[i];
+    if (!l.alive) continue;
+    const ca = nodes[l.a].cluster, cb = nodes[l.b].cluster;
+    if (ca === cb) continue;
+    const pairKey = Math.min(ca, cb) + '-' + Math.max(ca, cb);
+    if (!interByPair[pairKey]) interByPair[pairKey] = [];
+    interByPair[pairKey].push({ idx: i, quality: l.quality });
+  }
+  // Keep top 2 per pair, hide the rest
+  for (const [pairKey, candidates] of Object.entries(interByPair)) {
+    candidates.sort((a, b) => b.quality - a.quality);
+    for (let j = 0; j < candidates.length; j++) {
+      if (j < 2) {
+        bridgeLinks.add(candidates[j].idx);
+      } else {
+        links[candidates[j].idx].hidden = true; // not drawn, but still usable for routing
+      }
+    }
+  }
+
+  // Compute cluster bounding boxes for background drawing
+  const clusterBounds = {};
+  for (const n of nodes) {
+    if (n.battery <= 0) continue;
+    if (!clusterBounds[n.cluster]) {
+      clusterBounds[n.cluster] = { minX: n.x, maxX: n.x, minY: n.y, maxY: n.y };
+    } else {
+      const b = clusterBounds[n.cluster];
+      b.minX = Math.min(b.minX, n.x); b.maxX = Math.max(b.maxX, n.x);
+      b.minY = Math.min(b.minY, n.y); b.maxY = Math.max(b.maxY, n.y);
+    }
+  }
+
+  return { nodes, links, area: expandedArea, range: cfg.range, cfg, clusterBounds, bridgeLinks };
+}
+
+// ---- BFS shortest path ----
+function bfsPath(nodes, links, src, dst, skipHidden = false) {
+  if (src === dst) return [src];
+  const visited = new Set([src]);
+  const queue = [[src, [src]]];
+  while (queue.length) {
+    const [cur, path] = queue.shift();
+    for (const l of links) {
+      if (!l.alive) continue;
+      if (skipHidden && l.hidden) continue; // System 5: only use visible bridge links
+      let neighbor = -1;
+      if (l.a === cur) neighbor = l.b;
+      else if (l.b === cur) neighbor = l.a;
+      else continue;
+      if (visited.has(neighbor)) continue;
+      if (nodes[neighbor].battery <= 0) continue;
+      const newPath = [...path, neighbor];
+      if (neighbor === dst) return newPath;
+      visited.add(neighbor);
+      queue.push([neighbor, newPath]);
+    }
+  }
+  return null;
+}
+
+// ---- Routing Simulators (return rich explanation data) ----
+function simulateManagedFlood(net, src, dst, rng, hopLimit = 7) {
+  const txEvents = []; // [{from, to, time, hop}]
+  const seen = new Set([src]);
+  const rebroadcast = new Set([src]);
+  const queue = [[src, 0]]; // [nodeId, hop]
+  let delivered = false;
+  let tick = 0;
+  let suppressed = 0;
+  let failedRx = 0;
+  let droppedByLimit = 0;
+  const nodesReached = new Set([src]);
+
+  while (queue.length) {
+    const [cur, hop] = queue.shift();
+    if (hop >= 15) continue;
+
+    // Hop limit enforcement — Meshtastic drops packets beyond this
+    if (hop > hopLimit) {
+      droppedByLimit++;
+      continue;
+    }
+
+    const node = net.nodes[cur];
+
+    // Suppression check (non-source)
+    if (cur !== src) {
+      const neighborRebroadcasted = Object.keys(node.neighbors).some(
+        nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
+      );
+      if (neighborRebroadcasted && rng.next() < 0.4) {
+        suppressed++;
+        continue;
+      }
+    }
+
+    rebroadcast.add(cur);
+
+    for (const [nidStr, quality] of Object.entries(node.neighbors)) {
+      const nid = +nidStr;
+      const link = net.links.find(l => l.alive && !l.hidden &&
+        ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+      if (!link) continue;
+
+      txEvents.push({ from: cur, to: nid, time: tick++, hop: hop });
+
+      if (rng.next() > quality) { failedRx++; continue; }
+      if (seen.has(nid)) continue;
+      seen.add(nid);
+      nodesReached.add(nid);
+
+      if (nid === dst) { delivered = true; continue; }
+      if (net.nodes[nid].battery <= 0) continue;
+      queue.push([nid, hop + 1]);
+    }
+  }
+  return {
+    txEvents, delivered, totalTx: txEvents.length,
+    suppressed, failedRx, droppedByLimit,
+    nodesReached: nodesReached.size,
+    rebroadcasters: rebroadcast.size,
+    hopLimit,
+  };
+}
+
+function simulateSystem5(net, src, dst, rng) {
+  const path = bfsPath(net.nodes, net.links, src, dst, true);
+  const txEvents = [];
+  if (!path) return { txEvents, delivered: false, totalTx: 0, path: null, retries: 0, failHop: -1 };
+
+  let tick = 0;
+  let delivered = true;
+  let retries = 0;
+  let failHop = -1;
+  for (let i = 0; i < path.length - 1; i++) {
+    const from = path[i], to = path[i+1];
+    txEvents.push({ from, to, time: tick++ });
+    const link = net.links.find(l => l.alive &&
+      ((l.a===from && l.b===to) || (l.a===to && l.b===from)));
+    const q = link ? link.quality : 0.1;
+    if (rng.next() > q) {
+      retries++;
+      txEvents.push({ from, to, time: tick++ });
+      if (rng.next() > q) { delivered = false; failHop = i; break; }
+    }
+  }
+  return { txEvents, delivered, totalTx: txEvents.length, path, retries, failHop };
+}
+
+// ---- Canvas Renderer ----
+class SimRenderer {
+  constructor(canvasId, labelClass) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.labelClass = labelClass;
+    this.net = null;
+    this.animPackets = [];
+    this.flashNodes = {}; // nodeId -> {color, alpha}
+    this.reachedNodes = new Map();  // nodeId -> intensity (0-1), fades with each new hop wave
+    this.reachedEdges = new Map();  // "a-b" -> intensity (0-1)
+    this.markedSrc = -1;
+    this.markedDst = -1;
+    this.stats = { tx: 0, delivered: 0, sent: 0, totalHops: 0, lastHops: 0 };
+    this.syncPeer = null;
+    this.hopLimitRings = [];
+    this.zoom = 1; this.panX = 0; this.panY = 0;
+    this._setupInteraction();
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const r = this.canvas.parentElement.getBoundingClientRect();
+    this.W = this.canvas.width = r.width;
+    this.H = this.canvas.height = r.height;
+  }
+
+  _syncToPeer() {
+    if (this.syncPeer) {
+      this.syncPeer.panX = this.panX;
+      this.syncPeer.panY = this.panY;
+      this.syncPeer.zoom = this.zoom;
+    }
+  }
+
+  _setupInteraction() {
+    let dragging = false, lastX, lastY;
+    this.canvas.addEventListener('mousedown', e => {
+      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      this.canvas.style.cursor = 'grabbing';
+    });
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      this.panX += e.clientX - lastX; this.panY += e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      this._syncToPeer();
+    });
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+      this.canvas.style.cursor = simState.started ? 'grab' : 'crosshair';
+    });
+    this.canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const rect = this.canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      this.panX = mx - (mx - this.panX) * zoomFactor;
+      this.panY = my - (my - this.panY) * zoomFactor;
+      this.zoom *= zoomFactor;
+      this.zoom = Math.max(0.3, Math.min(10, this.zoom));
+      this._syncToPeer();
+    }, { passive: false });
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  setNetwork(net) {
+    this.net = net;
+    this.animPackets = [];
+    this.flashNodes = {};
+    this.reachedNodes = new Map();
+    this.reachedEdges = new Map();
+    this.stats = { tx: 0, delivered: 0, sent: 0, totalHops: 0, lastHops: 0 };
+    this.fitNetwork();
+  }
+
+  clearReached() {
+    this.reachedNodes = new Map();
+    this.reachedEdges = new Map();
+  }
+
+  // Dim all existing reached markers by a factor (called before each new hop wave)
+  fadeReached(factor = 0.55) {
+    for (const [id, intensity] of this.reachedNodes) {
+      this.reachedNodes.set(id, intensity * factor);
+    }
+    for (const [key, intensity] of this.reachedEdges) {
+      this.reachedEdges.set(key, intensity * factor);
+    }
+  }
+
+  markReached(nodeId) {
+    this.reachedNodes.set(nodeId, 1.0);
+  }
+
+  markEdgeReached(fromId, toId) {
+    const key = Math.min(fromId, toId) + '-' + Math.max(fromId, toId);
+    this.reachedEdges.set(key, 1.0);
+  }
+
+  fitNetwork() {
+    if (!this.net) return;
+    // Find actual bounding box of all alive nodes
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of this.net.nodes) {
+      if (n.battery <= 0) continue;
+      minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+      minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+    }
+    if (!isFinite(minX)) { minX = 0; maxX = this.net.area; minY = 0; maxY = this.net.area; }
+    const spanX = (maxX - minX) || 1;
+    const spanY = (maxY - minY) || 1;
+    const margin = 50;
+    const scaleX = (this.W - margin * 2) / spanX;
+    const scaleY = (this.H - margin * 2) / spanY;
+    this.scale = Math.min(scaleX, scaleY);
+    this.zoom = 1;
+    // Center the network
+    this.panX = margin + ((this.W - margin * 2) - spanX * this.scale) / 2 - minX * this.scale;
+    this.panY = margin + ((this.H - margin * 2) - spanY * this.scale) / 2 - minY * this.scale;
+    this._syncToPeer();
+  }
+
+  toScreen(x, y) {
+    return [this.panX + x * this.scale * this.zoom, this.panY + y * this.scale * this.zoom];
+  }
+
+  addPacket(from, to, color, onDone) {
+    this.animPackets.push({ from, to, t: 0, color, onDone });
+  }
+
+  flashNode(id, color) {
+    this.flashNodes[id] = { color, alpha: 1.0 };
+  }
+
+  update(dt) {
+    // Animate packets
+    const speed = 0.02 * simState.speed;
+    for (let i = this.animPackets.length - 1; i >= 0; i--) {
+      const p = this.animPackets[i];
+      p.t += speed;
+      if (p.t >= 1) {
+        if (p.onDone) p.onDone();
+        this.animPackets.splice(i, 1);
+      }
+    }
+    // Fade flash nodes
+    for (const id in this.flashNodes) {
+      this.flashNodes[id].alpha -= 0.015;
+      if (this.flashNodes[id].alpha <= 0) delete this.flashNodes[id];
+    }
+    // Move mobile nodes — stay within their cluster region
+    if (this.net) {
+      const bounds = this.net.clusterBounds;
+      for (const n of this.net.nodes) {
+        if (!n.mobile || n.battery <= 0) continue;
+        n.heading += (Math.random() - 0.5) * 0.2;
+        const s = n.speed * dt * 50 * simState.speed;
+        n.x += Math.cos(n.heading) * s;
+        n.y += Math.sin(n.heading) * s;
+
+        // Constrain to cluster bounding box (with padding)
+        const cb = bounds && bounds[n.cluster];
+        if (cb) {
+          const pad = this.net.range * 0.3;
+          const minX = cb.minX - pad, maxX = cb.maxX + pad;
+          const minY = cb.minY - pad, maxY = cb.maxY + pad;
+          if (n.x < minX || n.x > maxX) { n.heading = Math.PI - n.heading; n.x = Math.max(minX, Math.min(maxX, n.x)); }
+          if (n.y < minY || n.y > maxY) { n.heading = -n.heading; n.y = Math.max(minY, Math.min(maxY, n.y)); }
+        } else {
+          // Fallback: bounce off area edges
+          if (n.x < 0 || n.x > this.net.area) { n.heading = Math.PI - n.heading; n.x = Math.max(0, Math.min(this.net.area, n.x)); }
+          if (n.y < 0 || n.y > this.net.area) { n.heading = -n.heading; n.y = Math.max(0, Math.min(this.net.area, n.y)); }
+        }
+      }
+    }
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.W, this.H);
+    if (!this.net) return;
+
+    // Draw cluster background regions
+    if (this.net.clusterBounds) {
+      const pad = 20; // padding around cluster bounds
+      for (const [cid, b] of Object.entries(this.net.clusterBounds)) {
+        const [x1, y1] = this.toScreen(b.minX, b.minY);
+        const [x2, y2] = this.toScreen(b.maxX, b.maxY);
+        const left = Math.min(x1, x2) - pad;
+        const top = Math.min(y1, y2) - pad;
+        const w = Math.abs(x2 - x1) + pad * 2;
+        const h = Math.abs(y2 - y1) + pad * 2;
+        const ci = +cid % CLUSTER_PASTEL.length;
+
+        // Fill
+        ctx.beginPath();
+        ctx.roundRect(left, top, w, h, 12);
+        ctx.fillStyle = CLUSTER_PASTEL[ci];
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = CLUSTER_BORDER_PASTEL[ci];
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Label
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = CLUSTER_BORDER_PASTEL[ci];
+        ctx.textAlign = 'left';
+        ctx.fillText(`C${cid}`, left + 6, top + 14);
+      }
+    }
+
+    // Draw links
+    const bridges = this.net.bridgeLinks || new Set();
+    for (let li = 0; li < this.net.links.length; li++) {
+      const l = this.net.links[li];
+      if (l.hidden) continue; // inter-cluster links beyond the 2 best are hidden
+
+      // Dead links — dashed red
+      if (!l.alive) {
+        const [ax, ay] = this.toScreen(this.net.nodes[l.a].x, this.net.nodes[l.a].y);
+        const [bx, by] = this.toScreen(this.net.nodes[l.b].x, this.net.nodes[l.b].y);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = 'rgba(153,27,27,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        continue;
+      }
+      const [ax, ay] = this.toScreen(this.net.nodes[l.a].x, this.net.nodes[l.a].y);
+      const [bx, by] = this.toScreen(this.net.nodes[l.b].x, this.net.nodes[l.b].y);
+      const edgeKey = Math.min(l.a, l.b) + '-' + Math.max(l.a, l.b);
+      const edgeIntensity = this.reachedEdges.get(edgeKey) || 0;
+      const isBridge = bridges.has(li);
+
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      if (edgeIntensity > 0.01) {
+        // Reached — yellow
+        ctx.strokeStyle = `rgba(251,191,36,${0.15 + edgeIntensity * 0.55})`;
+        ctx.lineWidth = 1 + edgeIntensity * 2;
+      } else if (isBridge) {
+        // Bridge link between clusters — cyan/blue
+        ctx.strokeStyle = 'rgba(34,211,238,0.45)';
+        ctx.lineWidth = 2;
+      } else {
+        // Normal intra-cluster link — dim gray
+        const alpha = 0.08 + l.quality * 0.15;
+        ctx.strokeStyle = `rgba(100,116,139,${alpha})`;
+        ctx.lineWidth = 0.5 + l.quality;
+      }
+      ctx.stroke();
+    }
+
+    // Draw nodes
+    const nodeR = Math.max(2, 4 * this.zoom);
+    for (const n of this.net.nodes) {
+      const [sx, sy] = this.toScreen(n.x, n.y);
+      const color = n.battery <= 0 ? '#991b1b' : CLUSTER_COLORS[n.cluster % CLUSTER_COLORS.length];
+      const nodeIntensity = this.reachedNodes.get(n.id) || 0;
+
+      // Flash effect (temporary)
+      if (this.flashNodes[n.id]) {
+        const f = this.flashNodes[n.id];
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 8, 0, PI2);
+        ctx.fillStyle = f.color.replace(')', `,${f.alpha * 0.3})`).replace('rgb', 'rgba');
+        ctx.fill();
+      }
+
+      // Yellow glow for reached nodes (intensity-based)
+      if (nodeIntensity > 0.01) {
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 5, 0, PI2);
+        ctx.fillStyle = `rgba(251,191,36,${nodeIntensity * 0.25})`;
+        ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 5, 0, PI2);
+        ctx.strokeStyle = `rgba(251,191,36,${nodeIntensity * 0.8})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Node body — blend between cluster color and yellow based on intensity
+      ctx.beginPath(); ctx.arc(sx, sy, nodeR, 0, PI2);
+      if (nodeIntensity > 0.3) {
+        ctx.fillStyle = `rgba(251,191,36,${0.5 + nodeIntensity * 0.5})`;
+      } else {
+        ctx.fillStyle = color;
+      }
+      ctx.fill();
+
+      // Border node ring (white, only if not strongly reached)
+      if (n.border && n.battery > 0 && nodeIntensity < 0.3) {
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 2, 0, PI2);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Mobile indicator
+      if (n.mobile && n.battery > 0) {
+        ctx.beginPath();
+        const hx = sx + Math.cos(n.heading) * (nodeR + 5);
+        const hy = sy + Math.sin(n.heading) * (nodeR + 5);
+        ctx.moveTo(sx, sy); ctx.lineTo(hx, hy);
+        ctx.strokeStyle = 'rgba(251,191,36,0.6)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Draw hop-limit rings (Meshtastic max hop visualization)
+    this._drawHopLimitRings(ctx);
+
+    // Draw SRC / DST markers for the next message
+    this._drawEndpointMarkers(ctx, nodeR);
+
+    // Draw animated packets
+    for (const p of this.animPackets) {
+      const nFrom = this.net.nodes[p.from], nTo = this.net.nodes[p.to];
+      const [fx, fy] = this.toScreen(nFrom.x, nFrom.y);
+      const [tx, ty] = this.toScreen(nTo.x, nTo.y);
+      const px = fx + (tx - fx) * p.t;
+      const py = fy + (ty - fy) * p.t;
+
+      // Glow
+      ctx.beginPath(); ctx.arc(px, py, 6, 0, PI2);
+      ctx.fillStyle = p.color === '#fb923c' ? 'rgba(251,146,60,0.25)' : 'rgba(34,211,238,0.25)';
+      ctx.fill();
+
+      // Particle
+      ctx.beginPath(); ctx.arc(px, py, 3, 0, PI2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Trail
+      const trail = 0.15;
+      if (p.t > trail) {
+        const t0 = p.t - trail;
+        const tx0 = fx + (tx - fx) * t0;
+        const ty0 = fy + (ty - fy) * t0;
+        ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.lineTo(px, py);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Stats overlay
+    this._updateStats();
+  }
+
+  _drawHopLimitRings(ctx) {
+    // Only show on managed flooding side when SRC is selected
+    if (this.labelClass !== 'managed') return;
+    if (this.markedSrc < 0 || !this.net) return;
+
+    const src = this.net.nodes[this.markedSrc];
+    if (!src) return;
+    const [sx, sy] = this.toScreen(src.x, src.y);
+    const hopRange = this.net.range; // average 1-hop range in world units
+
+    const limits = [
+      { hops: 3, color: 'rgba(251,146,60,0.25)', label: 'Hop 3 (min limit)' },
+      { hops: 7, color: 'rgba(251,146,60,0.10)', label: 'Hop 7 (max limit)' },
+    ];
+
+    for (const lim of limits) {
+      const worldRadius = hopRange * lim.hops;
+      const screenRadius = worldRadius * this.scale * this.zoom;
+
+      // Dashed ring
+      ctx.beginPath();
+      ctx.arc(sx, sy, screenRadius, 0, PI2);
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = lim.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = lim.color.replace(/[\d.]+\)$/, '0.6)');
+      ctx.textAlign = 'left';
+      ctx.fillText(lim.label, sx + screenRadius + 4, sy - 4);
+    }
+
+    // Shade "unreachable zone" beyond hop 7
+    const maxWorldRadius = hopRange * 7;
+    const maxScreenRadius = maxWorldRadius * this.scale * this.zoom;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, this.W, this.H);
+    ctx.arc(sx, sy, maxScreenRadius, 0, PI2, true); // cut out the reachable area
+    ctx.fillStyle = 'rgba(153, 27, 27, 0.08)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  _drawEndpointMarkers(ctx, nodeR) {
+    const markers = [
+      { id: this.markedSrc, label: 'SRC', color: '#4ade80', glow: 'rgba(74,222,128,0.3)' },
+      { id: this.markedDst, label: 'DST', color: '#f87171', glow: 'rgba(248,113,113,0.3)' },
+    ];
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300); // 0..1 pulsing
+
+    for (const m of markers) {
+      if (m.id < 0 || !this.net || !this.net.nodes[m.id]) continue;
+      const n = this.net.nodes[m.id];
+      const [sx, sy] = this.toScreen(n.x, n.y);
+      const outerR = nodeR + 6 + pulse * 4;
+
+      // Pulsing glow ring
+      ctx.beginPath(); ctx.arc(sx, sy, outerR, 0, PI2);
+      ctx.strokeStyle = m.color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.4 + pulse * 0.4;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Soft glow fill
+      ctx.beginPath(); ctx.arc(sx, sy, outerR + 2, 0, PI2);
+      ctx.fillStyle = m.glow;
+      ctx.fill();
+
+      // Label above
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = m.color;
+      ctx.fillText(m.label, sx, sy - outerR - 4);
+    }
+  }
+
+  _updateStats() {
+    const prefix = this.labelClass === 'managed' ? 'managed' : 'system5';
+    document.getElementById(`tx-${prefix}`).textContent = this.stats.tx;
+    document.getElementById(`del-${prefix}`).textContent = this.stats.delivered;
+    const rate = this.stats.sent > 0 ? (this.stats.delivered / this.stats.sent * 100).toFixed(1) + '%' : '-';
+    document.getElementById(`rate-${prefix}`).textContent = rate;
+    const avgHops = this.stats.delivered > 0 ? (this.stats.totalHops / this.stats.delivered).toFixed(1) : '-';
+    document.getElementById(`hops-${prefix}`).textContent =
+      this.stats.lastHops > 0 ? `${this.stats.lastHops} (avg ${avgHops})` : avgHops;
+  }
+}
+
+// ---- Simulation State Machine ----
+const simState = {
+  running: false,
+  finished: false,
+  started: false,    // true once first Run/Step — locks endpoint selection
+  speed: 1,
+  scenario: 'medium',
+  msgCount: 20,
+  messages: [],      // [{src, dst}]
+  msgIndex: 0,
+  pickedSrc: -1,     // user-selected source node (-1 = not set)
+  pickedDst: -1,     // user-selected destination node (-1 = not set)
+  networkBuilt: false, // true after build animation
+  generation: 0,     // increments on reset — stale setTimeout callbacks check this
+};
+
+let rendererManaged, rendererSystem5;
+
+function init() {
+  rendererManaged = new SimRenderer('canvas-managed', 'managed');
+  rendererSystem5 = new SimRenderer('canvas-system5', 'system5');
+
+  // Link renderers for synced pan/zoom
+  rendererManaged.syncPeer = rendererSystem5;
+  rendererSystem5.syncPeer = rendererManaged;
+
+  // Read initial values from DOM
+  simState.scenario = document.getElementById('scenario-select').value;
+  simState.msgCount = +document.getElementById('msg-count').value || 20;
+  simState.speed = +document.getElementById('speed-slider').value / 4;
+  document.getElementById('speed-label').textContent = simState.speed.toFixed(1) + 'x';
+
+  resetSim();
+
+  // --- Control Bindings ---
+  document.getElementById('btn-build').addEventListener('click', buildNetworkAnimated);
+  document.getElementById('btn-start').addEventListener('click', toggleRun);
+  document.getElementById('btn-step').addEventListener('click', stepOne);
+  document.getElementById('btn-stop').addEventListener('click', stopSim);
+  document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+  document.getElementById('scenario-select').addEventListener('change', e => {
+    simState.scenario = e.target.value;
+    resetSim();
+  });
+
+  const msgInput = document.getElementById('msg-count');
+  const updateMsgCount = () => {
+    simState.msgCount = Math.max(1, Math.min(200, +msgInput.value || 20));
+  };
+  msgInput.addEventListener('input', updateMsgCount);
+  msgInput.addEventListener('change', updateMsgCount);
+
+  document.getElementById('speed-slider').addEventListener('input', e => {
+    simState.speed = +e.target.value / 4;
+    document.getElementById('speed-label').textContent = simState.speed.toFixed(1) + 'x';
+  });
+
+  // --- Click-to-select SRC/DST (on both canvases) ---
+  for (const renderer of [rendererManaged, rendererSystem5]) {
+    renderer.canvas.addEventListener('click', e => handleNodeClick(e, renderer));
+  }
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    rendererManaged.resize();
+    rendererSystem5.resize();
+    if (rendererManaged.net) rendererManaged.fitNetwork();
+    if (rendererSystem5.net) rendererSystem5.fitNetwork();
+  });
+
+  requestAnimationFrame(loop);
+}
+
+function handleNodeClick(e, renderer) {
+  // Only allow picking before simulation has started
+  if (simState.started) return;
+  if (!renderer.net) return;
+
+  const rect = renderer.canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Find closest node to click position
+  let bestId = -1, bestDist = Infinity;
+  const hitRadius = 15; // pixels
+  for (const n of renderer.net.nodes) {
+    if (n.battery <= 0) continue;
+    if (Object.keys(n.neighbors).length === 0) continue;
+    const [sx, sy] = renderer.toScreen(n.x, n.y);
+    const dx = mx - sx, dy = my - sy;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < hitRadius && d < bestDist) {
+      bestDist = d;
+      bestId = n.id;
+    }
+  }
+  if (bestId < 0) return;
+
+  // First click = SRC, second click = DST, third click = reset both
+  if (simState.pickedSrc < 0) {
+    simState.pickedSrc = bestId;
+  } else if (simState.pickedDst < 0) {
+    if (bestId === simState.pickedSrc) return; // can't pick same node
+    simState.pickedDst = bestId;
+    generateMessages(); // generate all messages with this pair
+  } else {
+    // Already both set — clicking resets to pick new
+    simState.pickedSrc = bestId;
+    simState.pickedDst = -1;
+    simState.messages = [];
+  }
+
+  updateEndpointDisplay();
+  updateMarkers();
+}
+
+function updateEndpointDisplay() {
+  const el = document.getElementById('endpoint-display');
+  if (simState.pickedSrc < 0) {
+    el.innerHTML = 'Click a node to set <span style="color:#4ade80">SRC</span>';
+  } else if (simState.pickedDst < 0) {
+    el.innerHTML = `<span style="color:#4ade80">SRC: Node ${simState.pickedSrc}</span> — now click <span style="color:#f87171">DST</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#4ade80">SRC: ${simState.pickedSrc}</span> <span style="color:var(--text-dim)">→</span> <span style="color:#f87171">DST: ${simState.pickedDst}</span>`;
+    if (!simState.started) {
+      el.innerHTML += ` <span style="color:var(--text-muted)">(click nodes to change)</span>`;
+    }
+  }
+  if (simState.started) {
+    el.innerHTML += ` <span style="color:var(--text-muted)">(locked)</span>`;
+  }
+}
+
+function updateMarkers() {
+  rendererManaged.markedSrc = simState.pickedSrc;
+  rendererManaged.markedDst = simState.pickedDst;
+  rendererSystem5.markedSrc = simState.pickedSrc;
+  rendererSystem5.markedDst = simState.pickedDst;
+}
+
+function generateMessages() {
+  simState.messages = [];
+  if (simState.pickedSrc < 0 || simState.pickedDst < 0) return;
+  // All messages go between the selected SRC and DST
+  for (let i = 0; i < simState.msgCount; i++) {
+    simState.messages.push({ src: simState.pickedSrc, dst: simState.pickedDst });
+  }
+}
+
+function stopSim() {
+  simState.running = false;
+  simState.generation++; // invalidate all pending setTimeout callbacks
+  autoDispatchTimer = 0;
+
+  // Clear in-flight animations
+  rendererManaged.animPackets = [];
+  rendererSystem5.animPackets = [];
+
+  document.getElementById('btn-start').textContent = simState.msgIndex > 0 ? 'Continue' : 'Run';
+}
+
+function resetSim() {
+  simState.running = false;
+  simState.finished = false;
+  simState.started = false;
+  simState.networkBuilt = false;
+  simState.msgIndex = 0;
+  simState.pickedSrc = -1;
+  simState.pickedDst = -1;
+  simState.generation++; // kill all pending setTimeout callbacks
+  autoDispatchTimer = 0;
+
+  const btn = document.getElementById('btn-start');
+  btn.textContent = 'Run';
+  btn.classList.add('primary');
+  btn.disabled = false;
+  document.getElementById('btn-step').disabled = false;
+  document.getElementById('btn-build').disabled = false;
+
+  // Clear log
+  document.getElementById('sim-log').innerHTML = '';
+
+  // Re-read message count from input
+  simState.msgCount = Math.max(1, Math.min(200, +document.getElementById('msg-count').value || 20));
+
+  // Build full network immediately (visible from start)
+  const netManaged = buildNetwork(simState.scenario, new RNG(42));
+  const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
+  rendererManaged.setNetwork(netManaged);
+  rendererSystem5.setNetwork(netSystem5);
+
+  // Pick random SRC/DST from alive nodes in different clusters for interesting paths
+  const alive = netManaged.nodes.filter(n => n.battery > 0 && Object.keys(n.neighbors).length > 0);
+  if (alive.length >= 2) {
+    const pickRng = new RNG(Date.now() % 100000); // slightly random each reset
+    const src = pickRng.choice(alive);
+    // Try to pick DST in a different cluster for a cross-cluster path
+    const otherCluster = alive.filter(n => n.cluster !== src.cluster && n.id !== src.id);
+    const dst = otherCluster.length > 0 ? pickRng.choice(otherCluster) : pickRng.choice(alive.filter(n => n.id !== src.id));
+    simState.pickedSrc = src.id;
+    simState.pickedDst = dst.id;
+    generateMessages();
+  }
+  updateEndpointDisplay();
+  updateMarkers();
+
+  // Write initial network info to log
+  const cfg = SCENARIOS[simState.scenario];
+  const nAlive = alive.length;
+  const nLinks = netManaged.links.filter(l => l.alive).length;
+  const nBorder = netManaged.nodes.filter(n => n.border).length;
+  const clusters = {};
+  for (const n of netManaged.nodes) {
+    if (n.battery <= 0) continue;
+    clusters[n.cluster] = (clusters[n.cluster] || 0) + 1;
+  }
+  const log = document.getElementById('sim-log');
+  log.innerHTML = `<div class="log-step">
+    <div class="log-header">Network Ready</div>
+    <div class="log-dim">${nAlive} nodes, ${nLinks} links, ${Object.keys(clusters).length} clusters, ${nBorder} border nodes.
+    Terrain: ${cfg.terrain}, Range: ${cfg.range}m, Area: ${(cfg.area/1000).toFixed(1)}km</div>
+    <div style="margin-top:0.3rem;color:var(--cyan);">SRC and DST randomly selected — <b>click any node</b> to change them before starting.</div>
+  </div>`;
+}
+
+function buildNetworkAnimated() {
+  if (simState.networkBuilt) return;
+  simState.networkBuilt = true;
+  document.getElementById('btn-build').disabled = true;
+
+  const net = rendererManaged.net;
+  if (!net) return;
+
+  const cfg = SCENARIOS[simState.scenario];
+  const log = document.getElementById('sim-log');
+  log.innerHTML = ''; // clear
+
+  const steps = [];
+  const nAlive = net.nodes.filter(n => n.battery > 0).length;
+  const nLinks = net.links.filter(l => l.alive).length;
+  const nBorder = net.nodes.filter(n => n.border).length;
+  const clusters = {};
+  for (const n of net.nodes) {
+    if (n.battery <= 0) continue;
+    clusters[n.cluster] = (clusters[n.cluster] || 0) + 1;
+  }
+  const nDead = net.nodes.filter(n => n.battery <= 0).length;
+  const nMobile = net.nodes.filter(n => n.mobile).length;
+  const avgNeighbors = (net.nodes.reduce((s, n) => s + Object.keys(n.neighbors).length, 0) / Math.max(nAlive, 1)).toFixed(1);
+
+  // Step 1: Node placement
+  steps.push({
+    title: 'Step 1: Node Placement',
+    html: `<span class="log-good">${cfg.nodes} nodes</span> placed using <b>${cfg.placement}</b> strategy `
+      + `in a <b>${(cfg.area/1000).toFixed(1)}km</b> area.`
+      + (nMobile > 0 ? `<br><span class="log-dim">${nMobile} mobile nodes (walking speed).</span>` : '')
+      + (nDead > 0 ? `<br><span class="log-bad">${nDead} nodes dead (0% battery — disaster scenario).</span>` : ''),
+  });
+
+  // Step 2: Link discovery
+  steps.push({
+    title: 'Step 2: Link Discovery (LoRa Range)',
+    html: `Each node scans for neighbors within <b>${cfg.range}m</b> LoRa range (${cfg.terrain} terrain).`
+      + `<br><span class="log-good">${nLinks} links</span> established. `
+      + `Average <b>${avgNeighbors}</b> neighbors per node.`
+      + `<br><span class="log-dim">Link quality = 1 - (distance/range)², degraded links have lower quality.</span>`,
+  });
+
+  // Step 3: Clustering
+  const clusterList = Object.entries(clusters).map(([c, n]) => `C${c}: ${n} nodes`).join(', ');
+  steps.push({
+    title: 'Step 3: Geo-Clustering (Quadrant Split)',
+    html: `Nodes grouped into <span class="log-good">${Object.keys(clusters).length} clusters</span> by geographic quadrant.`
+      + `<br>${clusterList}`
+      + `<br><span class="log-dim">In System 5, messages are routed cluster-by-cluster. In Managed Flooding, clusters are ignored — everything floods.</span>`,
+  });
+
+  // Step 4: Border nodes
+  steps.push({
+    title: 'Step 4: Border Node Election',
+    html: `<span class="log-good">${nBorder} border nodes</span> detected (nodes with neighbors in other clusters).`
+      + `<br><span class="log-dim">Border nodes are the gateways between clusters — System 5 routes inter-cluster traffic through them. `
+      + `Shown with white rings on the map.</span>`,
+  });
+
+  // Step 5: Hop limits
+  steps.push({
+    title: 'Step 5: Meshtastic Hop Limit (the problem)',
+    html: `<span class="log-managed">Meshtastic limits messages to <b>3-7 hops</b></span> to prevent broadcast storms.`
+      + `<br>Each hop triggers <b>O(n)</b> transmissions (every reachable node rebroadcasts).`
+      + `<br>Without hop limit, a single message would flood the entire network repeatedly.`
+      + `<br><br><span class="log-system5">System 5 has <b>no hop limit</b></span> — each hop costs only <b>1 TX</b> (directed routing), `
+      + `so 20 hops cost less than Managed Flooding costs for 1 hop.`
+      + `<br><br><span class="log-dim">Select SRC and DST to see this difference live. `
+      + `On the left panel, dashed orange rings show where Meshtastic's hop limit cuts off.</span>`,
+  });
+
+  // Animate steps with delay (generation-guarded)
+  const buildGen = simState.generation;
+  steps.forEach((step, i) => {
+    setTimeout(() => {
+      if (simState.generation !== buildGen) return;
+      const div = document.createElement('div');
+      div.className = 'log-step';
+      div.innerHTML = `<div class="log-header">${step.title}</div><div>${step.html}</div>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }, i * 800);
+  });
+}
+
+function ensureStartable() {
+  if (simState.pickedSrc < 0 || simState.pickedDst < 0) {
+    document.getElementById('endpoint-display').innerHTML =
+      '<span style="color:#f87171">Select SRC and DST nodes first!</span>';
+    return false;
+  }
+  if (!simState.started) {
+    simState.started = true;
+    updateEndpointDisplay();
+    prepareHopByHop();
+  }
+  return true;
+}
+
+// Pre-compute both routing results and group Managed Flooding TX events by hop
+function prepareHopByHop() {
+  const src = simState.pickedSrc, dst = simState.pickedDst;
+
+  // Managed Flooding — full simulation, then group by hop
+  const mResult = simulateManagedFlood(rendererManaged.net, src, dst, new RNG(42));
+  const mHopGroups = {}; // hop -> [txEvent]
+  let mMaxHop = 0;
+
+  // Build a quick lookup for hidden links
+  const hiddenEdges = new Set();
+  for (const l of rendererManaged.net.links) {
+    if (l.hidden) hiddenEdges.add(Math.min(l.a, l.b) + '-' + Math.max(l.a, l.b));
+  }
+
+  for (const ev of mResult.txEvents) {
+    const h = ev.hop;
+    // Mark whether this TX goes over a hidden link
+    ev.overHidden = hiddenEdges.has(Math.min(ev.from, ev.to) + '-' + Math.max(ev.from, ev.to));
+    if (!mHopGroups[h]) mHopGroups[h] = [];
+    mHopGroups[h].push(ev);
+    if (h > mMaxHop) mMaxHop = h;
+  }
+
+  // System 5 — BFS path, each hop is one TX
+  const s5Path = bfsPath(rendererSystem5.net.nodes, rendererSystem5.net.links, src, dst, true);
+
+  // Compute total hops
+  const totalHops = Math.max(mMaxHop + 1, s5Path ? s5Path.length - 1 : 0);
+
+  simState.hopPlan = {
+    mResult,
+    mHopGroups,
+    mMaxHop,
+    s5Path,
+    s5Hops: s5Path ? s5Path.length - 1 : 0,
+    totalHops,
+    currentHop: -1,   // will become 0 on first step
+    mTotalTxSoFar: 0,
+    s5TotalTxSoFar: 0,
+    mDelivered: false,
+    s5Delivered: false,
+  };
+
+  // Mark SRC
+  rendererManaged.clearReached();
+  rendererSystem5.clearReached();
+  rendererManaged.markReached(src);
+  rendererSystem5.markReached(src);
+
+  // Write initial log
+  const srcNode = rendererManaged.net.nodes[src];
+  const dstNode = rendererManaged.net.nodes[dst];
+  const log = document.getElementById('sim-log');
+  log.innerHTML = '';
+
+  const introDiv = document.createElement('div');
+  introDiv.className = 'log-step';
+  introDiv.innerHTML = `<div class="log-header">Sending: Node ${src} (C${srcNode.cluster}) → Node ${dst} (C${dstNode.cluster})</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>
+        No routing table. Node ${src} doesn't know where Node ${dst} is.<br>
+        <b>Only option: broadcast to ALL neighbors</b> and hope it arrives.<br>
+        Hop limit: <b>${mResult.hopLimit}</b> — after that, packet is dropped.
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">System 5</div>
+        Node ${src} looks up Node ${dst} in its <b>routing table</b>.<br>
+        ${s5Path
+          ? `Route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Path.length - 1} hops).<br>
+             <span class="log-dim">The routing table was built during cluster formation. Each node knows the best path
+             to every other node via border nodes between clusters.</span>`
+          : `<span class="log-bad">No route found!</span>`}
+      </div>
+    </div>
+    <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance one hop at a time, or <b>Run</b> for auto-play.</div>`;
+  log.appendChild(introDiv);
+  log.scrollTop = log.scrollHeight;
+}
+
+function toggleRun() {
+  if (simState.finished) { resetSim(); return; }
+  if (!ensureStartable()) return;
+  simState.running = !simState.running;
+  const hp = simState.hopPlan;
+  const label = simState.running ? 'Pause' : (hp && hp.currentHop >= 0 ? 'Continue' : 'Run');
+  document.getElementById('btn-start').textContent = label;
+}
+
+function stepOne() {
+  if (simState.finished) return;
+  if (!ensureStartable()) return;
+  advanceOneHop();
+}
+
+function advanceOneHop() {
+  const hp = simState.hopPlan;
+  if (!hp) return;
+
+  hp.currentHop++;
+  const hop = hp.currentHop;
+  const gen = simState.generation;
+  const log = document.getElementById('sim-log');
+
+  // Check if both sides are done
+  const mDone = hop > hp.mMaxHop;
+  const s5Done = hop >= hp.s5Hops;
+  if (mDone && s5Done) { markFinished(); return; }
+
+  // Fade previous hop markings on both sides
+  rendererManaged.fadeReached();
+  rendererSystem5.fadeReached();
+
+  // --- Managed Flooding for this hop ---
+  // All visible TX events fire as ONE simultaneous wave (not staggered)
+  const mEvents = hp.mHopGroups[hop] || [];
+  const mTxThisHop = mEvents.length;
+  hp.mTotalTxSoFar += mTxThisHop;
+  const mHitLimit = hop >= hp.mResult.hopLimit;
+  let mDeliveredThisHop = false;
+  let mVisibleTx = 0;
+
+  // First: mark all senders (they were reached in a previous hop)
+  for (const ev of mEvents) {
+    if (ev.to === simState.pickedDst) mDeliveredThisHop = true;
+    if (ev.overHidden) continue;
+    rendererManaged.markReached(ev.from);
+  }
+
+  // Then: launch all packets as one wave — they all fly simultaneously
+  for (const ev of mEvents) {
+    if (ev.overHidden) continue;
+    mVisibleTx++;
+    rendererManaged.addPacket(ev.from, ev.to, '#fb923c', () => {
+      if (simState.generation !== gen) return;
+      rendererManaged.markReached(ev.to);
+      rendererManaged.markEdgeReached(ev.from, ev.to);
+    });
+  }
+  if (mDeliveredThisHop) hp.mDelivered = true;
+
+  // --- System 5 for this hop ---
+  let s5Html = '';
+  let s5TxThisHop = 0;
+  if (hop < hp.s5Hops && hp.s5Path) {
+    const from = hp.s5Path[hop];
+    const to = hp.s5Path[hop + 1];
+    s5TxThisHop = 1;
+    hp.s5TotalTxSoFar += 1;
+    setTimeout(() => {
+      if (simState.generation !== gen) return;
+      rendererSystem5.addPacket(from, to, '#22d3ee', () => {
+        if (simState.generation !== gen) return;
+        rendererSystem5.markReached(to);
+        rendererSystem5.markEdgeReached(from, to);
+      });
+      rendererSystem5.markReached(from);
+    }, 0);
+
+    const fromNode = rendererSystem5.net.nodes[from];
+    const toNode = rendererSystem5.net.nodes[to];
+    const crossingCluster = fromNode.cluster !== toNode.cluster;
+
+    if (hop + 1 === hp.s5Hops) {
+      hp.s5Delivered = true;
+      s5Html = `<span class="log-good">DELIVERED!</span> Node ${from} → Node ${to}. <b>1 TX</b>.`
+        + `<br><span class="log-dim">Packet arrived at destination. Total: ${hp.s5TotalTxSoFar} TX for ${hp.s5Hops} hops.</span>`;
+    } else if (crossingCluster) {
+      s5Html = `Node ${from} (C${fromNode.cluster}) → Node ${to} (C${toNode.cluster}). <b>1 TX</b>.`
+        + `<br><span class="log-dim">Crossing cluster boundary via border node ${toNode.border ? to : from}. `
+        + `The routing table knows which border node connects to the destination's cluster.</span>`;
+    } else {
+      s5Html = `Node ${from} → Node ${to} (within C${fromNode.cluster}). <b>1 TX</b>.`
+        + `<br><span class="log-dim">Intra-cluster hop — direct neighbor in routing table.</span>`;
+    }
+  } else if (hop >= hp.s5Hops && hp.s5Delivered) {
+    s5Html = `<span class="log-good">Already delivered</span> in ${hp.s5Hops} hops, ${hp.s5TotalTxSoFar} TX.`
+      + `<br><span class="log-dim">System 5 is done — watching Managed Flooding continue...</span>`;
+  } else {
+    s5Html = `<span class="log-bad">No route</span>`;
+  }
+
+  // --- Managed Flooding log ---
+  let mHtml = '';
+  if (mHitLimit) {
+    mHtml = `<span class="log-bad">HOP LIMIT REACHED (${hp.mResult.hopLimit}).</span>`
+      + `<br>Packet is <b>dropped</b> — Meshtastic won't forward beyond this.`
+      + `<br><span class="log-dim">Total so far: ${hp.mTotalTxSoFar} TX.</span>`;
+  } else if (mTxThisHop > 0) {
+    const uniqueTargets = new Set(mEvents.map(e => e.to));
+    mHtml = `<span class="log-flood">${mTxThisHop} transmissions</span> to reach ${uniqueTargets.size} new nodes.`
+      + `<br><span class="log-dim">Every node that heard the message rebroadcasts to ALL its neighbors.</span>`;
+    if (mDeliveredThisHop) {
+      mHtml += `<br><span class="log-good">DST reached!</span> But flooding continues — other nodes don't know it was delivered.`;
+    }
+    mHtml += `<br><span class="log-dim">Total so far: ${hp.mTotalTxSoFar} TX.</span>`;
+  } else {
+    mHtml = `<span class="log-dim">No transmissions at this hop level.</span>`;
+  }
+
+  // Write log entry
+  const stepDiv = document.createElement('div');
+  stepDiv.className = 'log-step';
+  stepDiv.innerHTML = `<div class="log-header">Hop ${hop + 1}</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>${mHtml}
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">System 5</div>${s5Html}
+      </div>
+    </div>
+    ${(hp.mTotalTxSoFar > 0 && hp.s5TotalTxSoFar > 0) ?
+      `<div class="log-comparison">After hop ${hop + 1}: Managed <span class="log-flood">${hp.mTotalTxSoFar} TX</span> vs System 5 <span class="log-path">${hp.s5TotalTxSoFar} TX</span> — <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
+  log.appendChild(stepDiv);
+  log.scrollTop = log.scrollHeight;
+
+  // Update stats
+  rendererManaged.stats.tx = hp.mTotalTxSoFar;
+  rendererManaged.stats.lastHops = hop + 1;
+  rendererManaged.stats.sent = 1;
+  if (hp.mDelivered) rendererManaged.stats.delivered = 1;
+  rendererManaged.stats.totalHops = hop + 1;
+
+  rendererSystem5.stats.tx = hp.s5TotalTxSoFar;
+  rendererSystem5.stats.lastHops = Math.min(hop + 1, hp.s5Hops);
+  rendererSystem5.stats.sent = 1;
+  if (hp.s5Delivered) rendererSystem5.stats.delivered = 1;
+  rendererSystem5.stats.totalHops = Math.min(hop + 1, hp.s5Hops);
+
+  // Check if both sides done now
+  const mNowDone = (hop + 1) > hp.mMaxHop || mHitLimit;
+  const s5NowDone = (hop + 1) >= hp.s5Hops;
+  if (mNowDone && s5NowDone) {
+    // Write summary
+    setTimeout(() => {
+      if (simState.generation !== gen) return;
+      const sumDiv = document.createElement('div');
+      sumDiv.className = 'log-step';
+      sumDiv.innerHTML = `<div class="log-header">Summary</div>
+        <div class="log-columns">
+          <div class="log-col left">
+            <div class="log-col-title log-managed">Managed Flooding</div>
+            ${hp.mDelivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">FAILED</span>'}
+            after ${hp.mMaxHop + 1} hop levels, <b>${hp.mTotalTxSoFar} total TX</b>.
+          </div>
+          <div class="log-col right">
+            <div class="log-col-title log-system5">System 5</div>
+            ${hp.s5Delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">FAILED</span>'}
+            in ${hp.s5Hops} hops, <b>${hp.s5TotalTxSoFar} total TX</b>.
+          </div>
+        </div>
+        <div class="log-comparison">
+          <b>System 5 used ${((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0)}% fewer transmissions</b>
+          (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)
+          because it knew the exact path from its routing table.
+        </div>`;
+      log.appendChild(sumDiv);
+      log.scrollTop = log.scrollHeight;
+      markFinished();
+    }, 500);
+  }
+}
+
+function markFinished() {
+  simState.running = false;
+  simState.finished = true;
+  const btn = document.getElementById('btn-start');
+  btn.textContent = 'Restart';
+  btn.classList.add('primary');
+  document.getElementById('btn-step').disabled = true;
+}
+
+let lastTime = 0;
+let autoDispatchTimer = 0;
+
+function loop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  // Auto-advance hops when running
+  if (simState.running && !simState.finished && simState.hopPlan) {
+    autoDispatchTimer += dt * simState.speed;
+    const interval = 1.5; // seconds between hops — wait for wave to arrive before next hop
+    if (autoDispatchTimer >= interval) {
+      advanceOneHop();
+      autoDispatchTimer -= interval;
+    }
+  }
+
+  rendererManaged.update(dt);
+  rendererSystem5.update(dt);
+  rendererManaged.draw();
+  rendererSystem5.draw();
+
+  requestAnimationFrame(loop);
+}
+
+// Boot
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>

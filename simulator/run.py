@@ -74,6 +74,13 @@ def main():
         action="store_true",
         help="Suppress progress output"
     )
+    parser.add_argument(
+        "--parallel", "-p",
+        type=str,
+        default="auto",
+        choices=["auto", "scenarios", "routers", "none"],
+        help="Parallelization mode: auto (default), scenarios, routers, none"
+    )
 
     args = parser.parse_args()
     verbose = not args.quiet
@@ -107,10 +114,10 @@ def main():
         results = [result] if result else []
     elif not args.visualize:
         # All scenarios (default when no --visualize)
-        results = run_all_scenarios(verbose=verbose)
+        results = run_all_scenarios(verbose=verbose, parallel_mode=args.parallel)
     elif args.visualize and args.scenario == 0:
         # --visualize without --scenario: show visuals + run all
-        results = run_all_scenarios(verbose=verbose)
+        results = run_all_scenarios(verbose=verbose, parallel_mode=args.parallel)
     else:
         results = []
 
