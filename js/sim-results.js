@@ -85,6 +85,8 @@
     'Highway Convoy (fast linear mobile)': 'Highway',
     'Community Mesh (stable, low traffic)': 'Community',
     'Partition Recovery (40% node loss + degradation)': 'Partition',
+    'Large Scale (1000 nodes, 40km)': 'Large 1000',
+    'Metro Scale (1500 nodes, 50km)': 'Metro 1500',
   };
   function shortName(name) {
     if (SHORT_NAMES[name]) return SHORT_NAMES[name];
@@ -337,47 +339,39 @@
 
     const gap = chartW / n;
 
-    // Flooding line
-    ctx.beginPath();
-    ctx.strokeStyle = COLORS.red;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < n; i++) {
-      const x = pad.left + gap * i + gap / 2;
-      const y = pad.top + chartH - (data[i].flooding.delivery_rate / 100) * chartH;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+    // Draw lines + dots for all 4 routers
+    const delRouters = [
+      { key: 'managed_flooding', color: COLORS.red, label: 'Managed', r: 3 },
+      { key: 'system5', color: COLORS.cyan, label: 'System 5', r: 4 },
+    ];
 
-    // System 5 line
-    ctx.beginPath();
-    ctx.strokeStyle = COLORS.cyan;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < n; i++) {
-      const x = pad.left + gap * i + gap / 2;
-      const y = pad.top + chartH - (data[i].system5.delivery_rate / 100) * chartH;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    for (const dr of delRouters) {
+      // Line
+      ctx.beginPath();
+      ctx.strokeStyle = dr.color;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < n; i++) {
+        const x = pad.left + gap * i + gap / 2;
+        const rd = data[i][dr.key] || data[i].flooding;
+        const y = pad.top + chartH - (rd.delivery_rate / 100) * chartH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
 
     // Points + values
     for (let i = 0; i < n; i++) {
       const x = pad.left + gap * i + gap / 2;
-
-      // Flooding dot
-      const yf = pad.top + chartH - (data[i].flooding.delivery_rate / 100) * chartH;
-      ctx.beginPath();
-      ctx.arc(x, yf, 4, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.red;
-      ctx.fill();
-
-      // System 5 dot
+      for (const dr of delRouters) {
+        const rd = data[i][dr.key] || data[i].flooding;
+        const y = pad.top + chartH - (rd.delivery_rate / 100) * chartH;
+        ctx.beginPath();
+        ctx.arc(x, y, dr.r, 0, Math.PI * 2);
+        ctx.fillStyle = dr.color;
+        ctx.fill();
+      }
+      // Value label for System 5 only (avoid clutter)
       const ys = pad.top + chartH - (data[i].system5.delivery_rate / 100) * chartH;
-      ctx.beginPath();
-      ctx.arc(x, ys, 5, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.cyan;
-      ctx.fill();
-
-      // Value label for System 5
       ctx.fillStyle = COLORS.cyan;
       ctx.font = '10px monospace';
       ctx.textAlign = 'center';
@@ -402,11 +396,11 @@
     ctx.fillRect(lx, 8, 12, 3);
     ctx.fillStyle = COLORS.text;
     ctx.textAlign = 'left';
-    ctx.fillText('Flooding', lx + 16, 14);
+    ctx.fillText('Managed Flood', lx + 16, 14);
     ctx.fillStyle = COLORS.cyan;
-    ctx.fillRect(lx + 90, 8, 12, 3);
+    ctx.fillRect(lx + 120, 8, 12, 3);
     ctx.fillStyle = COLORS.text;
-    ctx.fillText('System 5', lx + 106, 14);
+    ctx.fillText('System 5', lx + 136, 14);
   }
 
   // ── Hottest Node Load — max TX any single node has to handle ──
