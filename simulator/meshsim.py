@@ -386,20 +386,19 @@ class MeshNetwork:
         node_set = set(node_ids)
 
         # Remove old links involving moved nodes (filter in one pass, O(L))
-        old_keys = set()
         kept_links = []
         for link in self.links:
             if link.node_a in node_set or link.node_b in node_set:
                 key = (min(link.node_a, link.node_b), max(link.node_a, link.node_b))
-                old_keys.add(key)
                 self.link_map.pop(key, None)
+                # Remove neighbor references
+                na = self.nodes[link.node_a]
+                nb = self.nodes[link.node_b]
+                na.neighbors.pop(link.node_b, None)
+                nb.neighbors.pop(link.node_a, None)
             else:
                 kept_links.append(link)
         self.links = kept_links
-            na = self.nodes[link.node_a]
-            nb = self.nodes[link.node_b]
-            na.neighbors.pop(link.node_b, None)
-            nb.neighbors.pop(link.node_a, None)
 
         # Create new links
         for nid in node_ids:
