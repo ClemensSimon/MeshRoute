@@ -1885,8 +1885,8 @@ function advanceOneHop() {
   let s5Html = '';
   let s5TxThisHop = 0;
 
-  if (hp.isMixed && hp.dualResult && hp.dualResult.mode === 'mixed') {
-    // Mixed flooding mode — animate dual-mode events for this hop
+  if (hp.dualResult && hp.dualResult._hopGroups) {
+    // Flood-based mode (mixed-mode OR S5 fallback) — animate hop events
     const dEvents = (hp.dualResult._hopGroups || {})[hop] || [];
     s5TxThisHop = dEvents.length;
     hp.s5TotalTxSoFar += s5TxThisHop;
