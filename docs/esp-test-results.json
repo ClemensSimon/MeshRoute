@@ -4,26 +4,27 @@
   "nodes": [
     {
       "id": 0,
-      "lat": 48.13,
-      "lon": 11.58,
+      "name": "Marienplatz",
+      "lat": 48.1371,
+      "lon": 11.5754,
       "cluster": 22,
       "geohash": "u281",
-      "is_border": true,
+      "is_border": false,
       "battery": 95,
       "neighbors": [
         1,
         2,
         3,
         4,
-        5,
-        8
+        5
       ],
       "routes": 9
     },
     {
       "id": 1,
-      "lat": 48.132,
-      "lon": 11.582,
+      "name": "Sendlinger Tor",
+      "lat": 48.1352,
+      "lon": 11.57,
       "cluster": 22,
       "geohash": "u281",
       "is_border": false,
@@ -31,40 +32,39 @@
       "neighbors": [
         0,
         2,
-        3,
-        4,
-        5
+        3
       ],
       "routes": 9
     },
     {
       "id": 2,
-      "lat": 48.134,
-      "lon": 11.584,
+      "name": "Isartor",
+      "lat": 48.133,
+      "lon": 11.582,
       "cluster": 22,
       "geohash": "u281",
       "is_border": false,
       "battery": 85,
       "neighbors": [
         0,
-        1,
         3,
-        4,
-        5
+        4
       ],
       "routes": 9
     },
     {
       "id": 3,
-      "lat": 48.128,
-      "lon": 11.58,
+      "name": "Karlsplatz",
+      "lat": 48.1395,
+      "lon": 11.569,
       "cluster": 22,
       "geohash": "u281",
-      "is_border": true,
+      "is_border": false,
       "battery": 88,
       "neighbors": [
         0,
         1,
+        2,
         4,
         5,
         8
@@ -73,18 +73,19 @@
     },
     {
       "id": 4,
-      "lat": 48.13,
-      "lon": 11.582,
+      "name": "Odeonsplatz",
+      "lat": 48.145,
+      "lon": 11.575,
       "cluster": 22,
       "geohash": "u281",
-      "is_border": true,
+      "is_border": false,
       "battery": 92,
       "neighbors": [
         0,
         1,
         2,
         3,
-        5,
+        6,
         7,
         8
       ],
@@ -92,28 +93,31 @@
     },
     {
       "id": 5,
-      "lat": 48.133,
-      "lon": 11.59,
+      "name": "Engl. Garten S",
+      "lat": 48.152,
+      "lon": 11.583,
       "cluster": 22,
       "geohash": "u281",
       "is_border": true,
       "battery": 80,
       "neighbors": [
         0,
-        1,
-        2,
         3,
         4,
+        6,
+        7,
+        8,
         9
       ],
       "routes": 9
     },
     {
       "id": 6,
-      "lat": 48.37,
-      "lon": 10.9,
-      "cluster": 138,
-      "geohash": "u0xg",
+      "name": "Muenchner Freiheit",
+      "lat": 48.158,
+      "lon": 11.586,
+      "cluster": 22,
+      "geohash": "u281",
       "is_border": true,
       "battery": 87,
       "neighbors": [
@@ -127,13 +131,16 @@
     },
     {
       "id": 7,
-      "lat": 48.372,
-      "lon": 10.905,
-      "cluster": 138,
-      "geohash": "u0xg",
+      "name": "Uni/LMU",
+      "lat": 48.162,
+      "lon": 11.578,
+      "cluster": 22,
+      "geohash": "u281",
       "is_border": true,
       "battery": 91,
       "neighbors": [
+        4,
+        5,
         6,
         8,
         9
@@ -142,15 +149,17 @@
     },
     {
       "id": 8,
-      "lat": 48.365,
-      "lon": 10.895,
-      "cluster": 136,
-      "geohash": "u0xe",
+      "name": "Hohenzollernplatz",
+      "lat": 48.156,
+      "lon": 11.572,
+      "cluster": 22,
+      "geohash": "u281",
       "is_border": true,
       "battery": 83,
       "neighbors": [
-        0,
         3,
+        4,
+        5,
         6,
         7,
         9
@@ -159,16 +168,15 @@
     },
     {
       "id": 9,
-      "lat": 48.368,
-      "lon": 10.91,
-      "cluster": 138,
-      "geohash": "u0xg",
+      "name": "Nordfriedhof",
+      "lat": 48.165,
+      "lon": 11.59,
+      "cluster": 25,
+      "geohash": "u284",
       "is_border": true,
       "battery": 89,
       "neighbors": [
-        1,
-        2,
-        4,
+        5,
         6,
         7,
         8
@@ -183,15 +191,13 @@
       2,
       3,
       4,
-      5
-    ],
-    "138": [
+      5,
       6,
       7,
-      9
-    ],
-    "136": [
       8
+    ],
+    "25": [
+      9
     ]
   },
   "messages": [
@@ -209,7 +215,7 @@
         1,
         0
       ],
-      "flood_tx": 11,
+      "flood_tx": 8,
       "flood_hops": 1
     },
     {
@@ -226,7 +232,7 @@
         4,
         3
       ],
-      "flood_tx": 12,
+      "flood_tx": 13,
       "flood_hops": 1
     },
     {
@@ -237,51 +243,52 @@
       "dst_cluster": 22,
       "cross_cluster": false,
       "s5_delivered": true,
-      "s5_tx": 2,
-      "s5_hops": 2,
+      "s5_tx": 1,
+      "s5_hops": 1,
       "s5_path": [
         3,
-        0,
         2
       ],
-      "flood_tx": 16,
-      "flood_hops": 2
+      "flood_tx": 9,
+      "flood_hops": 1
     },
     {
       "msg": 4,
       "src": 1,
       "dst": 9,
       "src_cluster": 22,
-      "dst_cluster": 138,
+      "dst_cluster": 25,
       "cross_cluster": true,
       "s5_delivered": true,
-      "s5_tx": 2,
-      "s5_hops": 2,
+      "s5_tx": 3,
+      "s5_hops": 3,
       "s5_path": [
         1,
+        0,
         5,
         9
       ],
-      "flood_tx": 17,
-      "flood_hops": 2
+      "flood_tx": 19,
+      "flood_hops": 3
     },
     {
       "msg": 5,
       "src": 1,
       "dst": 7,
       "src_cluster": 22,
-      "dst_cluster": 138,
-      "cross_cluster": true,
+      "dst_cluster": 22,
+      "cross_cluster": false,
       "s5_delivered": true,
-      "s5_tx": 2,
-      "s5_hops": 2,
+      "s5_tx": 3,
+      "s5_hops": 3,
       "s5_path": [
         1,
+        0,
         4,
         7
       ],
-      "flood_tx": 15,
-      "flood_hops": 2
+      "flood_tx": 20,
+      "flood_hops": 3
     },
     {
       "msg": 6,
@@ -297,7 +304,7 @@
         0,
         1
       ],
-      "flood_tx": 11,
+      "flood_tx": 8,
       "flood_hops": 1
     },
     {
@@ -308,21 +315,22 @@
       "dst_cluster": 22,
       "cross_cluster": false,
       "s5_delivered": true,
-      "s5_tx": 1,
-      "s5_hops": 1,
+      "s5_tx": 2,
+      "s5_hops": 2,
       "s5_path": [
         1,
+        0,
         4
       ],
-      "flood_tx": 12,
-      "flood_hops": 1
+      "flood_tx": 15,
+      "flood_hops": 2
     },
     {
       "msg": 8,
       "src": 3,
       "dst": 9,
       "src_cluster": 22,
-      "dst_cluster": 138,
+      "dst_cluster": 25,
       "cross_cluster": true,
       "s5_delivered": true,
       "s5_tx": 2,
@@ -339,7 +347,7 @@
       "msg": 9,
       "src": 9,
       "dst": 0,
-      "src_cluster": 138,
+      "src_cluster": 25,
       "dst_cluster": 22,
       "cross_cluster": true,
       "s5_delivered": true,
@@ -347,19 +355,19 @@
       "s5_hops": 2,
       "s5_path": [
         9,
-        1,
+        5,
         0
       ],
-      "flood_tx": 17,
+      "flood_tx": 16,
       "flood_hops": 2
     },
     {
       "msg": 10,
       "src": 8,
       "dst": 3,
-      "src_cluster": 136,
+      "src_cluster": 22,
       "dst_cluster": 22,
-      "cross_cluster": true,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 1,
       "s5_hops": 1,
@@ -367,16 +375,16 @@
         8,
         3
       ],
-      "flood_tx": 10,
+      "flood_tx": 12,
       "flood_hops": 1
     },
     {
       "msg": 11,
       "src": 8,
       "dst": 6,
-      "src_cluster": 136,
-      "dst_cluster": 138,
-      "cross_cluster": true,
+      "src_cluster": 22,
+      "dst_cluster": 22,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 1,
       "s5_hops": 1,
@@ -384,7 +392,7 @@
         8,
         6
       ],
-      "flood_tx": 10,
+      "flood_tx": 11,
       "flood_hops": 1
     },
     {
@@ -392,8 +400,8 @@
       "src": 3,
       "dst": 8,
       "src_cluster": 22,
-      "dst_cluster": 136,
-      "cross_cluster": true,
+      "dst_cluster": 22,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 1,
       "s5_hops": 1,
@@ -401,25 +409,26 @@
         3,
         8
       ],
-      "flood_tx": 10,
+      "flood_tx": 12,
       "flood_hops": 1
     },
     {
       "msg": 13,
       "src": 9,
       "dst": 4,
-      "src_cluster": 138,
+      "src_cluster": 25,
       "dst_cluster": 22,
       "cross_cluster": true,
       "s5_delivered": true,
-      "s5_tx": 1,
-      "s5_hops": 1,
+      "s5_tx": 2,
+      "s5_hops": 2,
       "s5_path": [
         9,
+        8,
         4
       ],
-      "flood_tx": 13,
-      "flood_hops": 1
+      "flood_tx": 17,
+      "flood_hops": 2
     },
     {
       "msg": 14,
@@ -442,9 +451,9 @@
       "msg": 15,
       "src": 6,
       "dst": 5,
-      "src_cluster": 138,
+      "src_cluster": 22,
       "dst_cluster": 22,
-      "cross_cluster": true,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 1,
       "s5_hops": 1,
@@ -452,7 +461,7 @@
         6,
         5
       ],
-      "flood_tx": 11,
+      "flood_tx": 12,
       "flood_hops": 1
     },
     {
@@ -469,7 +478,7 @@
         4,
         2
       ],
-      "flood_tx": 12,
+      "flood_tx": 10,
       "flood_hops": 1
     },
     {
@@ -477,17 +486,17 @@
       "src": 3,
       "dst": 6,
       "src_cluster": 22,
-      "dst_cluster": 138,
-      "cross_cluster": true,
+      "dst_cluster": 22,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 2,
       "s5_hops": 2,
       "s5_path": [
         3,
-        8,
+        4,
         6
       ],
-      "flood_tx": 15,
+      "flood_tx": 18,
       "flood_hops": 2
     },
     {
@@ -504,16 +513,16 @@
         1,
         2
       ],
-      "flood_tx": 10,
+      "flood_tx": 6,
       "flood_hops": 1
     },
     {
       "msg": 19,
       "src": 6,
       "dst": 1,
-      "src_cluster": 138,
+      "src_cluster": 22,
       "dst_cluster": 22,
-      "cross_cluster": true,
+      "cross_cluster": false,
       "s5_delivered": true,
       "s5_tx": 2,
       "s5_hops": 2,
@@ -522,7 +531,7 @@
         4,
         1
       ],
-      "flood_tx": 17,
+      "flood_tx": 15,
       "flood_hops": 2
     },
     {
@@ -530,29 +539,28 @@
       "src": 5,
       "dst": 6,
       "src_cluster": 22,
-      "dst_cluster": 138,
-      "cross_cluster": true,
+      "dst_cluster": 22,
+      "cross_cluster": false,
       "s5_delivered": true,
-      "s5_tx": 2,
-      "s5_hops": 2,
+      "s5_tx": 1,
+      "s5_hops": 1,
       "s5_path": [
         5,
-        9,
         6
       ],
-      "flood_tx": 17,
-      "flood_hops": 2
+      "flood_tx": 12,
+      "flood_hops": 1
     }
   ],
   "summary": {
     "total_messages": 20,
     "s5_delivered": 20,
     "s5_delivery_rate": 100.0,
-    "s5_total_tx": 28,
-    "s5_avg_tx": 1.4,
-    "s5_avg_hops": 1.4,
-    "flood_total_tx": 264,
-    "flood_avg_tx": 13.2,
-    "tx_savings_pct": 89.4
+    "s5_total_tx": 30,
+    "s5_avg_tx": 1.5,
+    "s5_avg_hops": 1.5,
+    "flood_total_tx": 261,
+    "flood_avg_tx": 13.1,
+    "tx_savings_pct": 88.5
   }
 }

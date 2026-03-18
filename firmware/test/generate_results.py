@@ -138,17 +138,35 @@ class VLoRa:
             else: return False, tx, path
         return False, tx, path
 
-# Create network
+# Create network — real Munich locations, ~3km spread, LoRa range 2km
+# Cluster 0: Munich Altstadt (city center)
+# Cluster 1: Munich Schwabing (north)
+# N4 and N5 are between clusters (bridge nodes)
 nodes = [
-    VNode(0, 48.130, 11.580, 95), VNode(1, 48.132, 11.582, 90),
-    VNode(2, 48.134, 11.584, 85), VNode(3, 48.128, 11.580, 88),
-    VNode(4, 48.130, 11.582, 92), VNode(5, 48.133, 11.590, 80),
-    VNode(6, 48.370, 10.900, 87), VNode(7, 48.372, 10.905, 91),
-    VNode(8, 48.365, 10.895, 83), VNode(9, 48.368, 10.910, 89),
+    # Cluster 0: Altstadt — Marienplatz area
+    VNode(0, 48.1371, 11.5754, 95),  # N0: Marienplatz
+    VNode(1, 48.1352, 11.5700, 90),  # N1: Sendlinger Tor
+    VNode(2, 48.1330, 11.5820, 85),  # N2: Isartor
+    VNode(3, 48.1395, 11.5690, 88),  # N3: Stachus/Karlsplatz
+    # Bridge zone
+    VNode(4, 48.1450, 11.5750, 92),  # N4: Odeonsplatz (bridge south)
+    VNode(5, 48.1520, 11.5830, 80),  # N5: Englischer Garten Sued (bridge north)
+    # Cluster 1: Schwabing — north Munich
+    VNode(6, 48.1580, 11.5860, 87),  # N6: Muenchner Freiheit
+    VNode(7, 48.1620, 11.5780, 91),  # N7: Uni/LMU
+    VNode(8, 48.1560, 11.5720, 83),  # N8: Hohenzollernplatz
+    VNode(9, 48.1650, 11.5900, 89),  # N9: Nordfriedhof
 ]
 
+# Node names for display
+NODE_NAMES = {
+    0: 'Marienplatz', 1: 'Sendlinger Tor', 2: 'Isartor', 3: 'Karlsplatz',
+    4: 'Odeonsplatz', 5: 'Engl. Garten S', 6: 'Muenchner Freiheit',
+    7: 'Uni/LMU', 8: 'Hohenzollernplatz', 9: 'Nordfriedhof',
+}
+
 random.seed(42)
-lora = VLoRa(nodes, max_range=70000)
+lora = VLoRa(nodes, max_range=2000)  # 2km LoRa range — realistic urban
 for r in range(3):
     for n in nodes: lora.deliver_ogm(n.id, n.create_ogm())
 for n in nodes: n.build_routes(nodes)
@@ -171,7 +189,8 @@ for i in range(20):
         'flood_tx': ftx, 'flood_hops': len(bfs)-1 if bfs else 0,
     })
 
-node_info = [{'id':n.id,'lat':n.lat,'lon':n.lon,'cluster':n.cluster,'geohash':n.geohash,
+node_info = [{'id':n.id,'name':NODE_NAMES.get(n.id, f'Node {n.id}'),
+              'lat':n.lat,'lon':n.lon,'cluster':n.cluster,'geohash':n.geohash,
               'is_border':n.is_border,'battery':n.battery,'neighbors':sorted(n.neighbors.keys()),
               'routes':len(n.routing_table)} for n in nodes]
 clusters = {}
