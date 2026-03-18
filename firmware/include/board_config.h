@@ -7,6 +7,10 @@
 
 #pragma once
 
+#ifndef S5_FIRMWARE_VERSION
+#define S5_FIRMWARE_VERSION "dev"
+#endif
+
 // ── Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262) ───────────────
 
 #if defined(BOARD_HELTEC_V3)

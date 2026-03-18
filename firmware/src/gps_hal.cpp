@@ -9,8 +9,11 @@
 #include <TinyGPSPlus.h>
 static TinyGPSPlus gps;
 #if defined(ESP32) || defined(ESP_PLATFORM)
-#include <HardwareSerial.h>
-static HardwareSerial gpsSerial(1);
+  #include <HardwareSerial.h>
+  static HardwareSerial gpsSerial(1);
+#elif defined(NRF52_SERIES) || defined(ARDUINO_ARCH_NRF52)
+  // RAK4631: GPS on UART1 (Serial1)
+  #define gpsSerial Serial1
 #endif
 #endif
 

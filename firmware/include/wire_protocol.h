@@ -5,7 +5,7 @@
  * Designed to coexist with Meshtastic (different sync word).
  *
  * Packet structure (max 256 bytes):
- * [Header: 20 bytes] [Payload: 0-236 bytes]
+ * [Header: 22 bytes] [Payload: 0-234 bytes]
  */
 
 #pragma once
@@ -26,7 +26,7 @@ extern "C" {
 // ── Header (20 bytes, unencrypted) ─────────────────────────────
 
 typedef struct __attribute__((packed)) {
-    uint8_t  magic;          // 0xS5 = System 5 packet
+    uint8_t  magic;          // 0x55 = System 5 packet
     uint8_t  type;           // PKT_TYPE_*
     uint32_t src;            // originator node ID
     uint32_t dst;            // destination (0xFFFFFFFF = broadcast)

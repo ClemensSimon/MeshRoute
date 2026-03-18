@@ -67,6 +67,14 @@ uint8_t s5_geohash_common_prefix(const s5_geohash_t *a, const s5_geohash_t *b) {
 
 // ── Init ───────────────────────────────────────────────────────
 
+static uint8_t _geohash_to_cluster_id(const s5_geohash_t *gh) {
+    uint8_t cid = 0;
+    for (uint8_t i = 0; i < S5_GEOHASH_PRECISION && gh->hash[i]; i++) {
+        cid = cid * 31 + (uint8_t)gh->hash[i];
+    }
+    return cid;
+}
+
 void s5_init(s5_node_state_t *state) {
     memset(state, 0, sizeof(s5_node_state_t));
     state->my_cluster_id = 0xFF; // unassigned
@@ -82,12 +90,7 @@ static void _recompute_cluster(s5_node_state_t *state) {
         return;
     }
 
-    // Use first N chars of geohash as cluster ID (hash them to 0-255)
-    uint8_t cid = 0;
-    for (uint8_t i = 0; i < S5_GEOHASH_PRECISION && state->my_geohash.hash[i]; i++) {
-        cid = cid * 31 + (uint8_t)state->my_geohash.hash[i];
-    }
-    state->my_cluster_id = cid;
+    state->my_cluster_id = _geohash_to_cluster_id(&state->my_geohash);
 
     // Check if we're a border node (have neighbors in different clusters)
     state->my_is_border = false;
@@ -161,12 +164,7 @@ void s5_update_neighbor(s5_node_state_t *state, s5_node_id_t id,
     }
     n->last_heard_ms = 0; // caller should set this via maintenance
 
-    // Determine neighbor's cluster
-    uint8_t cid = 0;
-    for (uint8_t i = 0; i < S5_GEOHASH_PRECISION && n->geohash.hash[i]; i++) {
-        cid = cid * 31 + (uint8_t)n->geohash.hash[i];
-    }
-    n->cluster_id = cid;
+    n->cluster_id = _geohash_to_cluster_id(&n->geohash);
 
     // Re-check border status
     _recompute_cluster(state);

@@ -13,7 +13,14 @@
 // ── Radio Instance ─────────────────────────────────────────────
 
 #if defined(LORA_CHIP_SX1262)
-  static SPIClass loraSPI(HSPI);
+  #if CONFIG_IDF_TARGET_ESP32S3
+    static SPIClass loraSPI(SPI2_HOST);
+  #elif defined(ESP32)
+    static SPIClass loraSPI(HSPI);
+  #else
+    // nRF52: use default SPI
+    #define loraSPI SPI
+  #endif
   static SX1262 radio = new Module(LORA_CS, LORA_DIO1, LORA_RST, LORA_BUSY, loraSPI);
 #elif defined(LORA_CHIP_SX1276)
   static SX1276 radio = new Module(LORA_CS, LORA_DIO0, LORA_RST, LORA_DIO1);
@@ -79,9 +86,15 @@ bool lora_init(void) {
 bool lora_send(const uint8_t *data, uint8_t len) {
     if (len > LORA_MAX_PACKET_SIZE) return false;
 
+    // Switch interrupt to TX-done callback
     txDone = false;
+    radio.setDio1Action(onTransmitDone);
+
     int state = radio.startTransmit(const_cast<uint8_t*>(data), len);
-    if (state != RADIOLIB_ERR_NONE) return false;
+    if (state != RADIOLIB_ERR_NONE) {
+        radio.setDio1Action(onReceive); // restore RX interrupt
+        return false;
+    }
 
     // Wait for TX complete (with timeout)
     uint32_t start = millis();
@@ -89,7 +102,8 @@ bool lora_send(const uint8_t *data, uint8_t len) {
         yield();
     }
 
-    // Return to RX mode
+    // Restore RX interrupt and return to receive mode
+    radio.setDio1Action(onReceive);
     lora_start_receive();
     return txDone;
 }
