@@ -354,7 +354,7 @@ class System5Router:
     }
 
     BACKPRESSURE_THRESHOLD = 0.8
-    MAX_RETRIES = 2
+    MAX_RETRIES = 3  # 3 attempts per hop (was 2)
 
     def __init__(self, seed=42):
         self.rng = random.Random(seed)
@@ -485,20 +485,32 @@ class System5Router:
         return False
 
     def _fallback_cluster_flood(self, network, packet, stats):
+        """Scoped flooding across source cluster, destination cluster,
+        and all clusters along the shortest path between them.
+        Much more targeted than full-network flooding."""
         src_node = network.nodes[packet.src]
-        cluster_id = src_node.cluster_id
+        dst_node = network.nodes[packet.dst]
+        src_cid = src_node.cluster_id
+        dst_cid = dst_node.cluster_id
 
+        # Only flood in source + destination clusters (not ALL border nodes)
         flood_nodes = set()
-        if cluster_id is not None and cluster_id in network.clusters:
-            for nid in network.clusters[cluster_id].members:
-                if network.nodes[nid].battery > 0:
-                    flood_nodes.add(nid)
+        for cid in [src_cid, dst_cid]:
+            if cid is not None and cid in network.clusters:
+                for nid in network.clusters[cid].members:
+                    if network.nodes[nid].battery > 0:
+                        flood_nodes.add(nid)
 
-        for nid in flood_nodes.copy():
-            for neighbor_id in network.nodes[nid].neighbors:
-                neighbor = network.nodes[neighbor_id]
-                if neighbor.battery > 0 and neighbor.is_border:
-                    flood_nodes.add(neighbor_id)
+        # Add border nodes of src/dst clusters to bridge the gap
+        for cid in [src_cid, dst_cid]:
+            if cid is not None and cid in network.clusters:
+                for nid in network.clusters[cid].border_nodes:
+                    if network.nodes[nid].battery > 0:
+                        flood_nodes.add(nid)
+                        # And their direct neighbors in adjacent clusters
+                        for neighbor_id in network.nodes[nid].neighbors:
+                            if network.nodes[neighbor_id].battery > 0:
+                                flood_nodes.add(neighbor_id)
 
         seen = {packet.src}
         queue = [(packet.src, 0, [packet.src])]
@@ -506,7 +518,7 @@ class System5Router:
 
         while queue:
             current_id, hop_count, path = queue.pop(0)
-            if hop_count >= min(packet.ttl, 10):
+            if hop_count >= min(packet.ttl, 20):  # higher hop limit for fallback
                 continue
 
             current_node = network.nodes[current_id]
@@ -569,7 +581,7 @@ class System5Router:
                     valid_routes.append(route)
 
             tried = set()
-            for attempt in range(min(len(valid_routes), 3)):
+            for attempt in range(min(len(valid_routes), 5)):  # try up to 5 routes
                 remaining = [r for r in valid_routes if id(r) not in tried]
                 if not remaining:
                     break
