@@ -201,6 +201,35 @@ random.seed(42)
 lora = VLoRa(nodes, max_range=2000)  # 2km LoRa range — realistic urban
 for r in range(3):
     for n in nodes: lora.deliver_ogm(n.id, n.create_ogm())
+
+# ── Filter inter-cluster links to 2 best per cluster pair ──
+# (same logic as web simulator — only dedicated bridge routes exist)
+from collections import defaultdict
+inter_by_pair = defaultdict(list)
+for n in nodes:
+    for nid, info in list(n.neighbors.items()):
+        if info['cluster'] != n.cluster:
+            pair = tuple(sorted([n.cluster, info['cluster']]))
+            inter_by_pair[pair].append((n.id, nid, info['quality']))
+
+for pair, links in inter_by_pair.items():
+    # Keep top 2 by quality, delete rest
+    links.sort(key=lambda x: x[2], reverse=True)
+    keep = set()
+    for a, b, q in links[:2]:
+        keep.add((a, b))
+        keep.add((b, a))
+    for a, b, q in links:
+        if (a, b) not in keep:
+            if b in nodes[a].neighbors:
+                del nodes[a].neighbors[b]
+
+# Recompute border status
+for n in nodes:
+    n.is_border = any(info['cluster'] != n.cluster for info in n.neighbors.values())
+
+print(f"Bridge links filtered: {sum(1 for n in nodes for nid, info in n.neighbors.items() if info['cluster'] != n.cluster) // 2} per direction")
+
 for n in nodes: n.build_routes(nodes)
 
 # Run 20 messages
