@@ -391,68 +391,114 @@
     ctx.fillText('System 5', lx + 106, 14);
   }
 
-  // ── Node Load Distribution ──
+  // ── Hottest Node Load — max TX any single node has to handle ──
   function renderLoadChart() {
     const ctx = getCtx('chart-load');
     if (!ctx) return;
     const W = ctx.w, H = ctx.h;
-    const pad = { top: 30, right: 20, bottom: 20, left: 10 };
+    const pad = { top: 30, right: 20, bottom: 70, left: 65 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
 
     ctx.clearRect(0, 0, W, H);
 
-    // Pick two scenarios: one normal, one stress
-    const normal = resultsData.find(r => r.category === 'scale' && r.config.n_nodes >= 100);
-    const stress = resultsData.find(r => r.category === 'stress');
-    if (!normal) return;
+    const data = resultsData;
+    const n = data.length;
+    const gap = chartW / n;
 
-    const scenarios = stress ? [normal, stress] : [normal];
-    const colW = chartW / scenarios.length;
+    // Routers to show
+    const routers = [
+      { key: 'managed_flooding', fallback: 'flooding', color: COLORS.yellow, label: 'Managed' },
+      { key: 'system5', fallback: null, color: COLORS.cyan, label: 'System 5' },
+    ];
 
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'center';
+    // Get max load values
+    const allLoads = [];
+    for (const d of data) {
+      for (const r of routers) {
+        const rd = d[r.key] || (r.fallback ? d[r.fallback] : null);
+        if (rd) allLoads.push(rd.max_node_load);
+      }
+    }
+    const maxLoad = Math.max(...allLoads, 1);
+    const maxLog = Math.ceil(Math.log10(maxLoad));
 
-    for (let s = 0; s < scenarios.length; s++) {
-      const r = scenarios[s];
-      const ox = pad.left + s * colW;
-      const halfW = colW / 2;
+    // Y grid (log scale)
+    ctx.strokeStyle = COLORS.border;
+    ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace';
+    ctx.fillStyle = COLORS.textMuted;
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= maxLog; i++) {
+      const y = pad.top + chartH - (i / maxLog) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(W - pad.right, y);
+      ctx.stroke();
+      ctx.fillText(fmtNum(Math.pow(10, i)), pad.left - 8, y + 3);
+    }
 
-      // Title
-      ctx.fillStyle = COLORS.text;
-      ctx.fillText(r.name.substring(0, 25), ox + halfW, 16);
+    const barW = Math.min(gap * 0.3, 20);
 
-      // Flooding distribution
-      const floodDist = r.flooding.load_distribution || [];
-      const s5Dist = r.system5.load_distribution || [];
-      const maxBucket = Math.max(...floodDist, ...s5Dist, 1);
+    for (let i = 0; i < n; i++) {
+      const d = data[i];
+      const cx = pad.left + gap * i + gap / 2;
 
-      const bucketW = (colW - 20) / 10;
-      const barMaxH = chartH - 20;
+      for (let ri = 0; ri < routers.length; ri++) {
+        const r = routers[ri];
+        const rd = d[r.key] || (r.fallback ? d[r.fallback] : null);
+        if (!rd) continue;
 
-      for (let b = 0; b < 10; b++) {
-        const bx = ox + 10 + b * bucketW;
+        const val = rd.max_node_load;
+        const barH = (Math.log10(Math.max(val, 1)) / maxLog) * chartH;
+        const bx = cx + (ri - 0.5) * (barW + 2);
 
-        // Flood bar
-        const fh = floodDist[b] ? (floodDist[b] / maxBucket) * barMaxH : 0;
-        ctx.fillStyle = COLORS.red;
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(bx, pad.top + barMaxH - fh + 10, bucketW * 0.45, fh);
+        ctx.fillStyle = r.color;
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(bx - barW / 2, pad.top + chartH - barH, barW, barH);
 
-        // S5 bar
-        const sh = s5Dist[b] ? (s5Dist[b] / maxBucket) * barMaxH : 0;
-        ctx.fillStyle = COLORS.cyan;
-        ctx.globalAlpha = 0.7;
-        ctx.fillRect(bx + bucketW * 0.5, pad.top + barMaxH - sh + 10, bucketW * 0.45, sh);
+        // Value on top
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = r.color;
+        ctx.font = '8px monospace';
+        ctx.textAlign = 'center';
+        if (val < 100) ctx.fillText(String(val), bx, pad.top + chartH - barH - 4);
       }
       ctx.globalAlpha = 1;
 
-      // X labels
+      // X label
+      const sn = shortName(d.name);
+      const lines = sn.split('\n');
       ctx.fillStyle = COLORS.textMuted;
-      ctx.font = '8px monospace';
-      ctx.fillText('low', ox + 20, H - 4);
-      ctx.fillText('high', ox + colW - 20, H - 4);
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      for (let l = 0; l < lines.length; l++) {
+        ctx.fillText(lines[l], cx, pad.top + chartH + 14 + l * 12);
+      }
     }
+
+    // Legend
+    ctx.globalAlpha = 1;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    let lx = pad.left + 5;
+    for (const r of routers) {
+      ctx.fillStyle = r.color;
+      ctx.fillRect(lx, 8, 10, 10);
+      ctx.fillStyle = COLORS.text;
+      ctx.fillText(r.label, lx + 14, 17);
+      lx += ctx.measureText(r.label).width + 24;
+    }
+
+    // Y label
+    ctx.save();
+    ctx.fillStyle = COLORS.textMuted;
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.translate(12, pad.top + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Max TX on busiest node (log)', 0, 0);
+    ctx.restore();
   }
 
   // ── QoS Breakdown ──
