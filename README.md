@@ -26,26 +26,39 @@ where Q = link quality (B.A.T.M.A.N. OGM reception rate), Load = queue pressure,
 
 **Back-Pressure** — Overloaded nodes (queue > 80%) are automatically avoided in route selection.
 
+**Fallback Flooding** — When all pre-computed routes fail (link degradation, killed nodes), System 5 falls back to scoped flooding within the source cluster. This is much cheaper than full network flooding because it's limited to the local geographic area.
+
 ## Simulation Results
 
-The `simulator/` directory contains a Python simulation that compares System 5 against naive flooding across five scenarios:
+The `simulator/` directory contains a Python simulation comparing System 5 against naive flooding across 8 scenarios:
 
-| Scenario | Nodes | Flooding TX | System 5 TX | S5 Delivery | BW Reduction |
-|----------|------:|------------:|------------:|------------:|-------------:|
+### Normal Conditions
+
+| Scenario | Nodes | Flooding TX | System 5 TX | S5 Delivery | BW Saved |
+|----------|------:|------------:|------------:|------------:|---------:|
 | Small Local (1km) | 20 | 31,525 | 112 | 100% | 99.6% |
-| Medium City (5km) | 100 | 330,181 | 188 | 99% | 99.9% |
-| Large Regional (20km) | 500 | 1,535,089 | 493 | 99% | 99.97% |
-| 50% Degraded Links | 100 | 330,181 | 170 | 52% | 99.9% |
-| 20% Nodes Killed | 100 | 215,708 | 170 | 85% | 99.9% |
+| Medium City (5km) | 100 | 330,181 | 196 | 100% | 99.9% |
+| Large Regional (20km) | 500 | 1,535,089 | 497 | 100% | 99.97% |
+| Dense Urban (3km) | 200 | 2,694,702 | 136 | 100% | 100.0% |
 
-System 5 uses 2-3 orders of magnitude fewer transmissions. The delivery rate drops under extreme conditions (half of all links degraded), but the bandwidth savings remain massive. In the stress scenarios, flooding maintains delivery only because it brute-forces every possible path — at enormous energy cost.
+### Stress Tests
+
+| Scenario | Flooding TX | System 5 TX | S5 Delivery | BW Saved |
+|----------|------------:|------------:|------------:|---------:|
+| 30% Degraded Links | 330,181 | 4,701 | 100% | 98.6% |
+| 50% Degraded Links | 330,181 | 16,055 | 73% | 95.1% |
+| 20% Nodes Killed | 215,708 | 2,853 | 85% | 98.7% |
+| Combined (30% + 10%) | 271,210 | 3,427 | 79% | 98.7% |
+
+Under normal conditions, System 5 delivers **100% of messages** using **99.6-99.97% less bandwidth**. Under extreme stress (50% degraded links), delivery drops to 73% — but still uses 95% less bandwidth. The fallback mechanism catches packets that pre-computed routes miss.
 
 ## Interactive Presentation
 
 Open `index.html` in a browser. No build step, no dependencies — pure HTML, CSS, and Canvas.
 
 The presentation includes:
-- **Live algorithm visualizations** for all five routing approaches (Flooding, Spanning Tree, Multi-Path, Geo-Clustered, System 5)
+- **Live algorithm visualizations** for all five routing approaches
+- **Simulation results** with interactive charts (loaded from `simulator/results.json`)
 - **Step-by-step formation animation** showing how the network self-organizes
 - **Three scale scenarios** — local (12 nodes), continental (2,400 nodes), global (50,000 nodes)
 - **Interactive resilience testing** — click nodes and links to kill them, watch the network adapt. Toggle MQTT bridge failures, GPS outages, and cascade failures.
