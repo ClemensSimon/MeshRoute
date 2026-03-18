@@ -104,8 +104,10 @@
 
     for (const r of resultsData) {
       const bw = r.comparison ? r.comparison.bw_savings_pct : 0;
+      const naive = r.naive_flooding || r.flooding || {};
+      const managed = r.managed_flooding || r.flooding || {};
+      const nh = r.next_hop || {};
       const s5 = r.system5;
-      const fl = r.flooding;
 
       const tr = document.createElement('tr');
       tr.className = r.category === 'stress' ? 'stress-row' : '';
@@ -114,12 +116,12 @@
       tr.innerHTML = `
         <td>${r.name}</td>
         <td>${r.config.n_nodes}</td>
-        <td class="flood-val">${fl.total_tx.toLocaleString()}</td>
+        <td class="flood-val">${(naive.total_tx || 0).toLocaleString()}</td>
+        <td style="color:var(--yellow)">${(managed.total_tx || 0).toLocaleString()}</td>
+        <td style="color:var(--orange)">${nh.total_tx ? nh.total_tx.toLocaleString() : '—'}</td>
         <td class="sys5-val">${s5.total_tx.toLocaleString()}</td>
         <td class="sys5-val">${s5.delivery_rate}%</td>
         <td>${bw}%</td>
-        <td>${s5.avg_hops}</td>
-        <td>${s5.max_node_load}</td>
       `;
       tbody.appendChild(tr);
     }
@@ -193,37 +195,45 @@
       }
     }
 
+    // ── Router definitions for bars ──
+    const routers = [
+      { key: 'naive_flooding', fallback: 'flooding', color: COLORS.red, label: 'Naive' },
+      { key: 'managed_flooding', fallback: 'flooding', color: COLORS.yellow, label: 'Managed' },
+      { key: 'next_hop', fallback: null, color: COLORS.orange, label: 'Next-Hop' },
+      { key: 'system5', fallback: null, color: COLORS.cyan, label: 'System 5' },
+    ];
+    const nRouters = routers.length;
+    const singleBarW = Math.min(chartW / n / (nRouters + 1) * 0.9, 16);
+
     // ── Bars ──
     for (let i = 0; i < n; i++) {
       const d = data[i];
       const cx = pad.left + gap * i + gap / 2;
+      const groupW = singleBarW * nRouters + (nRouters - 1) * 1;
+      const startX = cx - groupW / 2;
 
-      const floodVal = d.flooding.total_tx;
-      const s5Val = d.system5.total_tx;
+      for (let ri = 0; ri < nRouters; ri++) {
+        const rd = d[routers[ri].key] || (routers[ri].fallback ? d[routers[ri].fallback] : null);
+        if (!rd) continue;
+        const val = rd.total_tx;
 
-      let floodH, s5H;
-      if (bwLogScale) {
-        floodH = (Math.log10(Math.max(floodVal, 1)) / maxLog) * chartH;
-        s5H = (Math.log10(Math.max(s5Val, 1)) / maxLog) * chartH;
-      } else {
-        const steps = 5;
-        const stepVal = niceStep(maxVal, steps);
-        const niceMax = stepVal * steps;
-        floodH = (floodVal / niceMax) * chartH;
-        s5H = (s5Val / niceMax) * chartH;
+        let barH;
+        if (bwLogScale) {
+          barH = (Math.log10(Math.max(val, 1)) / maxLog) * chartH;
+        } else {
+          const steps = 5;
+          const stepVal = niceStep(maxVal, steps);
+          const niceMax = stepVal * steps;
+          barH = (val / niceMax) * chartH;
+        }
+
+        ctx.fillStyle = routers[ri].color;
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(startX + ri * (singleBarW + 1), pad.top + chartH - barH, singleBarW, barH);
       }
-
-      // Flooding bar
-      ctx.fillStyle = COLORS.red;
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(cx - barW - 1, pad.top + chartH - floodH, barW, floodH);
-
-      // System 5 bar
-      ctx.fillStyle = COLORS.cyan;
-      ctx.fillRect(cx + 1, pad.top + chartH - s5H, barW, s5H);
       ctx.globalAlpha = 1;
 
-      // ── X-axis labels (multi-line, horizontal) ──
+      // ── X-axis labels ──
       const sn = shortName(d.name);
       const lines = sn.split('\n');
       ctx.fillStyle = COLORS.textMuted;
@@ -236,17 +246,16 @@
 
     // ── Legend ──
     ctx.globalAlpha = 1;
-    ctx.font = '11px monospace';
-    const lx = pad.left + 10;
-    ctx.fillStyle = COLORS.red;
-    ctx.fillRect(lx, 8, 12, 12);
-    ctx.fillStyle = COLORS.text;
+    ctx.font = '10px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('Flooding', lx + 16, 18);
-    ctx.fillStyle = COLORS.cyan;
-    ctx.fillRect(lx + 90, 8, 12, 12);
-    ctx.fillStyle = COLORS.text;
-    ctx.fillText('System 5', lx + 106, 18);
+    let lx = pad.left + 5;
+    for (const r of routers) {
+      ctx.fillStyle = r.color;
+      ctx.fillRect(lx, 8, 10, 10);
+      ctx.fillStyle = COLORS.text;
+      ctx.fillText(r.label, lx + 14, 17);
+      lx += ctx.measureText(r.label).width + 24;
+    }
 
     // Scale indicator (top right)
     ctx.fillStyle = COLORS.textMuted;
