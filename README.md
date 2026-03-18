@@ -4,6 +4,21 @@
 
 **[Live Demo](https://clemenssimon.github.io/MeshRoute/)** — Interactive presentation with algorithm visualizations, simulation results, and resilience testing.
 
+**[Live Simulator](https://clemenssimon.github.io/MeshRoute/simulator.html)** — Step-by-step side-by-side comparison of Managed Flooding vs System 5.
+
+## Live Simulator
+
+![MeshRoute Simulator — Managed Flooding vs System 5](docs/simulator-screenshot.png)
+
+*Left: Managed Flooding (Meshtastic) — 169 TX to flood 4 hops, every node rebroadcasts blindly. Right: System 5 (MeshRoute) — 4 TX along a direct path through cluster bridge nodes. Same network, same message, same hop count.*
+
+The simulator lets you:
+- **Step hop-by-hop** through both routing algorithms simultaneously
+- **See the difference visually** — yellow highlights show where each message has reached
+- **Click nodes** to choose source and destination
+- **Switch scenarios** — from small local mesh to disaster relief with 40% node loss
+- **Read explanations** of what happens at each hop and why System 5 knows the right path
+
 ## Meshtastic's Current Routing (v2.6/2.7)
 
 Meshtastic does **not** use naive flooding. Its actual routing is already quite clever:
@@ -79,22 +94,34 @@ Open `index.html` in a browser. No build step, no dependencies.
 
 ```bash
 cd simulator
-python run.py                    # run all 10 scenarios (4 routers each)
-python run.py --scenario 2       # single scenario
-python run.py --visualize        # ASCII network topology
+python run.py                          # run all 22 scenarios (4 routers each)
+python run.py --scenario 2             # single scenario
+python run.py --parallel scenarios     # parallel across all CPU cores
+python run.py --visualize              # ASCII network topology
 ```
+
+### Scenarios (22 total)
+
+| Category | Scenarios |
+|----------|-----------|
+| **Scale** | Small Local (20), Medium City (100), Large Regional (500), Dense Urban (200), 1000 Nodes, 1500 Nodes |
+| **Stress** | 30% / 50% degraded links, 20% node failure, combined stress |
+| **Terrain** | Rural Long Range (SF12), Hiking Trail (linear), Mountain Valley, Maritime (line of sight) |
+| **Mobile** | Festival/Event (dense + mobile), Building Emergency (indoor), Highway Convoy |
+| **Realistic** | Community Mesh (stable), Indoor-Outdoor Mix, Disaster Relief, Partition Recovery |
+| **Regulation** | Duty Cycle Stress (1% EU868 enforced) |
 
 ### Simulator Architecture
 
 ```
 simulator/
-  run.py          — CLI entry point
-  meshsim.py      — Network simulation (nodes, links, clusters, routes)
+  run.py          — CLI entry point (parallel execution support)
+  meshsim.py      — Network simulation (nodes, links, clusters, routes, mobility)
   routing.py      — NaiveFloodingRouter, ManagedFloodingRouter,
                     NextHopRouter, System5Router
-  lora_model.py   — EU 868MHz LoRa physical layer model
+  lora_model.py   — EU 868MHz LoRa model (terrain, duty cycle, collisions)
   geohash.py      — Geographic clustering via geohash
-  benchmark.py    — 10 scenarios, 4 routers, comparative benchmarking
+  benchmark.py    — 22 scenarios, 4 routers, multiprocessing benchmark
 ```
 
 ## Architecture Origins
@@ -114,8 +141,9 @@ Research project with working simulator. No firmware implementation yet.
 
 - [x] Algorithm design and mathematical analysis
 - [x] Interactive presentation with live visualizations
-- [x] Python simulator (4 routers, 10 scenarios, EU868 LoRa model)
+- [x] Python simulator (4 routers, 22 scenarios, EU868 LoRa model)
 - [x] Fair comparison against Meshtastic v2.6/2.7 actual routing
+- [x] Interactive live simulator with hop-by-hop stepping
 - [ ] Firmware prototype (ESP32 / Meshtastic fork)
 - [ ] Field testing with real LoRa hardware
 - [ ] RFC / proposal to Meshtastic community
