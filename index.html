@@ -52,13 +52,13 @@
 <section id="tldr">
   <div class="section-tag reveal">00 — TL;DR</div>
   <div class="tldr-card reveal">
-    <p class="tldr-text">Current Meshtastic flooding wastes <strong>99% of bandwidth</strong> at scale — every node rebroadcasts every message. <strong>System 5</strong> combines geo-clustering, multi-path routing, and adaptive QoS into one self-healing protocol. The result: <strong>100% delivery</strong>, <strong>99.9% less bandwidth</strong>, instant failover, and scaling to <strong>50,000+ nodes</strong>. The hop limit — today's biggest scaling bottleneck — becomes irrelevant: each hop costs <strong>~1 transmission</strong> instead of <em>n</em>.</p>
+    <p class="tldr-text">Current Meshtastic flooding wastes <strong>92–100% of bandwidth</strong> in small-medium networks and <strong>fails to deliver</strong> at scale. <strong>System 5</strong> combines geo-clustering, multi-path routing, and adaptive QoS into one self-healing protocol. For networks up to ~200 nodes: <strong>100% delivery with 92–99.9% less bandwidth</strong>. At 500+ nodes: <strong>higher delivery than managed flooding</strong> (76% vs 51% at 500 nodes), though large sparse networks remain challenging for any protocol. The hop limit — today's biggest scaling bottleneck — becomes irrelevant: each hop costs <strong>~1 transmission</strong> instead of <em>n</em>.</p>
     <div class="tldr-stats">
-      <div class="tldr-stat"><span class="tldr-num">100%</span><span class="tldr-label">Delivery</span></div>
+      <div class="tldr-stat"><span class="tldr-num">100%</span><span class="tldr-label">Del. &le;200</span></div>
       <div class="tldr-stat"><span class="tldr-num">99.9%</span><span class="tldr-label">BW Saved</span></div>
       <div class="tldr-stat"><span class="tldr-num">~1</span><span class="tldr-label">TX/Hop</span></div>
       <div class="tldr-stat"><span class="tldr-num">&infin;</span><span class="tldr-label">Hop Limit</span></div>
-      <div class="tldr-stat"><span class="tldr-num">50k+</span><span class="tldr-label">Nodes</span></div>
+      <div class="tldr-stat"><span class="tldr-num">21</span><span class="tldr-label">Scenarios</span></div>
     </div>
   </div>
 </section>
@@ -461,7 +461,7 @@
         <td style="text-align:right;color:var(--green)">100%</td>
         <td style="text-align:right;color:var(--green)">100%</td>
         <td style="text-align:right;color:var(--green)">100%</td>
-        <td style="text-align:right;color:var(--cyan)">5,678</td>
+        <td style="text-align:right;color:var(--cyan)">402</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Large Regional</td>
@@ -470,7 +470,7 @@
         <td style="text-align:right;color:var(--red)">31%</td>
         <td style="text-align:right;color:var(--orange)">51%</td>
         <td style="text-align:right;color:var(--yellow)">76%</td>
-        <td style="text-align:right;color:var(--cyan)">624k</td>
+        <td style="text-align:right;color:var(--cyan)">412k</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">1000 Nodes</td>
@@ -478,8 +478,8 @@
         <td style="text-align:right;color:var(--red);font-weight:700">2%</td>
         <td style="text-align:right;color:var(--red);font-weight:700">6%</td>
         <td style="text-align:right;color:var(--red);font-weight:700">6%</td>
-        <td style="text-align:right;color:var(--orange)">45%</td>
-        <td style="text-align:right;color:var(--cyan)">535k</td>
+        <td style="text-align:right;color:var(--orange)">43%</td>
+        <td style="text-align:right;color:var(--orange)">182k*</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">1500 Nodes</td>
@@ -487,11 +487,12 @@
         <td style="text-align:right;color:var(--red);font-weight:700">2%</td>
         <td style="text-align:right;color:var(--red);font-weight:700">4%</td>
         <td style="text-align:right;color:var(--red);font-weight:700">5%</td>
-        <td style="text-align:right;color:var(--orange)">51%</td>
-        <td style="text-align:right;color:var(--cyan)">635k</td>
+        <td style="text-align:right;color:var(--orange)">42%</td>
+        <td style="text-align:right;color:var(--orange)">197k*</td>
       </tr>
     </table>
-    <p style="margin-top:1rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Critical finding:</strong> With Meshtastic's realistic hop limit (3–7), managed flooding's delivery rate <strong>collapses</strong> at scale. At 1000 nodes, only <strong>6%</strong> of messages arrive — regardless of hop limit. System 5 delivers <strong>7.5x more messages</strong> in the same scenario. The hop limit doesn't just cap range — it makes large networks <strong>fundamentally unreliable</strong>.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* At 1000+ nodes, System 5 uses <strong>more total TX</strong> than managed flooding (182k vs 78k) — but delivers <strong>7x more messages</strong>. The per-delivered-message cost (TX/delivered) still favors System 5: ~4,229 vs ~13,065.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Critical finding:</strong> With Meshtastic's realistic hop limit (3–7), managed flooding's delivery rate <strong>collapses</strong> at scale. At 1000 nodes, only <strong>6%</strong> of messages arrive — regardless of hop limit. System 5 delivers <strong>7x more messages</strong> in the same scenario. The hop limit doesn't just cap range — it makes large networks <strong>fundamentally unreliable</strong>.</p>
   </div>
 
   <div class="problem-grid" style="margin-top:2rem">
@@ -748,7 +749,7 @@
 <section id="sim-results" class="sim-results-section">
   <div class="section-tag reveal">10 — Simulation Results</div>
   <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
-  <p class="section-desc reveal">Python simulation comparing 6 routers (Naive Flood, Managed Flood at 3/5/7 hops, Next-Hop, System 5) across 18 scenarios — with <strong>realistic Meshtastic hop limits</strong> revealing delivery collapse at scale.</p>
+  <p class="section-desc reveal">Python simulation comparing 6 routers (Naive Flood, Managed Flood at 3/5/7 hops, Next-Hop, System 5) across 21 scenarios (20–1500 nodes) — with <strong>realistic Meshtastic hop limits</strong> revealing delivery collapse at scale.</p>
 
   <!-- Summary Table -->
   <div class="sim-table-wrap reveal">
@@ -835,24 +836,24 @@
 <section id="conclusion">
   <div class="section-tag reveal">12 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
-  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. System 5 breaks through this barrier with directed routing at ~1 TX per hop.</p>
+  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. System 5 breaks through this barrier with directed routing at ~1 TX per hop. Across 21 scenarios, System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">
       <div class="concl-result-value" style="color:var(--green)">100%</div>
-      <div class="concl-result-label">Delivery Rate</div>
+      <div class="concl-result-label">Delivery &le;200n</div>
     </div>
     <div class="concl-result">
       <div class="concl-result-value" style="color:var(--teal)">99.9%</div>
-      <div class="concl-result-label">Bandwidth Saved</div>
+      <div class="concl-result-label">BW Saved (best)</div>
     </div>
     <div class="concl-result">
       <div class="concl-result-value" style="color:var(--cyan)">~1</div>
       <div class="concl-result-label">TX per Hop</div>
     </div>
     <div class="concl-result">
-      <div class="concl-result-value" style="color:var(--purple)">&infin;</div>
-      <div class="concl-result-label">Hop Limit</div>
+      <div class="concl-result-value" style="color:var(--purple)">21</div>
+      <div class="concl-result-label">Scenarios</div>
     </div>
   </div>
 
