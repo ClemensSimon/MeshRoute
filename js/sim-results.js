@@ -290,6 +290,28 @@
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('Total Transmissions', 0, 0);
     ctx.restore();
+
+    // ── "Better ↓" arrow indicator ──
+    const arrowX = pad.left + 38;
+    const arrowY1 = pad.top + 8;
+    const arrowY2 = pad.top + 42;
+    ctx.strokeStyle = COLORS.green;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(arrowX, arrowY1);
+    ctx.lineTo(arrowX, arrowY2);
+    ctx.stroke();
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(arrowX - 5, arrowY2 - 6);
+    ctx.lineTo(arrowX, arrowY2);
+    ctx.lineTo(arrowX + 5, arrowY2 - 6);
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = COLORS.green;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Better', arrowX, arrowY2 + 12);
   }
 
   function fmtNum(v) {
@@ -401,6 +423,26 @@
     ctx.fillRect(lx + 120, 8, 12, 3);
     ctx.fillStyle = COLORS.text;
     ctx.fillText('System 5', lx + 136, 14);
+
+    // ── "Better ↑" arrow indicator ──
+    const arrowX = W - pad.right - 15;
+    const arrowY1 = pad.top + 45;
+    const arrowY2 = pad.top + 10;
+    ctx.strokeStyle = COLORS.green;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(arrowX, arrowY1);
+    ctx.lineTo(arrowX, arrowY2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(arrowX - 5, arrowY2 + 6);
+    ctx.lineTo(arrowX, arrowY2);
+    ctx.lineTo(arrowX + 5, arrowY2 + 6);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.green;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Better', arrowX, arrowY1 + 12);
   }
 
   // ── Hottest Node Load — max TX any single node has to handle ──
@@ -512,6 +554,28 @@
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('Max TX on busiest node (log)', 0, 0);
     ctx.restore();
+
+    // ── "Better ↓" arrow indicator ──
+    {
+      const ax = pad.left + 38;
+      const ay1 = pad.top + 8;
+      const ay2 = pad.top + 42;
+      ctx.strokeStyle = COLORS.green;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay1);
+      ctx.lineTo(ax, ay2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ax - 5, ay2 - 6);
+      ctx.lineTo(ax, ay2);
+      ctx.lineTo(ax + 5, ay2 - 6);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.green;
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Better', ax, ay2 + 12);
+    }
   }
 
   // ── QoS Breakdown ──
