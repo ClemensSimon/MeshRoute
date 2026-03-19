@@ -39,10 +39,14 @@ class NaiveFloodingRouter:
     """Pure naive flooding: every node rebroadcasts every packet once.
 
     No intelligence. Used only as a theoretical worst-case reference.
+    Uses Meshtastic's default hop limit of 7.
     """
 
-    def __init__(self, seed=42):
+    MESHTASTIC_HOP_LIMIT = 7
+
+    def __init__(self, seed=42, hop_limit=None):
         self.rng = random.Random(seed)
+        self.hop_limit = hop_limit or self.MESHTASTIC_HOP_LIMIT
 
     def route(self, network, packet):
         stats = RoutingStats()
@@ -57,10 +61,11 @@ class NaiveFloodingRouter:
         seen = {packet.src}
         broadcast_queue = [(packet.src, 0, [packet.src])]
         delivery_path = None
+        hop_limit = self.hop_limit
 
         while broadcast_queue:
             current_id, hop_count, path = broadcast_queue.pop(0)
-            if hop_count >= packet.ttl:
+            if hop_count >= hop_limit:
                 continue
 
             current_node = network.nodes[current_id]
@@ -114,6 +119,7 @@ class ManagedFloodingRouter:
     - ROUTER-role nodes always rebroadcast regardless
     - Duplicate detection via packet ID tracking
     - Dynamic broadcast interval scaling for large networks (40+ nodes)
+    - Uses Meshtastic's default hop limit of 7
     """
 
     # Fraction of nodes assigned ROUTER role (always rebroadcast)
@@ -123,8 +129,11 @@ class ManagedFloodingRouter:
     # Depends on SNR: high SNR (close) = high suppression, low SNR (far) = low
     SUPPRESSION_BASE = 0.6
 
-    def __init__(self, seed=42):
+    MESHTASTIC_HOP_LIMIT = 7
+
+    def __init__(self, seed=42, hop_limit=None):
         self.rng = random.Random(seed)
+        self.hop_limit = hop_limit or self.MESHTASTIC_HOP_LIMIT
         self._router_nodes = set()
 
     def _assign_router_roles(self, network):
@@ -166,10 +175,11 @@ class ManagedFloodingRouter:
         # BFS queue: (node_id, hop_count, path, receiving_link_quality)
         broadcast_queue = [(packet.src, 0, [packet.src], 1.0)]
         delivery_path = None
+        hop_limit = self.hop_limit
 
         while broadcast_queue:
             current_id, hop_count, path, recv_quality = broadcast_queue.pop(0)
-            if hop_count >= packet.ttl:
+            if hop_count >= hop_limit:
                 continue
 
             current_node = network.nodes[current_id]
@@ -252,9 +262,9 @@ class NextHopRouter:
     This is only for unicast/direct messages, not broadcasts.
     """
 
-    def __init__(self, seed=42):
+    def __init__(self, seed=42, hop_limit=None):
         self.rng = random.Random(seed)
-        self._managed = ManagedFloodingRouter(seed=seed)
+        self._managed = ManagedFloodingRouter(seed=seed, hop_limit=hop_limit)
         # Cache: (src, dst) -> next_hop_node_id
         self._next_hop_cache = {}
 

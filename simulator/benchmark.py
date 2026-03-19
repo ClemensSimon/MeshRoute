@@ -15,11 +15,14 @@ from meshsim import MeshNetwork, Packet
 from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router
 
 # Router registry for multiprocessing (must be picklable by name)
+# Format: (key, label, RouterClass, kwargs)
 ROUTER_REGISTRY = [
-    ("naive_flooding", "Naive Flood", NaiveFloodingRouter),
-    ("managed_flooding", "Managed Flood", ManagedFloodingRouter),
-    ("next_hop", "Next-Hop", NextHopRouter),
-    ("system5", "System 5", System5Router),
+    ("naive_flooding", "Naive Flood", NaiveFloodingRouter, {}),
+    ("managed_3hop", "Managed (3 hop)", ManagedFloodingRouter, {"hop_limit": 3}),
+    ("managed_5hop", "Managed (5 hop)", ManagedFloodingRouter, {"hop_limit": 5}),
+    ("managed_7hop", "Managed (7 hop)", ManagedFloodingRouter, {"hop_limit": 7}),
+    ("next_hop", "Next-Hop (7 hop)", NextHopRouter, {"hop_limit": 7}),
+    ("system5", "System 5", System5Router, {}),
 ]
 
 
@@ -523,12 +526,12 @@ def _run_single_router(args):
     for pickling compatibility.
 
     Args:
-        args: (router_key, router_label, router_class_name, config, messages, seed)
+        args: (router_key, router_label, router_class_name, router_kwargs, config, messages, seed)
 
     Returns:
         (router_key, router_label, BenchmarkResult)
     """
-    router_key, router_label, router_class_name, config, messages, seed = args
+    router_key, router_label, router_class_name, router_kwargs, config, messages, seed = args
 
     # Reconstruct router class from name (can't pickle classes directly)
     router_classes = {
@@ -540,7 +543,7 @@ def _run_single_router(args):
     RouterClass = router_classes[router_class_name]
 
     net_run = build_network(config, seed=seed)
-    router = RouterClass(seed=seed)
+    router = RouterClass(seed=seed, **router_kwargs)
     result = run_router(router, net_run, messages)
     return (router_key, router_label, result)
 
@@ -582,18 +585,19 @@ def run_scenario(config, scenario_num, verbose=True, parallel_routers=True):
 
     # Prepare router jobs
     router_jobs = [
-        (key, label, RouterClass.__name__, config, messages, 42)
-        for key, label, RouterClass in ROUTER_REGISTRY
+        (key, label, RouterClass.__name__, kwargs, config, messages, 42)
+        for key, label, RouterClass, kwargs in ROUTER_REGISTRY
     ]
 
     results_by_router = {}
 
     if parallel_routers and len(router_jobs) > 1:
-        # Run all 4 routers in parallel
+        # Run all routers in parallel
+        n_routers = len(router_jobs)
         if verbose:
-            print(f"  Running 4 routers in parallel...", flush=True)
+            print(f"  Running {n_routers} routers in parallel...", flush=True)
 
-        with ProcessPoolExecutor(max_workers=min(4, os.cpu_count() or 4)) as executor:
+        with ProcessPoolExecutor(max_workers=min(n_routers, os.cpu_count() or 4)) as executor:
             futures = {
                 executor.submit(_run_single_router, job): job[0]
                 for job in router_jobs
@@ -602,31 +606,31 @@ def run_scenario(config, scenario_num, verbose=True, parallel_routers=True):
                 key, label, result = future.result()
                 results_by_router[key] = result
                 if verbose:
-                    print(f"    {label:15s} | Del: {result.delivery_rate:5.1f}% | "
+                    print(f"    {label:20s} | Del: {result.delivery_rate:5.1f}% | "
                           f"TX: {result.total_tx:>8} | "
                           f"TX/del: {result.tx_per_delivered:>7.1f} | "
                           f"Hops: {result.avg_hops:.1f}")
     else:
         # Sequential fallback
-        for key, label, class_name, cfg, msgs, seed in router_jobs:
-            _, _, result = _run_single_router((key, label, class_name, cfg, msgs, seed))
+        for key, label, class_name, kwargs, cfg, msgs, seed in router_jobs:
+            _, _, result = _run_single_router((key, label, class_name, kwargs, cfg, msgs, seed))
             results_by_router[key] = result
             if verbose:
-                print(f"    {label:15s} | Del: {result.delivery_rate:5.1f}% | "
+                print(f"    {label:20s} | Del: {result.delivery_rate:5.1f}% | "
                       f"TX: {result.total_tx:>8} | "
                       f"TX/del: {result.tx_per_delivered:>7.1f} | "
                       f"Hops: {result.avg_hops:.1f}")
 
     # Comparison
     naive = results_by_router["naive_flooding"]
-    managed = results_by_router["managed_flooding"]
+    managed = results_by_router["managed_7hop"]  # default comparison baseline
     s5 = results_by_router["system5"]
 
     if verbose and managed.total_tx > 0 and s5.total_tx > 0:
         bw_vs_managed = (1 - s5.total_tx / managed.total_tx) * 100
         bw_vs_naive = (1 - s5.total_tx / naive.total_tx) * 100 if naive.total_tx > 0 else 0
-        print(f"  -> System 5 vs Managed Flood: {bw_vs_managed:.1f}% less TX")
-        print(f"  -> System 5 vs Naive Flood:   {bw_vs_naive:.1f}% less TX")
+        print(f"  -> System 5 vs Managed Flood (7 hop): {bw_vs_managed:.1f}% less TX")
+        print(f"  -> System 5 vs Naive Flood:           {bw_vs_naive:.1f}% less TX")
 
     # Compute category
     if config.link_degradation > 0 or config.node_kill_fraction > 0:
@@ -663,13 +667,14 @@ def run_scenario(config, scenario_num, verbose=True, parallel_routers=True):
         "network": net_stats,
     }
 
-    for key, label, _ in ROUTER_REGISTRY:
+    for key, label, _, _ in ROUTER_REGISTRY:
         result_dict[key] = results_by_router[key].to_dict()
 
     # Backward compat aliases
-    result_dict["flooding"] = result_dict["managed_flooding"]
+    result_dict["managed_flooding"] = result_dict["managed_7hop"]
+    result_dict["flooding"] = result_dict["managed_7hop"]
 
-    # Comparison vs managed flooding (the real baseline)
+    # Comparison vs managed flooding 7 hop (the real baseline)
     bw_savings_vs_managed = 0.0
     if managed.total_tx > 0:
         bw_savings_vs_managed = round((1 - s5.total_tx / managed.total_tx) * 100, 2)
