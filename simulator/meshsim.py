@@ -447,22 +447,102 @@ class MeshNetwork:
             for nid in members:
                 self.nodes[nid].cluster_id = idx
 
-        # If only 1 cluster and many nodes, subdivide artificially by quadrant
+        # If only 1 cluster and many nodes, subdivide by quadrant
         if len(self.clusters) == 1 and len(self.nodes) > 10:
             self._subdivide_by_quadrant()
+        else:
+            # Subdivide any oversized clusters (>50 nodes)
+            self._subdivide_large_clusters()
 
     def _subdivide_by_quadrant(self):
-        """Subdivide a single cluster into quadrants for better routing."""
+        """Recursively subdivide clusters until each has <= MAX_CLUSTER_SIZE nodes."""
+        MAX_CLUSTER_SIZE = 50
+
+        def _split_region(node_ids, x_min, x_max, y_min, y_max, depth=0):
+            """Recursively split a region into quadrants if too large."""
+            if len(node_ids) <= MAX_CLUSTER_SIZE or depth > 5:
+                return [node_ids]
+
+            mid_x = (x_min + x_max) / 2.0
+            mid_y = (y_min + y_max) / 2.0
+            quadrants = [[], [], [], []]  # TL, TR, BL, BR
+
+            for nid in node_ids:
+                node = self.nodes[nid]
+                qx = 0 if node.x < mid_x else 1
+                qy = 0 if node.y < mid_y else 2
+                quadrants[qx + qy].append(nid)
+
+            result = []
+            bounds = [
+                (x_min, mid_x, y_min, mid_y),
+                (mid_x, x_max, y_min, mid_y),
+                (x_min, mid_x, mid_y, y_max),
+                (mid_x, x_max, mid_y, y_max),
+            ]
+            for q, (bx0, bx1, by0, by1) in zip(quadrants, bounds):
+                if q:
+                    result.extend(_split_region(q, bx0, bx1, by0, by1, depth + 1))
+            return result
+
+        all_ids = list(self.nodes.keys())
+        groups = _split_region(all_ids, 0, self.area_size, 0, self.area_size)
+
         self.clusters = {}
-        half = self.area_size / 2.0
-        for node in self.nodes.values():
-            qx = 0 if node.x < half else 1
-            qy = 0 if node.y < half else 2
-            cid = qx + qy
-            node.cluster_id = cid
-            if cid not in self.clusters:
-                self.clusters[cid] = Cluster(cid, f"Q{cid}")
-            self.clusters[cid].members.append(node.id)
+        for idx, members in enumerate(groups):
+            if not members:
+                continue
+            cluster = Cluster(idx, f"C{idx}")
+            cluster.members = members
+            self.clusters[idx] = cluster
+            for nid in members:
+                self.nodes[nid].cluster_id = idx
+
+    def _subdivide_large_clusters(self):
+        """Split clusters with >50 nodes into spatial sub-clusters."""
+        MAX_CLUSTER_SIZE = 50
+        new_clusters = {}
+        next_id = 0
+
+        for cluster in list(self.clusters.values()):
+            if len(cluster.members) <= MAX_CLUSTER_SIZE:
+                cluster_copy = Cluster(next_id, cluster.geohash_prefix)
+                cluster_copy.members = cluster.members
+                new_clusters[next_id] = cluster_copy
+                for nid in cluster.members:
+                    self.nodes[nid].cluster_id = next_id
+                next_id += 1
+            else:
+                # Split by median x/y alternating
+                members = cluster.members[:]
+                splits = [members]
+                depth = 0
+                while any(len(s) > MAX_CLUSTER_SIZE for s in splits) and depth < 5:
+                    new_splits = []
+                    for s in splits:
+                        if len(s) <= MAX_CLUSTER_SIZE:
+                            new_splits.append(s)
+                        else:
+                            use_x = (depth % 2 == 0)
+                            key = (lambda nid: self.nodes[nid].x) if use_x else (lambda nid: self.nodes[nid].y)
+                            s.sort(key=key)
+                            mid = len(s) // 2
+                            new_splits.append(s[:mid])
+                            new_splits.append(s[mid:])
+                    splits = new_splits
+                    depth += 1
+
+                for sub_members in splits:
+                    if not sub_members:
+                        continue
+                    sub = Cluster(next_id, f"{cluster.geohash_prefix}.{next_id}")
+                    sub.members = sub_members
+                    new_clusters[next_id] = sub
+                    for nid in sub_members:
+                        self.nodes[nid].cluster_id = next_id
+                    next_id += 1
+
+        self.clusters = new_clusters
 
     def elect_border_nodes(self):
         """Mark nodes that have neighbors in other clusters as border nodes."""
@@ -506,7 +586,7 @@ class MeshNetwork:
             if link.node_a in nb.neighbors:
                 nb.neighbors[link.node_a] = link.quality_ba
 
-    def compute_routes(self, max_routes=5, max_hops=15):
+    def compute_routes(self, max_routes=5, max_hops=None):
         """Compute multi-path routes using BFS for all node pairs.
 
         For large networks (>200 nodes), uses lazy route computation
@@ -514,8 +594,12 @@ class MeshNetwork:
 
         Args:
             max_routes: Maximum routes to store per destination
-            max_hops: Maximum hops per route
+            max_hops: Maximum hops per route (auto-scaled if None)
         """
+        if max_hops is None:
+            # Scale with network size: sqrt(n) but at least 15, at most 40
+            import math
+            max_hops = max(15, min(40, int(math.sqrt(len(self.nodes)) * 1.5)))
         self._max_routes = max_routes
         self._max_hops = max_hops
 

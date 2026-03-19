@@ -411,7 +411,9 @@ class System5Router:
             if intermediates:
                 loads = [network.nodes[nid].load() for nid in intermediates]
                 avg_load = sum(loads) / len(loads)
-                if max(loads) > self.BACKPRESSURE_THRESHOLD:
+                # Gradual backpressure: penalize weight instead of hard cutoff
+                # Only fully block if ALL intermediates are saturated (>0.95)
+                if min(loads) > 0.95:
                     continue
             else:
                 avg_load = 0.0
@@ -460,7 +462,9 @@ class System5Router:
 
             quality = link.quality if link else 0.1
             delivered_hop = False
-            for retry in range(self.MAX_RETRIES):
+            # Adaptive retries: more attempts for poor links
+            max_retries = self.MAX_RETRIES if quality > 0.5 else self.MAX_RETRIES + 2
+            for retry in range(max_retries):
                 if self.rng.random() <= quality:
                     delivered_hop = True
                     break
@@ -495,29 +499,59 @@ class System5Router:
         return False
 
     def _fallback_cluster_flood(self, network, packet, stats):
-        """Scoped flooding across source cluster, destination cluster,
-        and all clusters along the shortest path between them.
-        Much more targeted than full-network flooding."""
+        """Scoped flooding along cluster corridor from src to dst.
+        Finds shortest cluster-level path, then floods border nodes
+        and their neighborhoods along that corridor."""
         src_node = network.nodes[packet.src]
         dst_node = network.nodes[packet.dst]
         src_cid = src_node.cluster_id
         dst_cid = dst_node.cluster_id
 
-        # Only flood in source + destination clusters (not ALL border nodes)
+        # 1. Find cluster-level adjacency and shortest cluster path
+        cluster_adj = defaultdict(set)
+        for cluster in network.clusters.values():
+            for nid in cluster.border_nodes:
+                for neighbor_id in network.nodes[nid].neighbors:
+                    ncid = network.nodes[neighbor_id].cluster_id
+                    if ncid != cluster.id:
+                        cluster_adj[cluster.id].add(ncid)
+
+        # BFS on cluster graph to find corridor
+        corridor_cids = set()
+        c_visited = {src_cid}
+        c_queue = [(src_cid, [src_cid])]
+        c_path = None
+        while c_queue:
+            ccur, cpath = c_queue.pop(0)
+            if ccur == dst_cid:
+                c_path = cpath
+                break
+            for cnext in cluster_adj.get(ccur, []):
+                if cnext not in c_visited:
+                    c_visited.add(cnext)
+                    c_queue.append((cnext, cpath + [cnext]))
+
+        if c_path:
+            corridor_cids = set(c_path)
+        else:
+            corridor_cids = {src_cid, dst_cid}
+
+        # 2. Build flood scope: all nodes in src/dst clusters + border nodes of corridor
         flood_nodes = set()
+
+        # Source and destination cluster members (small clusters now, ~50 max)
         for cid in [src_cid, dst_cid]:
             if cid is not None and cid in network.clusters:
                 for nid in network.clusters[cid].members:
                     if network.nodes[nid].battery > 0:
                         flood_nodes.add(nid)
 
-        # Add border nodes of src/dst clusters to bridge the gap
-        for cid in [src_cid, dst_cid]:
+        # Border nodes + neighbors along the corridor
+        for cid in corridor_cids:
             if cid is not None and cid in network.clusters:
                 for nid in network.clusters[cid].border_nodes:
                     if network.nodes[nid].battery > 0:
                         flood_nodes.add(nid)
-                        # And their direct neighbors in adjacent clusters
                         for neighbor_id in network.nodes[nid].neighbors:
                             if network.nodes[neighbor_id].battery > 0:
                                 flood_nodes.add(neighbor_id)
