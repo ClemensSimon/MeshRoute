@@ -108,6 +108,7 @@
     <span class="divider-label sota-label">STATE OF THE ART — Meshtastic Today</span>
   </div>
 
+  <div class="sota-grid">
   <!-- NAIVE FLOODING -->
   <div class="algo-section flood reveal" id="algo-naive-flood">
     <div class="algo-header">
@@ -186,8 +187,10 @@
     </div>
   </div>
 
+  </div><!-- /.sota-grid -->
+
   <!-- NEW PROPOSAL DIVIDER -->
-  <div class="approach-divider reveal" style="margin-top:3rem">
+  <div class="approach-divider reveal" style="margin-top:2rem">
     <span class="divider-label proposal-label">NEW PROPOSAL — System 5</span>
   </div>
 
@@ -241,6 +244,7 @@
   <p class="section-desc reveal">Formal evaluation of all four routing approaches across seven weighted criteria.</p>
 
   <!-- Formulas for each approach -->
+  <div class="formula-cards-grid">
   <div class="formula-card reveal" style="border-color:var(--red-dim)">
     <h4>Naive Flooding — TX Cost Per Message</h4>
     <div class="formula">
@@ -301,7 +305,9 @@
     </p>
   </div>
 
-  <h3 style="font-family:var(--font-mono);font-size:0.9rem;color:var(--text-dim);margin:3rem 0 1rem;letter-spacing:0.1em" class="reveal">SCORING MATRIX (0–10, WEIGHTED)</h3>
+  </div><!-- /.formula-cards-grid -->
+
+  <h3 style="font-family:var(--font-mono);font-size:0.9rem;color:var(--text-dim);margin:2rem 0 1rem;letter-spacing:0.1em" class="reveal">SCORING MATRIX (0–10, WEIGHTED)</h3>
   <div class="comparison-wrap reveal">
     <table class="comparison-table">
       <thead>
@@ -332,7 +338,7 @@
     </table>
   </div>
 
-  <h3 style="font-family:var(--font-mono);font-size:0.9rem;color:var(--text-dim);margin:3rem 0 1rem;letter-spacing:0.1em" class="reveal">FINAL SCORES</h3>
+  <h3 style="font-family:var(--font-mono);font-size:0.9rem;color:var(--text-dim);margin:2rem 0 1rem;letter-spacing:0.1em" class="reveal">FINAL SCORES</h3>
   <div class="bar-chart reveal" id="bar-chart">
     <div class="bar-col">
       <div class="bar" data-score="4.3" style="height:0;background:var(--red)"><span class="bar-value" style="color:var(--red)">4.3</span></div>

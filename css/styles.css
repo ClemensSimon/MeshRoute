@@ -117,7 +117,7 @@ nav a:hover, nav a.active { color: var(--cyan); background: var(--cyan-glow); }
 /* === SECTIONS === */
 section {
   max-width: 1200px; margin: 0 auto;
-  padding: 6rem 2rem;
+  padding: 3rem 2rem;
 }
 .section-tag {
   font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyan);
@@ -129,7 +129,7 @@ section {
 }
 .section-desc {
   color: var(--text-dim); font-size: 1.1rem; max-width: 700px;
-  margin-bottom: 3rem; font-weight: 300;
+  margin-bottom: 2rem; font-weight: 300;
 }
 
 /* === PROBLEM SECTION === */
@@ -154,8 +154,8 @@ section {
 
 /* === ALGORITHM CARDS === */
 .algo-section {
-  margin-bottom: 5rem;
-  padding: 3rem;
+  margin-bottom: 2.5rem;
+  padding: 2rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -233,16 +233,19 @@ section {
 .pro li, .con li { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 0.2rem; }
 
 /* === MATH SECTION === */
+#math .formula-cards-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+}
 .formula-card {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem;
+  border-radius: 12px; padding: 1.5rem; margin-bottom: 0;
 }
 .formula-card h4 {
   font-family: var(--font-mono); font-size: 0.8rem; color: var(--cyan);
   margin-bottom: 1rem; letter-spacing: 0.1em;
 }
 .formula {
-  font-family: var(--font-display); font-size: 1.5rem;
+  font-family: var(--font-display); font-size: 1.2rem;
   color: var(--text); text-align: center; padding: 1rem 0;
   letter-spacing: 0.02em;
 }
@@ -307,8 +310,8 @@ section {
 
 /* === ARCHITECTURE === */
 .arch-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem; margin-top: 2rem;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem; margin-top: 1.5rem;
 }
 .arch-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -405,7 +408,7 @@ section {
 /* === SCALE SCENARIOS === */
 .scale-scenarios { max-width: 1400px; }
 .scenario {
-  margin-bottom: 4rem;
+  margin-bottom: 2.5rem;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -685,7 +688,7 @@ section {
 }
 
 /* === TL;DR === */
-#tldr { padding-top: 2rem; padding-bottom: 2rem; }
+#tldr { padding-top: 1rem; padding-bottom: 1rem; }
 .tldr-card {
   background: var(--bg-card);
   border: 1px solid var(--cyan-dim);
@@ -807,7 +810,7 @@ footer {
 }
 
 @media (max-width: 768px) {
-  section { padding: 3rem 1rem; }
+  section { padding: 2rem 1rem; }
   .hero-title { font-size: 2.2rem !important; }
   .hero-sub { font-size: 1rem; }
   .algo-section { padding: 1.25rem; }
@@ -817,7 +820,8 @@ footer {
   .bar-chart { gap: 0.5rem; height: 200px; }
   .bar-label { font-size: 0.6rem; }
   .section-title { font-size: 1.6rem !important; }
-  .formula { font-size: 1.1rem; }
+  .formula { font-size: 1rem; }
+  #math .formula-cards-grid { grid-template-columns: 1fr; }
   .comparison-table { font-size: 0.7rem; }
   .comparison-table th, .comparison-table td { padding: 0.4rem 0.5rem; }
   .arch-grid { grid-template-columns: 1fr; }
@@ -925,6 +929,21 @@ footer {
   box-shadow: 0 0 10px rgba(34, 211, 238, 0.15);
 }
 
+/* SOTA side-by-side grid */
+.sota-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+}
+.sota-grid .algo-section { margin-bottom: 0; padding: 1.5rem; }
+.sota-grid .algo-body { grid-template-columns: 1fr; gap: 1.5rem; }
+.sota-grid .algo-canvas-wrap { aspect-ratio: 4/3; }
+.sota-grid .algo-name { font-size: 1.2rem; }
+.sota-grid .algo-subtitle { font-size: 0.82rem; margin-bottom: 1rem; }
+.sota-grid .algo-details h4 { font-size: 0.78rem; margin-top: 1rem; }
+.sota-grid .algo-details p, .sota-grid .algo-details li { font-size: 0.85rem; }
+.sota-grid .pro-con { flex-direction: column; gap: 0.75rem; }
+@media (max-width: 1100px) { .sota-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 768px) { .sota-grid { grid-template-columns: 1fr; } }
+
 /* Visual distinction: SOTA sections have subtle warm tint, proposal has cyan glow */
 .algo-section.managed,
 .algo-section.nexthop {
@@ -1031,7 +1050,7 @@ footer {
    ============================================================ */
 
 .sim-results-section {
-  padding-bottom: 4rem;
+  padding-bottom: 2rem;
 }
 
 /* Summary table */
