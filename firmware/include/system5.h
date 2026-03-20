@@ -21,7 +21,9 @@ extern "C" {
 #define S5_MAX_NODES         100   // max tracked nodes in network
 #define S5_MAX_NEIGHBORS      16   // max neighbors per node
 #define S5_MAX_ROUTES          5   // max cached routes per destination
-#define S5_MAX_HOPS           20   // no hop limit needed, but cap for safety
+#define S5_MAX_HOPS           20   // default hop cap (dynamic via s5_dynamic_max_hops)
+#define S5_MIN_HOPS           15   // floor for dynamic hop limit
+#define S5_MAX_HOPS_CAP       40   // ceiling for dynamic hop limit
 #define S5_MAX_PATH_LEN       15   // max hops in a single route
 #define S5_MAX_CLUSTERS        8   // max geo-clusters
 #define S5_GEOHASH_PRECISION   4   // characters for cluster grouping
@@ -39,7 +41,10 @@ extern "C" {
 #define S5_NHS_CRITICAL   0.2f  // priorities 0-1 allowed
 
 #define S5_BACKPRESSURE_THRESHOLD 0.8f
-#define S5_MAX_RETRIES     3    // retries per hop on link failure
+#define S5_BACKPRESSURE_HARD_BLOCK 0.95f // fully block route only above this
+#define S5_MAX_RETRIES     3    // retries per hop for good links (quality > 0.5)
+#define S5_MAX_RETRIES_POOR 5   // retries per hop for poor links (quality <= 0.5)
+#define S5_MAX_ROUTE_ATTEMPTS 5 // try up to N different routes before fallback
 
 // ── Geohash ────────────────────────────────────────────────────
 
@@ -217,6 +222,31 @@ const s5_cluster_t *s5_get_my_cluster(const s5_node_state_t *state);
  * Get Network Health Score for local cluster.
  */
 float s5_get_nhs(const s5_node_state_t *state);
+
+/**
+ * Get adaptive retry count based on link quality.
+ * Returns S5_MAX_RETRIES for good links (>0.5), S5_MAX_RETRIES_POOR for poor.
+ */
+uint8_t s5_get_retry_count(float link_quality);
+
+/**
+ * Compute dynamic max hops based on estimated network size.
+ * Returns max(S5_MIN_HOPS, min(S5_MAX_HOPS_CAP, sqrt(n_nodes) * 3)).
+ */
+uint8_t s5_dynamic_max_hops(uint8_t estimated_nodes);
+
+/**
+ * Get cluster corridor for scoped flooding fallback.
+ * Returns cluster IDs along the shortest cluster-level path from src to dst.
+ * @param src_cluster  Source cluster ID
+ * @param dst_cluster  Destination cluster ID
+ * @param out_corridor Output array of cluster IDs
+ * @param max_len      Max length of output array
+ * @return Number of cluster IDs in corridor (0 if no path found)
+ */
+uint8_t s5_get_flood_corridor(const s5_node_state_t *state,
+                               uint8_t src_cluster, uint8_t dst_cluster,
+                               uint8_t *out_corridor, uint8_t max_len);
 
 #ifdef __cplusplus
 }

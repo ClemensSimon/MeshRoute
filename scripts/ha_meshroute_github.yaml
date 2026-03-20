@@ -1,5 +1,6 @@
-# Home Assistant Package: MeshRoute GitHub Monitor
+# Home Assistant Package: MeshRoute Community Outreach
 # Deploy to: HA /config/packages/meshroute_github.yaml
+# Plattformen: GitHub, Reddit, Discord, Meshtastic Discussions, GitHub Pages
 
 mqtt:
   sensor:
@@ -72,3 +73,55 @@ automation:
           topic: "simon42/meshroute/github/new_feedback"
           payload: "true"
           retain: true
+
+# === Community Outreach Platform Links ===
+# Zentraler Zugriff auf alle Plattformen wo MeshRoute verbreitet wurde
+
+template:
+  - sensor:
+      - name: "MeshRoute Platform GitHub"
+        unique_id: meshroute_platform_github
+        state: "https://github.com/ClemensSimon/MeshRoute"
+        icon: "mdi:github"
+        attributes:
+          platform: "GitHub"
+          type: "Repository & Discussions"
+          discussion_9936: "https://github.com/meshtastic/firmware/discussions/9936"
+          issues: "https://github.com/ClemensSimon/MeshRoute/issues"
+
+      - name: "MeshRoute Platform Reddit"
+        unique_id: meshroute_platform_reddit
+        state: "https://www.reddit.com/r/meshtastic/"
+        icon: "mdi:reddit"
+        attributes:
+          platform: "Reddit"
+          type: "Community Post"
+          subreddit: "r/meshtastic"
+
+      - name: "MeshRoute Platform Discord"
+        unique_id: meshroute_platform_discord
+        state: "https://discord.com/invite/meshtastic"
+        icon: "mdi:chat"
+        attributes:
+          platform: "Discord"
+          type: "Community Pitch"
+          channel: "#firmware-development"
+
+      - name: "MeshRoute Platform GitHub Pages"
+        unique_id: meshroute_platform_ghpages
+        state: "https://clemenssimon.github.io/MeshRoute/"
+        icon: "mdi:web"
+        attributes:
+          platform: "GitHub Pages"
+          type: "Live Demo & Simulator"
+          simulator: "https://clemenssimon.github.io/MeshRoute/simulator.html"
+          presentation: "https://clemenssimon.github.io/MeshRoute/"
+
+      - name: "MeshRoute Platform Meshtastic Discussions"
+        unique_id: meshroute_platform_meshtastic
+        state: "https://github.com/meshtastic/firmware/discussions/9936"
+        icon: "mdi:forum"
+        attributes:
+          platform: "Meshtastic GitHub Discussions"
+          type: "RFC Proposal"
+          title: "Geo-Clustered Multi-Path Routing (System 5)"

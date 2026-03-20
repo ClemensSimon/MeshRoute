@@ -228,6 +228,50 @@ void test_nhs_healthy() {
     PASS();
 }
 
+// ── Adaptive Retry Tests ──────────────────────────────────────
+
+void test_adaptive_retries() {
+    TEST(adaptive_retries);
+    // Good link (>0.5) should get fewer retries
+    assert(s5_get_retry_count(0.9f) == S5_MAX_RETRIES);
+    assert(s5_get_retry_count(0.6f) == S5_MAX_RETRIES);
+    // Poor link (<=0.5) should get more retries
+    assert(s5_get_retry_count(0.5f) == S5_MAX_RETRIES_POOR);
+    assert(s5_get_retry_count(0.1f) == S5_MAX_RETRIES_POOR);
+    PASS();
+}
+
+// ── Dynamic Max Hops Tests ────────────────────────────────────
+
+void test_dynamic_max_hops() {
+    TEST(dynamic_max_hops);
+    // 0 nodes → floor
+    assert(s5_dynamic_max_hops(0) == S5_MIN_HOPS);
+    // Small network (25 nodes): sqrt(25)*3 = 15
+    assert(s5_dynamic_max_hops(25) == S5_MIN_HOPS);
+    // Medium network (100 nodes): sqrt(100)*3 = 30
+    assert(s5_dynamic_max_hops(100) == 30);
+    // Large (255 max uint8): sqrt(255)*3 ≈ 47.9 → capped at 40
+    assert(s5_dynamic_max_hops(255) == S5_MAX_HOPS_CAP);
+    PASS();
+}
+
+// ── Flood Corridor Tests ──────────────────────────────────────
+
+void test_flood_corridor_same_cluster() {
+    TEST(flood_corridor_same_cluster);
+    s5_node_state_t state;
+    s5_init(&state);
+    state.my_id = 1;
+    s5_update_position(&state, 48.1f, 11.5f);
+
+    uint8_t corridor[8];
+    uint8_t len = s5_get_flood_corridor(&state, state.my_cluster_id, state.my_cluster_id, corridor, 8);
+    assert(len == 1);
+    assert(corridor[0] == state.my_cluster_id);
+    PASS();
+}
+
 // ── Main ───────────────────────────────────────────────────────
 
 int main() {
@@ -244,6 +288,9 @@ int main() {
     test_route_ttl_expired();
     test_nhs_empty();
     test_nhs_healthy();
+    test_adaptive_retries();
+    test_dynamic_max_hops();
+    test_flood_corridor_same_cluster();
 
     printf("\n=== ALL TESTS PASSED ===\n\n");
     return 0;

@@ -217,18 +217,29 @@ static s5_route_entry_t *_find_route_entry(s5_node_id_t dest_id) {
     return NULL;
 }
 
-static s5_route_t *_select_best_route(s5_route_entry_t *entry, const s5_node_state_t *state) {
+static s5_route_t *_select_best_route(s5_route_entry_t *entry, const s5_node_state_t *state,
+                                       uint8_t exclude_mask) {
     if (!entry || entry->route_count == 0) return NULL;
 
     s5_route_t *best = NULL;
     float best_weight = -1.0f;
 
     for (uint8_t i = 0; i < entry->route_count; i++) {
+        if (exclude_mask & (1 << i)) continue; // skip already-tried routes
         s5_route_t *r = &entry->routes[i];
         if (r->fail_count >= S5_MAX_RETRIES) continue; // route is dead
 
-        // Recompute weight with current data
-        r->weight = _compute_weight(r->quality, r->load, r->battery);
+        // Gradual backpressure: penalize weight based on load
+        float load_penalty = 1.0f;
+        if (r->load > S5_BACKPRESSURE_THRESHOLD) {
+            // Linear penalty from 0.8 to 0.95, hard block above 0.95
+            if (r->load > S5_BACKPRESSURE_HARD_BLOCK) continue;
+            load_penalty = 1.0f - ((r->load - S5_BACKPRESSURE_THRESHOLD)
+                           / (S5_BACKPRESSURE_HARD_BLOCK - S5_BACKPRESSURE_THRESHOLD));
+        }
+
+        // Recompute weight with current data and backpressure
+        r->weight = _compute_weight(r->quality, r->load, r->battery) * load_penalty;
 
         if (r->weight > best_weight) {
             best_weight = r->weight;
@@ -259,8 +270,9 @@ s5_route_decision_t s5_route(s5_node_state_t *state, const s5_packet_t *packet) 
         return decision;
     }
 
-    // TTL check
-    if (packet->hop_count >= packet->ttl || packet->hop_count >= S5_MAX_HOPS) {
+    // TTL check (dynamic max based on estimated network size)
+    uint8_t max_hops = s5_dynamic_max_hops(state->neighbor_count * 6); // rough estimate
+    if (packet->hop_count >= packet->ttl || packet->hop_count >= max_hops) {
         decision.action = S5_ROUTE_DROP;
         return decision;
     }
@@ -272,17 +284,26 @@ s5_route_decision_t s5_route(s5_node_state_t *state, const s5_packet_t *packet) 
         return decision;
     }
 
-    // Look up routing table
+    // Look up routing table — try multiple routes before falling back
     s5_route_entry_t *entry = _find_route_entry(packet->dst);
     if (entry) {
-        s5_route_t *route = _select_best_route(entry, state);
-        if (route && route->path_len >= 2) {
+        uint8_t exclude_mask = 0;
+        uint8_t max_attempts = S5_MAX_ROUTE_ATTEMPTS;
+        if (max_attempts > entry->route_count) max_attempts = entry->route_count;
+
+        for (uint8_t attempt = 0; attempt < max_attempts; attempt++) {
+            s5_route_t *route = _select_best_route(entry, state, exclude_mask);
+            if (!route || route->path_len < 2) break;
+
+            uint8_t route_idx = (uint8_t)(route - entry->routes);
+            exclude_mask |= (1 << route_idx);
+
             // Find ourselves in the path and get the next hop
             for (uint8_t i = 0; i < route->path_len - 1; i++) {
                 if (route->path[i] == state->my_id) {
                     decision.action = S5_ROUTE_DIRECT;
                     decision.next_hop = route->path[i + 1];
-                    decision.route_index = (uint8_t)(route - entry->routes);
+                    decision.route_index = route_idx;
                     return decision;
                 }
             }
@@ -390,4 +411,132 @@ const s5_cluster_t *s5_get_my_cluster(const s5_node_state_t *state) {
     // For now, return NULL — cluster info computed on-the-fly via NHS
     (void)state;
     return NULL;
+}
+
+// ── Adaptive Retries ──────────────────────────────────────────
+
+uint8_t s5_get_retry_count(float link_quality) {
+    return (link_quality > 0.5f) ? S5_MAX_RETRIES : S5_MAX_RETRIES_POOR;
+}
+
+// ── Dynamic Max Hops ──────────────────────────────────────────
+
+uint8_t s5_dynamic_max_hops(uint8_t estimated_nodes) {
+    if (estimated_nodes == 0) return S5_MIN_HOPS;
+
+    // sqrt(n) * 3, clamped to [S5_MIN_HOPS, S5_MAX_HOPS_CAP]
+    float hops = sqrtf((float)estimated_nodes) * 3.0f;
+    uint8_t result = (uint8_t)hops;
+    if (result < S5_MIN_HOPS) result = S5_MIN_HOPS;
+    if (result > S5_MAX_HOPS_CAP) result = S5_MAX_HOPS_CAP;
+    return result;
+}
+
+// ── Cluster Corridor Flooding ─────────────────────────────────
+
+uint8_t s5_get_flood_corridor(const s5_node_state_t *state,
+                               uint8_t src_cluster, uint8_t dst_cluster,
+                               uint8_t *out_corridor, uint8_t max_len) {
+    if (max_len == 0) return 0;
+    if (src_cluster == dst_cluster) {
+        out_corridor[0] = src_cluster;
+        return 1;
+    }
+
+    // Build cluster adjacency from neighbor table
+    // Each neighbor knows its cluster_id; if different from ours, clusters are adjacent
+    // We can only build adjacency from our local view — in practice the Meshtastic
+    // NodeDB would provide a fuller picture.
+
+    // Simplified BFS on known cluster adjacency (max S5_MAX_CLUSTERS clusters)
+    typedef struct { uint8_t cid; uint8_t parent; uint8_t depth; } bfs_entry_t;
+    bfs_entry_t queue[S5_MAX_CLUSTERS];
+    uint8_t visited[S5_MAX_CLUSTERS];
+    uint8_t visited_count = 0;
+    uint8_t q_head = 0, q_tail = 0;
+
+    // Seed: source cluster
+    queue[q_tail++] = (bfs_entry_t){ .cid = src_cluster, .parent = 0xFF, .depth = 0 };
+    visited[visited_count++] = src_cluster;
+
+    // Build adjacency: cluster pairs visible from our neighbor table
+    // adj[i] = set of clusters adjacent to cluster i
+    // We store as flat pairs for simplicity
+    typedef struct { uint8_t a; uint8_t b; } cpair_t;
+    cpair_t adj[S5_MAX_NEIGHBORS];
+    uint8_t adj_count = 0;
+
+    // Our cluster connects to neighbor clusters
+    for (uint8_t i = 0; i < state->neighbor_count && adj_count < S5_MAX_NEIGHBORS; i++) {
+        uint8_t ncid = state->neighbors[i].cluster_id;
+        if (ncid != state->my_cluster_id) {
+            // Check for duplicate
+            bool dup = false;
+            for (uint8_t j = 0; j < adj_count; j++) {
+                if ((adj[j].a == state->my_cluster_id && adj[j].b == ncid) ||
+                    (adj[j].a == ncid && adj[j].b == state->my_cluster_id)) {
+                    dup = true; break;
+                }
+            }
+            if (!dup) {
+                adj[adj_count++] = (cpair_t){ .a = state->my_cluster_id, .b = ncid };
+            }
+        }
+    }
+
+    // BFS
+    while (q_head < q_tail) {
+        bfs_entry_t cur = queue[q_head++];
+        if (cur.cid == dst_cluster) {
+            // Reconstruct path
+            uint8_t path[S5_MAX_CLUSTERS];
+            uint8_t path_len = 0;
+            uint8_t trace = q_head - 1;
+            while (trace != 0xFF && path_len < S5_MAX_CLUSTERS) {
+                path[path_len++] = queue[trace].cid;
+                // Find parent
+                if (queue[trace].parent == 0xFF) break;
+                bool found = false;
+                for (uint8_t k = 0; k < q_head; k++) {
+                    if (queue[k].cid == queue[trace].parent) {
+                        trace = k;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) break;
+            }
+            // Reverse into output
+            uint8_t out_len = 0;
+            for (int k = path_len - 1; k >= 0 && out_len < max_len; k--) {
+                out_corridor[out_len++] = path[k];
+            }
+            return out_len;
+        }
+
+        // Expand neighbors
+        for (uint8_t i = 0; i < adj_count && q_tail < S5_MAX_CLUSTERS; i++) {
+            uint8_t next_cid = 0xFF;
+            if (adj[i].a == cur.cid) next_cid = adj[i].b;
+            else if (adj[i].b == cur.cid) next_cid = adj[i].a;
+            else continue;
+
+            bool vis = false;
+            for (uint8_t v = 0; v < visited_count; v++) {
+                if (visited[v] == next_cid) { vis = true; break; }
+            }
+            if (vis) continue;
+
+            visited[visited_count++] = next_cid;
+            queue[q_tail++] = (bfs_entry_t){ .cid = next_cid, .parent = cur.cid, .depth = cur.depth + 1 };
+        }
+    }
+
+    // No path found — return src + dst as fallback
+    out_corridor[0] = src_cluster;
+    if (max_len > 1) {
+        out_corridor[1] = dst_cluster;
+        return 2;
+    }
+    return 1;
 }
