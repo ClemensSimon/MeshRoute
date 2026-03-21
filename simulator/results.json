@@ -16,7 +16,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 20,
@@ -275,7 +277,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -535,7 +539,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 500,
@@ -796,7 +802,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -1057,7 +1065,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -1318,7 +1328,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -1578,7 +1590,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -1838,7 +1852,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 200,
@@ -2098,7 +2114,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 1000,
@@ -2359,7 +2377,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 1500,
@@ -2620,7 +2640,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 50,
@@ -2879,7 +2901,9 @@
       "placement": "linear",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 40,
@@ -3138,7 +3162,9 @@
       "placement": "clustered",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 150,
@@ -3397,7 +3423,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 80,
@@ -3656,7 +3684,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -3916,7 +3946,9 @@
       "placement": "random",
       "enable_duty_cycle": true,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 100,
@@ -4176,7 +4208,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 60,
@@ -4437,7 +4471,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 30,
@@ -4696,7 +4732,9 @@
       "placement": "linear",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 50,
@@ -4955,7 +4993,9 @@
       "placement": "clustered",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 80,
@@ -5214,7 +5254,9 @@
       "placement": "random",
       "enable_duty_cycle": false,
       "enable_half_duplex": false,
-      "enable_collisions": false
+      "enable_collisions": false,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 120,
@@ -5475,7 +5517,9 @@
       "placement": "bay_area",
       "enable_duty_cycle": false,
       "enable_half_duplex": true,
-      "enable_collisions": true
+      "enable_collisions": true,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 235,
@@ -5741,7 +5785,9 @@
       "placement": "bay_area",
       "enable_duty_cycle": false,
       "enable_half_duplex": true,
-      "enable_collisions": true
+      "enable_collisions": true,
+      "enable_silencing": false,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 235,
@@ -6007,7 +6053,9 @@
       "placement": "bay_area",
       "enable_duty_cycle": false,
       "enable_half_duplex": true,
-      "enable_collisions": true
+      "enable_collisions": true,
+      "enable_silencing": true,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 235,
@@ -6273,7 +6321,9 @@
       "placement": "bay_area",
       "enable_duty_cycle": false,
       "enable_half_duplex": true,
-      "enable_collisions": true
+      "enable_collisions": true,
+      "enable_silencing": true,
+      "silence_fraction": 0.6
     },
     "network": {
       "nodes": 235,
