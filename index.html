@@ -59,7 +59,7 @@
       <div class="tldr-stat"><span class="tldr-num">99.9%</span><span class="tldr-label">BW Saved</span></div>
       <div class="tldr-stat"><span class="tldr-num">~1</span><span class="tldr-label">TX/Hop</span></div>
       <div class="tldr-stat"><span class="tldr-num">&infin;</span><span class="tldr-label">Hop Limit</span></div>
-      <div class="tldr-stat"><span class="tldr-num">21</span><span class="tldr-label">Scenarios</span></div>
+      <div class="tldr-stat"><span class="tldr-num">24</span><span class="tldr-label">Scenarios</span></div>
     </div>
   </div>
 </section>
@@ -68,7 +68,7 @@
 <section id="problem">
   <div class="section-tag reveal">01 — The Problem</div>
   <h2 class="section-title reveal">Why Current Mesh Routing Fails</h2>
-  <p class="section-desc reveal">Meshtastic uses naive flooding: every node rebroadcasts every packet. This works for tiny networks but collapses at scale.</p>
+  <p class="section-desc reveal">Meshtastic uses flooding: every node rebroadcasts every packet, hoping it reaches the destination. This design was fine when mesh networks had 10–30 nodes. But as communities like Bay Area Mesh, NYC Mesh, and European Freifunk grow to hundreds or thousands of devices, the approach breaks down in five fundamental ways.</p>
   <div class="problem-grid">
     <div class="problem-card reveal">
       <div class="icon">&#x1f4e1;</div>
@@ -102,7 +102,7 @@
 <section id="approaches">
   <div class="section-tag reveal">02 — Routing Approaches</div>
   <h2 class="section-title reveal">State of the Art vs. New Proposal</h2>
-  <p class="section-desc reveal">Same network topology, four different routing strategies. Watch the TX counter — it tells the whole story.</p>
+  <p class="section-desc reveal">Below we compare four routing strategies on the same 15-node network topology. Each animation runs live in your browser — watch the <strong>TX counter</strong> in each panel. It counts how many radio transmissions are needed to deliver a single message. Fewer TX = less airtime, fewer collisions, longer battery life. The difference is dramatic: from ~100 TX (naive flooding) to ~2 TX (System 5).</p>
 
   <!-- STATE OF THE ART DIVIDER -->
   <div class="approach-divider reveal">
@@ -116,7 +116,7 @@
       <span class="algo-number sota-badge">BASELINE</span>
       <h3 class="algo-name">Naive Flooding</h3>
     </div>
-    <p class="algo-subtitle">Theoretical worst case — every node rebroadcasts everything. Not actually used by Meshtastic, but useful as a reference.</p>
+    <p class="algo-subtitle">The theoretical worst case — every node rebroadcasts every packet exactly once. Meshtastic doesn't actually use this (it uses managed flooding below), but this baseline reveals the fundamental cost of flooding: with n nodes, a single message always costs n transmissions, regardless of distance.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
         <canvas class="algo-canvas" id="canvas-naive-flood"></canvas>
@@ -141,7 +141,7 @@
       <span class="algo-number sota-badge">MESHTASTIC CURRENT</span>
       <h3 class="algo-name">Managed Flooding</h3>
     </div>
-    <p class="algo-subtitle">The actual Meshtastic approach. SNR-based suppression: distant nodes rebroadcast first, close nodes suppress. ROUTER nodes always rebroadcast.</p>
+    <p class="algo-subtitle">This is what Meshtastic actually uses today (v2.6/2.7). It's already quite clever: before rebroadcasting, each node listens briefly. If it hears a neighbor already forwarded the packet, it stays silent (suppression). Nodes far from the sender rebroadcast first (they have lower SNR = shorter contention windows), while close nodes wait and often suppress. Nodes with the ROUTER role always rebroadcast to guarantee backbone coverage. This cuts transmissions by roughly 40–60% compared to naive flooding — a real improvement, but the cost still scales linearly with network size.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
         <canvas class="algo-canvas" id="canvas-managed-flood"></canvas>
@@ -167,7 +167,7 @@
       <span class="algo-number sota-badge">MESHTASTIC v2.6</span>
       <h3 class="algo-name">Next-Hop Routing</h3>
     </div>
-    <p class="algo-subtitle">New in v2.6 — for direct messages only. Learns the relay node, then sends only via that one node. Falls back to flooding if it fails.</p>
+    <p class="algo-subtitle">New in Meshtastic v2.6 — a significant step toward directed routing, but only for direct messages (unicast). The first time you message someone, it floods normally. The system watches which relay node successfully delivered the packet and caches that relay as the "next hop." Subsequent messages go only through that one relay node — a huge TX reduction. But there's no multi-path fallback: if that relay dies, it floods again. And all broadcasts (position beacons, channel messages) still use managed flooding.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
         <canvas class="algo-canvas" id="canvas-next-hop"></canvas>
@@ -201,7 +201,7 @@
       <span class="algo-number proposal-badge">PROPOSED</span>
       <h3 class="algo-name">System 5 — Adaptive Load-Balanced Mesh</h3>
     </div>
-    <p class="algo-subtitle">Geo-clustering + multi-path + weighted load balancing + adaptive QoS + self-healing. <strong>~1 TX per hop</strong> for all message types.</p>
+    <p class="algo-subtitle">Our proposal: a fundamentally different approach that combines six proven networking concepts into one protocol. Nodes self-organize into geographic clusters using GPS geohashes. Within a cluster, every node knows the full topology. Between clusters, border nodes act as bridges. For every destination, up to 5 independent routes are pre-computed and cached. Traffic is distributed across these routes proportional to a weight function that considers link quality, node load, and battery level. When the network is under stress, an adaptive QoS gate throttles low-priority traffic to protect emergency messages. The result: <strong>~1 TX per hop</strong> for all message types — unicast and broadcast.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
         <canvas class="algo-canvas" id="canvas-system5"></canvas>
@@ -242,7 +242,7 @@
 <section id="math">
   <div class="section-tag reveal">03 — Mathematical Analysis</div>
   <h2 class="section-title reveal">Quantitative Comparison</h2>
-  <p class="section-desc reveal">Formal evaluation of all four routing approaches across seven weighted criteria.</p>
+  <p class="section-desc reveal">Intuition says "less flooding = better," but how much better? The formulas below show the exact TX cost per message for each approach. The key variable is <strong>n</strong> (network size): flooding-based approaches scale with n, while directed routing scales with <strong>d</strong> (hop distance). Below the formulas, we score each approach across 7 weighted criteria — from TX efficiency to broadcast support — to provide a fair overall comparison.</p>
 
   <!-- Formulas for each approach -->
   <div class="formula-cards-grid">
@@ -364,7 +364,7 @@
 <section id="winner">
   <div class="section-tag reveal">04 — System 5 Architecture</div>
   <h2 class="section-title reveal">What System 5 Adds Beyond Managed Flooding</h2>
-  <p class="section-desc reveal">Meshtastic's managed flooding is clever — but still O(n). System 5 borrows six proven concepts from networking research to achieve O(hops).</p>
+  <p class="section-desc reveal">Meshtastic's managed flooding is clever — but still O(n). We didn't invent new theory. Instead, System 5 borrows six <strong>proven, battle-tested concepts</strong> from decades of networking research and adapts them to LoRa's unique constraints (low bandwidth, half-duplex, 1% duty cycle, limited RAM). Each concept solves a specific piece of the puzzle:</p>
   <div class="arch-grid">
     <div class="arch-card reveal">
       <div class="source">from Internet Routing</div>
@@ -551,7 +551,7 @@
 <section id="formation" class="formation-section">
   <div class="section-tag reveal">07 — Network Formation</div>
   <h2 class="section-title reveal">How the Network Builds Itself</h2>
-  <p class="section-desc reveal">Watch step by step how nodes discover each other, form clusters, elect border nodes, and establish multi-path routes.</p>
+  <p class="section-desc reveal">No central server, no configuration, no coordination. When nodes power on, they independently discover neighbors via OGM beacons (every 30 seconds), compute their geographic cluster from GPS, identify border nodes that bridge clusters, and build multi-path routing tables — all automatically. Click "Next Step" below to watch this process unfold. Each step shows exactly what happens in the firmware. <a href="how-it-works.html" style="color:var(--cyan)">For the full technical deep-dive, see How It Works →</a></p>
 
   <div class="formation-wrap reveal">
     <div class="formation-canvas-wrap">
@@ -577,7 +577,7 @@
 <section id="scenarios" class="scale-scenarios">
   <div class="section-tag reveal">08 — Real-World Scale</div>
   <h2 class="section-title reveal">From Neighborhood to Worldwide</h2>
-  <p class="section-desc reveal">Three scenarios showing how System 5 adapts across vastly different scales. Watch the node activity logs on the right.</p>
+  <p class="section-desc reveal">Mesh networks don't exist in a vacuum — they range from a dozen handhelds in a neighborhood to thousands of devices spanning continents. System 5's geo-clustering architecture naturally adapts: a single cluster handles local traffic efficiently, while inter-cluster routing via border nodes scales to arbitrarily large networks. The three live simulations below show how the same protocol handles neighborhood, continental, and global scale. Watch the node activity logs on the right — they show real-time routing decisions, OGM beacons, and failover events.</p>
 
   <!-- LOCAL -->
   <div class="scenario reveal" id="scn-local">
@@ -674,7 +674,7 @@
 <section id="resilience" class="resilience-section">
   <div class="section-tag reveal">09 — Resilience &amp; Adaptive QoS</div>
   <h2 class="section-title reveal">When Things Go Wrong</h2>
-  <p class="section-desc reveal">Click on nodes, links, or the internet gateway to simulate failures. Watch the network adapt in real-time.</p>
+  <p class="section-desc reveal">A routing protocol that only works in perfect conditions is worthless. In the real world, nodes die (batteries, hardware), GPS signals drop, internet links fail, and entire regions go dark. System 5 is designed to degrade gracefully: multi-path routing provides instant failover (0ms — the next cached route is already known), scoped corridor flooding is the safety net, and the adaptive QoS gate ensures emergency messages always get through even when the network is collapsing. Click on nodes or links below to simulate failures and watch the network adapt in real-time.</p>
 
   <!-- Failure case explanation cards -->
   <div class="problem-grid" style="margin-bottom:2.5rem">
@@ -750,7 +750,7 @@
 <section id="sim-results" class="sim-results-section">
   <div class="section-tag reveal">10 — Simulation Results</div>
   <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
-  <p class="section-desc reveal">Python simulation comparing 6 routers (Naive Flood, Managed Flood at 3/5/7 hops, Next-Hop, System 5) across 21 scenarios (20–1500 nodes) — with <strong>realistic Meshtastic hop limits</strong> revealing delivery collapse at scale.</p>
+  <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System 5. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 24 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
 
   <!-- Summary Table -->
   <div class="sim-table-wrap reveal">
@@ -813,7 +813,7 @@
 <section id="glossary">
   <div class="section-tag reveal">11 — Glossary</div>
   <h2 class="section-title reveal">Key Terms Explained</h2>
-  <p class="section-desc reveal">Quick reference for the technical terminology used throughout this document.</p>
+  <p class="section-desc reveal">Mesh networking spans radio engineering, graph theory, and protocol design. Here's a quick reference for the technical terms used throughout this presentation — from LoRa basics to the protocol-specific concepts introduced by System 5.</p>
   <div class="glossary-grid">
     <div class="glossary-card reveal"><dt>LoRa</dt><dd>Long Range radio modulation technique enabling low-power, long-distance communication (1-15 km).</dd></div>
     <div class="glossary-card reveal"><dt>Meshtastic</dt><dd>Open source LoRa mesh firmware for off-grid communication on ESP32 devices.</dd></div>
@@ -830,6 +830,10 @@
     <div class="glossary-card reveal"><dt>BFS</dt><dd>Breadth-First Search — graph traversal algorithm used for shortest-path discovery in mesh networks.</dd></div>
     <div class="glossary-card reveal"><dt>RSSI</dt><dd>Received Signal Strength Indicator — measures how strongly a radio signal is received (in dBm).</dd></div>
     <div class="glossary-card reveal"><dt>SNR</dt><dd>Signal-to-Noise Ratio — measures signal quality relative to background noise (in dB).</dd></div>
+    <div class="glossary-card reveal"><dt>Half-Duplex</dt><dd>A radio that cannot transmit and receive at the same time. All LoRa radios are half-duplex — a node hearing a transmission is blocked from sending until the packet ends.</dd></div>
+    <div class="glossary-card reveal"><dt>Backpressure</dt><dd>Congestion signal: when a node's queue fills up, routes through it get penalized. Traffic naturally shifts to less-loaded paths — like water flowing around rocks.</dd></div>
+    <div class="glossary-card reveal"><dt>Border Node</dt><dd>A System 5 node that has neighbors in a different geographic cluster. Border nodes are the bridges for inter-cluster routing — each cluster pair has 2 border links.</dd></div>
+    <div class="glossary-card reveal"><dt>Capture Effect</dt><dd>In LoRa, if two packets collide but one is &ge;6dB stronger, the stronger signal "captures" the receiver and is decoded successfully. The weaker packet is lost.</dd></div>
   </div>
 </section>
 
@@ -837,7 +841,7 @@
 <section id="conclusion">
   <div class="section-tag reveal">12 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
-  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. System 5 breaks through this barrier with directed routing at ~1 TX per hop. Across 21 scenarios, System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol.</p>
+  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. The Bay Area Mesh experience confirms this: half-duplex radio constraints collapse flooding to just 6% delivery in real-world elevated topologies. System 5 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 24 scenarios (including a Bay Area 3-tier topology with half-duplex modeling), System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">
@@ -853,7 +857,7 @@
       <div class="concl-result-label">TX per Hop</div>
     </div>
     <div class="concl-result">
-      <div class="concl-result-value" style="color:var(--purple)">21</div>
+      <div class="concl-result-value" style="color:var(--purple)">24</div>
       <div class="concl-result-label">Scenarios</div>
     </div>
   </div>
@@ -862,9 +866,12 @@
     <h3>Read the Full Executive Summary</h3>
     <p>Complete analysis with problem statement, all five approaches evaluated, mathematical scoring, resilience design, QoS architecture, and the project roadmap.</p>
     <div class="concl-cta-links">
+      <a href="how-it-works.html" class="concl-cta-item" style="text-decoration:none">&#x1F527; How It Works (Technical Deep Dive)</a>
+      <a href="simulator.html" class="concl-cta-item" style="text-decoration:none">&#x1F3AE; Live Simulator (Bay Area &amp; more)</a>
+      <a href="docs/bay-area-feedback-response.md" class="concl-cta-item" style="text-decoration:none">&#x1F30A; Bay Area Mesh Q&amp;A</a>
       <a href="summary.html" class="concl-cta-item" style="text-decoration:none">&#x1F4C4; Executive Summary</a>
-      <a href="https://discord.com/invite/meshtastic" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4E1; Meshtastic Discord</a>
       <a href="https://github.com/ClemensSimon/MeshRoute" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4BB; GitHub</a>
+      <a href="https://discord.com/invite/meshtastic" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4E1; Meshtastic Discord</a>
     </div>
   </div>
 </section>
