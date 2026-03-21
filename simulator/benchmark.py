@@ -65,6 +65,8 @@ SCENARIOS = [
         lora_range=800,
         n_messages=100,
         geohash_prefix=6,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Medium City Mesh",
@@ -73,6 +75,8 @@ SCENARIOS = [
         lora_range=2000,
         n_messages=100,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Large Regional Mesh",
@@ -81,6 +85,8 @@ SCENARIOS = [
         lora_range=3000,
         n_messages=100,
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Stress tests ---
     ScenarioConfig(
@@ -91,6 +97,8 @@ SCENARIOS = [
         n_messages=100,
         link_degradation=0.3,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Stress Test (50% degraded links)",
@@ -100,6 +108,8 @@ SCENARIOS = [
         n_messages=100,
         link_degradation=0.5,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Node Failure (20% killed)",
@@ -109,6 +119,8 @@ SCENARIOS = [
         n_messages=100,
         node_kill_fraction=0.2,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Combined Stress (30% links + 10% nodes)",
@@ -119,6 +131,8 @@ SCENARIOS = [
         link_degradation=0.3,
         node_kill_fraction=0.1,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Dense urban ---
     ScenarioConfig(
@@ -128,6 +142,8 @@ SCENARIOS = [
         lora_range=2000,
         n_messages=100,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Large scale / long hop chains ---
     ScenarioConfig(
@@ -137,6 +153,8 @@ SCENARIOS = [
         lora_range=4000,
         n_messages=100,
         geohash_prefix=3,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Metro Scale (1500 nodes, 50km)",
@@ -145,6 +163,8 @@ SCENARIOS = [
         lora_range=4000,
         n_messages=100,
         geohash_prefix=3,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Realistic environment scenarios ---
     ScenarioConfig(
@@ -156,6 +176,8 @@ SCENARIOS = [
         terrain="rural",
         asymmetry=0.15,
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Hiking Trail (linear)",
@@ -166,6 +188,8 @@ SCENARIOS = [
         terrain="rural",
         placement="linear",
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Festival/Event (dense + mobile)",
@@ -177,6 +201,8 @@ SCENARIOS = [
         mobile_fraction=0.6,
         placement="clustered",
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Disaster Relief (asymmetric + node loss)",
@@ -189,6 +215,8 @@ SCENARIOS = [
         node_kill_fraction=0.25,
         mobile_fraction=0.3,
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Indoor-Outdoor Mix (dense urban)",
@@ -199,6 +227,8 @@ SCENARIOS = [
         terrain="dense_urban",
         asymmetry=0.2,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Duty Cycle Stress (100 nodes, 1% enforced)",
@@ -209,6 +239,8 @@ SCENARIOS = [
         terrain="urban",
         enable_duty_cycle=True,
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Extended realistic scenarios ---
     ScenarioConfig(
@@ -217,30 +249,36 @@ SCENARIOS = [
         area_size=12000,
         lora_range=2000,
         n_messages=100,
-        terrain="dense_urban",  # high path loss simulates mountain shadowing
-        asymmetry=0.35,         # valleys create very asymmetric links
+        terrain="dense_urban",
+        asymmetry=0.35,
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Maritime / Coastal (line of sight)",
         n_nodes=30,
         area_size=25000,
-        lora_range=8000,        # free space = huge range over water
+        lora_range=8000,
         n_messages=100,
         terrain="free_space",
-        asymmetry=0.05,         # nearly perfect symmetry over water
+        asymmetry=0.05,
         geohash_prefix=3,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Building Emergency (high density, high load)",
         n_nodes=200,
-        area_size=500,          # single building
+        area_size=500,
         lora_range=300,
-        n_messages=300,         # SOS messages, high load
+        n_messages=300,
         terrain="indoor",
-        mobile_fraction=0.8,    # people moving
-        placement="clustered",  # clustered per floor
+        mobile_fraction=0.8,
+        placement="clustered",
         geohash_prefix=6,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Highway Convoy (fast linear mobile)",
@@ -249,20 +287,24 @@ SCENARIOS = [
         lora_range=3000,
         n_messages=100,
         terrain="rural",
-        mobile_fraction=0.9,    # almost all moving
+        mobile_fraction=0.9,
         placement="linear",
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Community Mesh (stable, low traffic)",
         n_nodes=80,
         area_size=8000,
         lora_range=2500,
-        n_messages=50,          # low traffic community
+        n_messages=50,
         terrain="suburban",
         asymmetry=0.1,
-        placement="clustered",  # neighborhoods
+        placement="clustered",
         geohash_prefix=5,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     ScenarioConfig(
         name="Partition Recovery (40% node loss + degradation)",
@@ -271,10 +313,12 @@ SCENARIOS = [
         lora_range=2500,
         n_messages=100,
         terrain="urban",
-        node_kill_fraction=0.4, # severe partition
-        link_degradation=0.4,   # remaining links degraded
+        node_kill_fraction=0.4,
+        link_degradation=0.4,
         asymmetry=0.2,
         geohash_prefix=4,
+        enable_half_duplex=True,
+        enable_collisions=True,
     ),
     # --- Bay Area Mesh scenarios (real-world feedback) ---
     ScenarioConfig(
