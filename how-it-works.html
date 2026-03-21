@@ -155,6 +155,8 @@
       <a href="#halfduplex">Half-Duplex</a>
       <a href="#memory">Memory</a>
       <a href="#bayarea">Bay Area</a>
+      <a href="#silencing">Silencing</a>
+      <a href="#seqnums">Seq Numbers</a>
     </div>
   </div>
 </div>
@@ -632,6 +634,90 @@ System 5 directed routing:
 <p><strong><a href="simulator.html">Try this scenario in the Live Simulator →</a></strong> — select "Bay Area Mesh (235 nodes, 3-tier elevation)" from the dropdown.</p>
 
 <p><strong><a href="docs/bay-area-feedback-response.md">Read the full Q&A with Bay Area Mesh community →</a></strong></p>
+
+<!-- ============================================================ -->
+<h2 id="silencing">Node Silencing — Muting Redundant Nodes</h2>
+
+<p>One of the most impactful v2.0 features, inspired by Bay Area Mesh feedback. The core insight: in a 235-node network, most valley nodes are <strong>redundant</strong> — their neighbors can all be reached via other paths. Every time these redundant nodes rebroadcast, they add collision noise at mountaintop receivers without contributing to message delivery.</p>
+
+<h3>How It Works</h3>
+
+<ol>
+  <li><strong>Redundancy scoring</strong>: For each node, check every neighbor — can that neighbor be reached by at least 2 other alive nodes? If yes, this neighbor connection is "redundant." The node's redundancy score = fraction of redundant neighbor connections (0.0 = critical, 1.0 = fully replaceable).</li>
+  <li><strong>Critical bridge protection</strong>: Border nodes with few alternatives (≤3 other bridges to the same cluster pair) get their score heavily penalized. Mountain nodes and essential hill nodes are never silenced.</li>
+  <li><strong>Battery-weighted priority</strong>: <code>silence_priority = redundancy × 0.6 + (1 - battery) × 0.4</code>. Low-battery nodes are silenced first. Solar nodes (always 100%) stay active longest.</li>
+  <li><strong>Per-cluster application</strong>: Within each cluster, the top 60% of candidates (by priority) are silenced. At least 2 nodes always remain active per cluster.</li>
+</ol>
+
+<h3>What Silenced Nodes Do (and Don't)</h3>
+
+<table class="compare-table">
+  <tr><th>Action</th><th>Silenced Node</th><th>Active Node</th></tr>
+  <tr><td>Receive OGMs</td><td class="highlight">Yes — stays aware of network</td><td class="highlight">Yes</td></tr>
+  <tr><td>Receive direct messages</td><td class="highlight">Yes — can be addressed</td><td class="highlight">Yes</td></tr>
+  <tr><td>Send own messages</td><td class="highlight">Yes — can initiate</td><td class="highlight">Yes</td></tr>
+  <tr><td>Rebroadcast flooding</td><td class="bad">No — stays silent</td><td class="highlight">Yes</td></tr>
+  <tr><td>Send OGMs</td><td class="bad">No — saves airtime</td><td class="highlight">Yes</td></tr>
+  <tr><td>Forward directed S5 packets</td><td class="highlight">Yes — if on the computed path</td><td class="highlight">Yes</td></tr>
+</table>
+
+<h3>Battery-Fair Rotation</h3>
+
+<p>The same nodes can't be silenced forever — their batteries would last longer, but the active nodes would drain faster. System 5 <strong>rotates the silent set every 10 minutes</strong>:</p>
+
+<ol>
+  <li>All expired silences are lifted</li>
+  <li>Redundancy scores are recomputed (nodes may have moved, died, or changed load)</li>
+  <li>A new set of nodes is selected for silencing, weighted by current battery level</li>
+</ol>
+
+<p>Result: every node spends roughly equal time active and silent. Battery drain is distributed evenly across the network.</p>
+
+<h3>Results</h3>
+
+<table class="compare-table">
+  <tr><th>Bay Area Scenario</th><th>S5 Delivery</th><th>S5 TX</th><th>Nodes Silenced</th></tr>
+  <tr><td>Without silencing</td><td>77.5%</td><td>540,780</td><td>0</td></tr>
+  <tr><td class="highlight">With silencing</td><td class="highlight">74.5%</td><td class="highlight">267,927</td><td class="highlight">134 (57%)</td></tr>
+  <tr><td colspan="4" style="font-size:0.85rem;color:var(--text-muted)">128 valley nodes silenced, 6 hill nodes silenced, 0 mountain nodes silenced</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="emergency">Emergency Re-Route — Last Resort Before Flooding</h2>
+
+<p>When all 5 cached routes fail (every hop was tried with retries), the original System 5 immediately triggered scoped corridor flooding. This was expensive — in the Bay Area scenario, 73 out of 200 messages triggered fallback floods.</p>
+
+<p>The v2.0 improvement adds one more step before flooding:</p>
+
+<ol>
+  <li>Collect all intermediate nodes from the failed routes into a <code>failed_nodes</code> set</li>
+  <li>Run a fresh BFS from source to destination, <strong>excluding all failed nodes</strong></li>
+  <li>If a new path is found, try it once (directed, not flooding)</li>
+  <li>Only if this emergency path also fails → trigger corridor flooding</li>
+</ol>
+
+<p>This is cheap (one BFS computation, no extra TX unless the path works) and often succeeds because the failed nodes were the actual problem — the rest of the network may have perfectly good paths.</p>
+
+<!-- ============================================================ -->
+<h2 id="seqnums">Sequence Numbers — Detecting Missing Messages</h2>
+
+<p>Multi-path routing can deliver messages out of order. If messages A, B, C are sent via three different paths with different latencies, the receiver might see C, B, A — or worse, C, A (B lost on a failed path).</p>
+
+<p>The v2.0 wire protocol adds a <strong>2-byte sequence counter</strong> (<code>uint16_t seq</code>) per (source, destination) pair:</p>
+
+<ul>
+  <li>The sender increments <code>seq</code> for each message to a given destination</li>
+  <li>The receiver tracks the last seen sequence number per source</li>
+  <li>Gaps are detectable: "received seq 3, then seq 5 — seq 4 is missing"</li>
+  <li>Out-of-order is detectable: "received seq 5, then seq 4 — reorder"</li>
+</ul>
+
+<div class="info-box">
+  <h5>Why not retransmit?</h5>
+  <p>Retransmission requires an ACK + retransmit cycle. On LoRa, each packet takes 500ms-2s of airtime. A 5-hop retransmit costs 5-10 seconds of channel time — during which the mountaintop is blocked from all other traffic. Sequence numbers provide <strong>gap detection at zero TX cost</strong> (just 2 extra bytes in the header). The app layer can decide whether to request a retransmit or simply show "1 message missing."</p>
+</div>
+
+<p>The sequence counters are stored efficiently in firmware: neighbor-indexed array for known neighbors (32 bytes) + LRU cache for others (96 bytes) = <strong>128 bytes total</strong>, regardless of network size.</p>
 
 <!-- ============================================================ -->
 <h2 id="packet">Packet Format — What Goes Over the Air</h2>

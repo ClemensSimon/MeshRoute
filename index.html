@@ -399,9 +399,94 @@
   </div>
 </section>
 
+<!-- v2.0 FEATURES — BUILT FROM REAL-WORLD FEEDBACK -->
+<section id="v2-features">
+  <div class="section-tag reveal">05 — v2.0 Features (Built from Bay Area Mesh Feedback)</div>
+  <h2 class="section-title reveal">What Real-World Testing Revealed</h2>
+  <p class="section-desc reveal">Feedback from <a href="docs/bay-area-feedback-response.md" style="color:var(--cyan)">Bay Area Mesh operators</a> exposed critical gaps in the original design. Their mountaintop routers (SUNL, Mt Diablo) showed that half-duplex radio physics — not routing algorithms — is the true scaling bottleneck. Five features were built in direct response.</p>
+
+  <div class="arch-grid">
+    <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
+      <div class="source">from Bay Area Feedback</div>
+      <h4>Node Silencing <span class="arrow">&rarr;</span> Collision Reduction</h4>
+      <p>The network identifies <strong>redundant nodes</strong> (those whose neighbors are all reachable via other paths) and mutes them. Silenced nodes still <strong>listen</strong> — they receive messages, the network knows they exist — but they don't rebroadcast. This removes the collision noise at mountaintops. Battery-fair rotation every 10 minutes. Result: <strong>TX halved, only 3% less delivery.</strong></p>
+    </div>
+    <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
+      <div class="source">from Bay Area Feedback</div>
+      <h4>Half-Duplex Radio Model <span class="arrow">&rarr;</span> Realistic Simulation</h4>
+      <p>LoRa radios are half-duplex: a node <strong>cannot TX while receiving</strong>. When a mountaintop hears 10 rebroadcasts, it's blocked from forwarding for 10-20 seconds. Our simulator now models this per-node radio state (IDLE/TX/RX). Result: flooding collapses from <strong>87.5% → 6%</strong> delivery. System 5 holds at <strong>77.5%</strong>.</p>
+    </div>
+    <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
+      <div class="source">from Bay Area Feedback</div>
+      <h4>Sequence Numbers <span class="arrow">&rarr;</span> Gap Detection</h4>
+      <p>Multi-path routing can deliver messages out of order (A,B,C → C,B,A via 3 paths). A <strong>2-byte sequence counter</strong> per (source, destination) pair in the packet header lets the app detect gaps: "got seq 3 and 5, missed 4." Zero extra TX cost — just 2 bytes added to the existing header.</p>
+    </div>
+    <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
+      <div class="source">from Bay Area Feedback</div>
+      <h4>Emergency Re-Route <span class="arrow">&rarr;</span> Fewer Fallback Floods</h4>
+      <p>When all 5 cached routes fail, System 5 now computes a <strong>fresh BFS path excluding failed nodes</strong> before triggering corridor flooding. This gives the protocol one more directed attempt — significantly reducing the expensive fallback floods that dominated the Bay Area scenario.</p>
+    </div>
+    <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
+      <div class="source">from Bay Area Feedback</div>
+      <h4>3-Tier Topology <span class="arrow">&rarr;</span> Real-World Scenarios</h4>
+      <p>A new <strong>Bay Area simulation</strong> models the actual network structure: 7 mountaintop nodes (45km range), 35 hill/rooftop nodes (10km), 193 valley/indoor nodes (2.5km). Asymmetric links, half-duplex, collision capture. Four Bay Area scenarios test normal, stress, silencing, and combined conditions. <a href="simulator.html" style="color:var(--cyan)">Try it live →</a></p>
+    </div>
+  </div>
+
+  <!-- Node Silencing Results -->
+  <div class="highlight-box cyan reveal" style="margin:2rem auto;max-width:800px;padding:1.5rem 2rem;border:1px solid var(--cyan-dim);background:rgba(34,211,238,0.04);border-radius:12px">
+    <h4 style="font-family:var(--font-mono);font-size:0.85rem;color:var(--cyan);margin-bottom:0.8rem">Bay Area Results — Half-Duplex + Node Silencing</h4>
+    <table style="width:100%;font-family:var(--font-mono);font-size:0.82rem;border-collapse:collapse">
+      <tr style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">
+        <td style="padding:0.3rem 0">Scenario</td>
+        <td style="text-align:right;color:var(--yellow)">Flood Del.</td>
+        <td style="text-align:right;color:var(--cyan)">S5 Del.</td>
+        <td style="text-align:right;color:var(--cyan)">S5 TX</td>
+        <td style="text-align:right">Silent</td>
+      </tr>
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:0.4rem 0;color:var(--text)">Bay Area (no half-duplex)</td>
+        <td style="text-align:right;color:var(--green)">87.5%</td>
+        <td style="text-align:right;color:var(--green)">80.5%</td>
+        <td style="text-align:right;color:var(--cyan)">47K</td>
+        <td style="text-align:right;color:var(--text-muted)">—</td>
+      </tr>
+      <tr style="border-top:1px solid rgba(42,54,84,0.5)">
+        <td style="padding:0.4rem 0;color:var(--text)">Bay Area (half-duplex)</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">6.0%</td>
+        <td style="text-align:right;color:var(--green)">77.5%</td>
+        <td style="text-align:right;color:var(--orange)">541K</td>
+        <td style="text-align:right;color:var(--text-muted)">0%</td>
+      </tr>
+      <tr style="border-top:1px solid rgba(42,54,84,0.5)">
+        <td style="padding:0.4rem 0;color:var(--text);font-weight:600">Bay Area + Silencing</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">6.0%</td>
+        <td style="text-align:right;color:var(--green)">74.5%</td>
+        <td style="text-align:right;color:var(--cyan);font-weight:600">268K</td>
+        <td style="text-align:right;color:var(--cyan)">57%</td>
+      </tr>
+      <tr style="border-top:1px solid rgba(42,54,84,0.5)">
+        <td style="padding:0.4rem 0;color:var(--text)">Bay Area + Stress</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">4.0%</td>
+        <td style="text-align:right;color:var(--yellow)">52.0%</td>
+        <td style="text-align:right;color:var(--orange)">302K</td>
+        <td style="text-align:right;color:var(--text-muted)">0%</td>
+      </tr>
+      <tr style="border-top:1px solid rgba(42,54,84,0.5)">
+        <td style="padding:0.4rem 0;color:var(--text)">Bay Area + Silencing + Stress</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">4.0%</td>
+        <td style="text-align:right;color:var(--yellow)">51.0%</td>
+        <td style="text-align:right;color:var(--cyan)">155K</td>
+        <td style="text-align:right;color:var(--cyan)">57%</td>
+      </tr>
+    </table>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Key insight:</strong> Half-duplex destroys flooding (87.5% → 6%), but System 5 holds at 77.5%. Node Silencing halves TX cost (541K → 268K) with only 3% less delivery. 128 of 193 valley nodes are muted — all 7 mountain nodes stay active.</p>
+  </div>
+</section>
+
 <!-- HOP COST — THE KILLER ARGUMENT -->
 <section id="hop-cost" class="hop-cost-section">
-  <div class="section-tag reveal">05 — The Killer Argument</div>
+  <div class="section-tag reveal">06 — The Killer Argument</div>
   <h2 class="section-title reveal">Why Hop Limits Become Irrelevant</h2>
   <p class="section-desc reveal">In flooding, every hop multiplies transmissions across the <em>entire</em> network. In System 5, every hop costs exactly <strong>one transmission</strong>. This single change unlocks everything.</p>
 
@@ -517,7 +602,7 @@
 
 <!-- METRICS -->
 <section id="metrics">
-  <div class="section-tag reveal">06 — Key Metrics</div>
+  <div class="section-tag reveal">07 — Key Metrics</div>
   <h2 class="section-title reveal">System 5 by the Numbers</h2>
   <div class="metrics-row">
     <div class="metric-card reveal">
@@ -549,7 +634,7 @@
 
 <!-- NETWORK FORMATION -->
 <section id="formation" class="formation-section">
-  <div class="section-tag reveal">07 — Network Formation</div>
+  <div class="section-tag reveal">08 — Network Formation</div>
   <h2 class="section-title reveal">How the Network Builds Itself</h2>
   <p class="section-desc reveal">No central server, no configuration, no coordination. When nodes power on, they independently discover neighbors via OGM beacons (every 30 seconds), compute their geographic cluster from GPS, identify border nodes that bridge clusters, and build multi-path routing tables — all automatically. Click "Next Step" below to watch this process unfold. Each step shows exactly what happens in the firmware. <a href="how-it-works.html" style="color:var(--cyan)">For the full technical deep-dive, see How It Works →</a></p>
 
@@ -575,7 +660,7 @@
 
 <!-- SCALE SCENARIOS -->
 <section id="scenarios" class="scale-scenarios">
-  <div class="section-tag reveal">08 — Real-World Scale</div>
+  <div class="section-tag reveal">09 — Real-World Scale</div>
   <h2 class="section-title reveal">From Neighborhood to Worldwide</h2>
   <p class="section-desc reveal">Mesh networks don't exist in a vacuum — they range from a dozen handhelds in a neighborhood to thousands of devices spanning continents. System 5's geo-clustering architecture naturally adapts: a single cluster handles local traffic efficiently, while inter-cluster routing via border nodes scales to arbitrarily large networks. The three live simulations below show how the same protocol handles neighborhood, continental, and global scale. Watch the node activity logs on the right — they show real-time routing decisions, OGM beacons, and failover events.</p>
 
@@ -672,7 +757,7 @@
 
 <!-- RESILIENCE & ADAPTIVE QoS -->
 <section id="resilience" class="resilience-section">
-  <div class="section-tag reveal">09 — Resilience &amp; Adaptive QoS</div>
+  <div class="section-tag reveal">10 — Resilience &amp; Adaptive QoS</div>
   <h2 class="section-title reveal">When Things Go Wrong</h2>
   <p class="section-desc reveal">A routing protocol that only works in perfect conditions is worthless. In the real world, nodes die (batteries, hardware), GPS signals drop, internet links fail, and entire regions go dark. System 5 is designed to degrade gracefully: multi-path routing provides instant failover (0ms — the next cached route is already known), scoped corridor flooding is the safety net, and the adaptive QoS gate ensures emergency messages always get through even when the network is collapsing. Click on nodes or links below to simulate failures and watch the network adapt in real-time.</p>
 
@@ -748,7 +833,7 @@
 
 <!-- SIMULATION RESULTS -->
 <section id="sim-results" class="sim-results-section">
-  <div class="section-tag reveal">10 — Simulation Results</div>
+  <div class="section-tag reveal">11 — Simulation Results</div>
   <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
   <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System 5. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 26 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
 
@@ -822,7 +907,7 @@
 
 <!-- GLOSSARY -->
 <section id="glossary">
-  <div class="section-tag reveal">11 — Glossary</div>
+  <div class="section-tag reveal">12 — Glossary</div>
   <h2 class="section-title reveal">Key Terms Explained</h2>
   <p class="section-desc reveal">Mesh networking spans radio engineering, graph theory, and protocol design. Here's a quick reference for the technical terms used throughout this presentation — from LoRa basics to the protocol-specific concepts introduced by System 5.</p>
   <div class="glossary-grid">
@@ -850,7 +935,7 @@
 
 <!-- CONCLUSION TEASER -->
 <section id="conclusion">
-  <div class="section-tag reveal">12 — Conclusion</div>
+  <div class="section-tag reveal">13 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
   <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. The Bay Area Mesh experience confirms this: half-duplex radio constraints collapse flooding to just 6% delivery in real-world elevated topologies. System 5 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 26 scenarios (including a Bay Area 3-tier topology with half-duplex modeling), System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
 

@@ -191,6 +191,8 @@
           <optgroup label="Bay Area (Real-World)">
             <option value="bayarea">Bay Area Mesh (235 nodes, 3-tier elevation)</option>
             <option value="bayarea_s">Bay Area + Stress (235 nodes, 15% failure)</option>
+            <option value="bayarea_silent">Bay Area + Silencing (57% nodes muted)</option>
+            <option value="bayarea_silent_s">Bay Area + Silencing + Stress</option>
           </optgroup>
           <optgroup label="Mixed Mode (Backward Compat.)">
             <option value="mixed10">10% S5 + 90% Legacy</option>
@@ -347,8 +349,10 @@ const SCENARIOS = {
   highway:   { nodes: 50,  area: 10000, range: 3000, terrain:'rural',       placement:'linear',    mobile:0.9, kills:0,   degrade:0 },
   community: { nodes: 80,  area: 8000,  range: 2500, terrain:'suburban',    placement:'clustered', mobile:0,   kills:0,   degrade:0 },
   partition: { nodes: 120, area: 8000,  range: 2500, terrain:'urban',       placement:'random',    mobile:0,   kills:0.4, degrade:0.4 },
-  bayarea:   { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0,   degrade:0 },
-  bayarea_s: { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0.15,degrade:0.2 },
+  bayarea:   { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0,    degrade:0,   silencing:0 },
+  bayarea_s: { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0.15, degrade:0.2, silencing:0 },
+  bayarea_silent:   { nodes: 235, area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0,   kills:0,    degrade:0,   silencing:0.6 },
+  bayarea_silent_s: { nodes: 235, area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0,   kills:0.15, degrade:0.2, silencing:0.6 },
   // Mixed-mode: S5 nodes coexist with legacy flooding nodes
   mixed10:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.1 },
   mixed30:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.3 },
