@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MeshRoute — Executive Summary</title>
+<title>MeshRoute v2.0 — Executive Summary</title>
 <link rel="stylesheet" href="css/styles.css">
 <style>
   /* Summary page specific styles */
@@ -90,6 +90,7 @@
       <li><a href="index.html">Presentation</a></li>
       <li class="nav-sep"></li>
       <li><a href="simulator.html" style="color:var(--cyan)">Live Simulator</a></li>
+      <li><a href="how-it-works.html">How It Works</a></li>
       <li><a href="docs/esp-test-results.html" style="color:var(--green)">ESP32 Test</a></li>
       <li><a href="summary.html" class="active">Summary</a></li>
     </ul>
@@ -383,13 +384,43 @@
   <p style="margin-top:1.5rem">Key advantages over Meshtastic's current routing:</p>
   <ul>
     <li><strong>O(hops) vs O(n)</strong> — cost depends on path length, not network size. The fundamental scaling improvement.</li>
-    <li><strong>Delivery rate</strong> — System 5 delivers equal or more messages in most scenarios. At 1000+ nodes, it delivers 7x more than managed flooding. Exception: very sparse networks (Mountain Valley) where no protocol helps.</li>
+    <li><strong>Delivery rate</strong> — System 5 delivers equal or more messages in most scenarios. At 1000+ nodes, it delivers 7x more than managed flooding.</li>
     <li><strong>Hop limit eliminated</strong> — 20 hops cost less than managed flooding costs for 1. Unlocks range and preset freedom.</li>
     <li><strong>All traffic types</strong> — unlike next-hop (DMs only), System 5 routes all messages including broadcasts.</li>
-    <li><strong>Multi-path resilience</strong> — 2-3 cached paths with instant failover, vs. next-hop's single relay.</li>
+    <li><strong>Multi-path resilience</strong> — 5 cached paths with instant failover + emergency BFS re-route.</li>
     <li><strong>Load balancing</strong> — proportional distribution prevents bottlenecks. Meshtastic has no load awareness.</li>
     <li><strong>Adaptive QoS</strong> — NHS per cluster with priority gate. SOS always gets through.</li>
   </ul>
+
+  <div class="highlight-box cyan" style="margin-top:1.5rem">
+    <h4 style="color:var(--cyan)">v2.0 — Real-World Improvements (Bay Area Mesh Feedback)</h4>
+    <p style="margin-bottom:0.8rem">Feedback from Bay Area Mesh operators revealed that <strong>half-duplex radio physics</strong> — not routing algorithms — is the true scaling bottleneck at elevated nodes. Five features were built in response:</p>
+    <ul>
+      <li><strong>Half-Duplex Radio Model</strong> — Simulator now models TX/RX exclusion. Flooding collapses from 87.5% → 6% delivery at mountaintops. System 5 holds at 77.5%.</li>
+      <li><strong>Node Silencing</strong> — Redundant nodes are muted (listen but don't rebroadcast). Battery-fair rotation every 10 min. In Bay Area: 128 of 193 valley nodes silenced, <strong>TX halved</strong> with only 3% less delivery. All mountain nodes stay active.</li>
+      <li><strong>Sequence Numbers</strong> — 2-byte per-(src,dst) counter in packet header for out-of-order and gap detection. Zero extra TX cost.</li>
+      <li><strong>Emergency Re-Route</strong> — Fresh BFS excluding failed nodes before corridor flooding. Reduces expensive fallback floods.</li>
+      <li><strong>Bay Area 3-Tier Topology</strong> — 7 mountain (45km range) + 35 hill (10km) + 193 valley (2.5km) nodes with asymmetric links and half-duplex.</li>
+    </ul>
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.82rem;margin-top:0.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Bay Area Scenario</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--yellow)">Flood Del.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">S5 Del.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">S5 TX</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--text-dim)">Silenced</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.3rem">Bay Area (half-duplex)</td><td style="text-align:right;color:var(--red);font-weight:700">6.0%</td><td style="text-align:right;color:var(--green)">77.5%</td><td style="text-align:right">540K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem;font-weight:600">Bay Area + Silencing</td><td style="text-align:right;color:var(--red);font-weight:700">6.0%</td><td style="text-align:right;color:var(--green)">74.5%</td><td style="text-align:right;color:var(--cyan);font-weight:600">268K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4.0%</td><td style="text-align:right;color:var(--yellow)">52.0%</td><td style="text-align:right">302K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Silencing + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4.0%</td><td style="text-align:right;color:var(--yellow)">51.0%</td><td style="text-align:right;color:var(--cyan)">155K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:0.6rem"><a href="how-it-works.html#silencing" style="color:var(--cyan)">Technical deep-dive on all v2.0 features →</a></p>
+  </div>
 </div>
 
 <!-- ROADMAP -->
@@ -409,14 +440,14 @@
         <div class="concl-phase-marker"></div>
         <div class="concl-phase-content">
           <h4>Phase 2 — Python Simulator</h4>
-          <p>21 scenarios (20–1500 nodes), 6 routers (Naive/Managed at 3,5,7 hops/NextHop/System5), realistic EU868 LoRa model with <strong>realistic hop limits</strong>. Dynamic cluster scaling (16 for 500 nodes, 64 for 1000+). Reveals delivery rate collapse in managed flooding at scale. Confirms 92–100% TX savings for small-medium networks; honest about large-scale tradeoffs. <strong>Complete.</strong></p>
+          <p>26 scenarios (20–1500 nodes), 6 routers, realistic EU868 LoRa model with half-duplex radio, collision capture, duty cycle. Bay Area 3-tier topology with node silencing. Confirms 92–100% TX savings for small-medium networks. <strong>Complete.</strong></p>
         </div>
       </div>
-      <div class="concl-phase">
+      <div class="concl-phase done">
         <div class="concl-phase-marker"></div>
         <div class="concl-phase-content">
           <h4>Phase 3 — ESP32 Firmware Prototype</h4>
-          <p>Fork Meshtastic firmware (C++, PlatformIO). Implement System 5 as an alternative routing module alongside the existing FloodingRouter. Test with 5–10 real LoRa devices in a local mesh.</p>
+          <p>Standalone firmware for Heltec V3, T-Beam, RAK4631. System 5 routing core (14 functions), OGM discovery, OLED display, serial CLI. Wire protocol v2.0 with sequence numbers and node silencing control. <strong>Complete — <a href="firmware/README.md" style="color:var(--cyan)">installation guide</a>.</strong></p>
         </div>
       </div>
       <div class="concl-phase">
@@ -434,9 +465,11 @@
     <h3>Want to Help?</h3>
     <p>This is an open research project. Whether you're a firmware developer, network theorist, LoRa enthusiast, or just curious — every perspective makes the protocol better.</p>
     <div class="concl-cta-links">
-      <a href="https://discord.com/invite/meshtastic" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4E1; Meshtastic Discord</a>
+      <a href="how-it-works.html" class="concl-cta-item" style="text-decoration:none">&#x1F527; How It Works (Technical Deep Dive)</a>
+      <a href="simulator.html" class="concl-cta-item" style="text-decoration:none">&#x1F3AE; Live Simulator</a>
+      <a href="docs/bay-area-feedback-response.md" class="concl-cta-item" style="text-decoration:none">&#x1F30A; Bay Area Feedback &amp; Response</a>
       <a href="https://github.com/ClemensSimon/MeshRoute" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4BB; GitHub</a>
-      <a href="https://www.reddit.com/r/meshtastic/" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4AC; r/meshtastic</a>
+      <a href="https://discord.com/invite/meshtastic" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4E1; Meshtastic Discord</a>
     </div>
     <a href="index.html" class="back-link" style="margin-top:2rem">&#x2190; Explore the Full Interactive Documentation</a>
   </div>
