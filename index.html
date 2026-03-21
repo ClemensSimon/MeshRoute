@@ -59,7 +59,7 @@
       <div class="tldr-stat"><span class="tldr-num">99.9%</span><span class="tldr-label">BW Saved</span></div>
       <div class="tldr-stat"><span class="tldr-num">~1</span><span class="tldr-label">TX/Hop</span></div>
       <div class="tldr-stat"><span class="tldr-num">&infin;</span><span class="tldr-label">Hop Limit</span></div>
-      <div class="tldr-stat"><span class="tldr-num">24</span><span class="tldr-label">Scenarios</span></div>
+      <div class="tldr-stat"><span class="tldr-num">26</span><span class="tldr-label">Scenarios</span></div>
     </div>
   </div>
 </section>
@@ -750,7 +750,18 @@
 <section id="sim-results" class="sim-results-section">
   <div class="section-tag reveal">10 — Simulation Results</div>
   <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
-  <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System 5. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 24 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
+  <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System 5. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 26 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
+
+  <!-- Category Filter -->
+  <div class="sim-filter reveal" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.2rem;justify-content:center">
+    <button class="sim-filter-btn active" data-cat="all" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--cyan-dim);background:var(--cyan-glow);color:var(--cyan);border-radius:6px;cursor:pointer">All</button>
+    <button class="sim-filter-btn" data-cat="scale" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Scale</button>
+    <button class="sim-filter-btn" data-cat="stress" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Stress</button>
+    <button class="sim-filter-btn" data-cat="topology" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Terrain</button>
+    <button class="sim-filter-btn" data-cat="mobility" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Mobile</button>
+    <button class="sim-filter-btn" data-cat="dense" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Dense/Large</button>
+    <button class="sim-filter-btn" data-cat="bay_area" style="font-family:var(--font-mono);font-size:0.75rem;padding:0.3rem 0.8rem;border:1px solid var(--border);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer">Bay Area</button>
+  </div>
 
   <!-- Summary Table -->
   <div class="sim-table-wrap reveal">
@@ -841,7 +852,7 @@
 <section id="conclusion">
   <div class="section-tag reveal">12 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
-  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. The Bay Area Mesh experience confirms this: half-duplex radio constraints collapse flooding to just 6% delivery in real-world elevated topologies. System 5 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 24 scenarios (including a Bay Area 3-tier topology with half-duplex modeling), System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
+  <p class="section-desc reveal">The hop limit doesn't just cap range — it <strong>prevents delivery</strong>. At 500+ nodes, managed flooding delivers as few as 2–14% of messages. The Bay Area Mesh experience confirms this: half-duplex radio constraints collapse flooding to just 6% delivery in real-world elevated topologies. System 5 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 26 scenarios (including a Bay Area 3-tier topology with half-duplex modeling), System 5 dominates small-to-medium networks and delivers significantly more at scale — though very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">
@@ -857,7 +868,7 @@
       <div class="concl-result-label">TX per Hop</div>
     </div>
     <div class="concl-result">
-      <div class="concl-result-value" style="color:var(--purple)">24</div>
+      <div class="concl-result-value" style="color:var(--purple)">26</div>
       <div class="concl-result-label">Scenarios</div>
     </div>
   </div>

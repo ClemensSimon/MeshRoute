@@ -56,7 +56,7 @@ A routing protocol that achieves **O(hops) cost** instead of O(n) — for all me
 
 This makes the hop limit irrelevant: 20 hops cost less than managed flooding costs for 1.
 
-## Simulation Results (24 Scenarios, 6 Routers)
+## Simulation Results (26 Scenarios, 6 Routers)
 
 The simulator compares all four approaches on identical networks (100 messages each). Results with improved System 5 (multi-path + scoped fallback):
 
@@ -107,7 +107,11 @@ Based on feedback from Bay Area Mesh operators: 3-tier elevation topology (mount
 |----------|----------:|------:|:-----------:|:------:|------------|
 | Bay Area (no half-duplex) | 908,785 | 47,094 | 87.5% | 80.5% | S5 saves **94.8% TX** |
 | **Bay Area (half-duplex)** | **6,752** | **540,780** | **6.0%** | **77.5%** | **Half-duplex destroys flooding** |
-| Bay Area + Stress | 6,417 | 301,757 | 4.0% | 54.5% | S5 delivers **13.6× more** |
+| Bay Area + Stress | 6,417 | 301,757 | 4.0% | 52.0% | S5 delivers **13× more** |
+| **Bay Area + Silencing** | **6,752** | **267,927** | **6.0%** | **74.5%** | **TX halved, 57% nodes muted** |
+| Bay Area + Silencing + Stress | 6,417 | 155,393 | 4.0% | 51.0% | Silencing + stress combined |
+
+**Node Silencing** (NEW): Redundant nodes are identified and muted — they still listen but don't rebroadcast. 128 of 193 valley nodes are silenced, reducing System 5 TX by 50% with only 3% less delivery. Mountain nodes (critical backbone) are never silenced. Battery-fair rotation every 10 minutes ensures even drain.
 
 The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts). System 5's directed routing holds at 77.5% because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
 
@@ -118,6 +122,7 @@ The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery
 - **Metro Scale (1500 nodes)**: S5 delivers **51% vs Managed's 36%** — S5 is actually better at large scale!
 - **Bay Area (half-duplex)**: System 5 delivers **77.5% vs Flooding's 6%** — directed routing survives the mountaintop collision cascade that destroys flooding
 - **Extreme conditions** (mountain, partition): Both systems struggle. System 5's fallback keeps it competitive.
+- **Node Silencing**: Muting 57% of redundant nodes halves TX cost with minimal delivery loss
 - **Backward compatibility**: Mixed-mode works — S5 nodes ignore hop limit (they don't flood), prefer S5 neighbors
 
 ## ESP32 Firmware Prototype
@@ -186,13 +191,13 @@ Open `index.html` in a browser. No build step, no dependencies.
 
 ```bash
 cd simulator
-python run.py                          # run all 24 scenarios (6 routers each)
+python run.py                          # run all 26 scenarios (6 routers each)
 python run.py --scenario 2             # single scenario
 python run.py --parallel scenarios     # parallel across all CPU cores
 python run.py --visualize              # ASCII network topology
 ```
 
-### Scenarios (24 total)
+### Scenarios (26 total)
 
 | Category | Scenarios |
 |----------|-----------|
@@ -201,7 +206,7 @@ python run.py --visualize              # ASCII network topology
 | **Terrain** | Rural Long Range (SF12), Hiking Trail (linear), Mountain Valley, Maritime (line of sight) |
 | **Mobile** | Festival/Event (dense + mobile), Building Emergency (indoor), Highway Convoy |
 | **Realistic** | Community Mesh (stable), Indoor-Outdoor Mix, Disaster Relief, Partition Recovery |
-| **Bay Area** | Bay Area Mesh (3-tier, half-duplex), Bay Area + Stress (node failure + degradation) |
+| **Bay Area** | Bay Area Mesh (3-tier, half-duplex), Bay Area + Stress, Bay Area + Silencing, Bay Area + Silencing + Stress |
 
 ### Simulator Architecture
 
@@ -236,6 +241,11 @@ simulator/
 - [x] Interactive live simulator with hop-by-hop stepping
 - [x] Mixed-mode backward compatibility simulation (S5 + Legacy)
 - [x] ESP32 firmware prototype (Heltec V3, T-Beam, RAK4631)
+- [x] Node Silencing — battery-fair muting of redundant nodes
+- [x] Half-duplex radio modeling in simulator
+- [x] Bay Area 3-tier topology simulation
+- [x] Sequence numbers in wire protocol (gap detection)
+- [x] Detailed "How It Works" technical walkthrough page
 - [ ] Field testing with real LoRa hardware
 - [ ] RFC / proposal to Meshtastic community
 

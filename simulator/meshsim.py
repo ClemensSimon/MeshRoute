@@ -820,6 +820,15 @@ class MeshNetwork:
 
         return routes[:max_routes]
 
+    def _dynamic_max_hops(self):
+        """Compute dynamic max hops based on network size: clamp(sqrt(n)*3, 15, 40)."""
+        return max(15, min(40, int(math.sqrt(len(self.nodes)) * 3)))
+
+    def _bfs_shortest_path(self, src_id, dst_id, exclude=None):
+        """Public BFS shortest path, avoiding excluded nodes. Used for emergency re-routing."""
+        max_hops = self._dynamic_max_hops()
+        return self._bfs_path(src_id, dst_id, max_hops, exclude or set())
+
     def _bfs_path(self, src_id, dst_id, max_hops, excluded):
         """BFS shortest path avoiding excluded nodes."""
         if src_id == dst_id:

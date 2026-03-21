@@ -27,6 +27,8 @@
   ];
 
   let resultsData = null;
+  let filteredData = null;  // currently visible subset
+  let activeCategory = 'all';
   let bwLogScale = true; // toggle between log and linear
 
   // ── Load data ──
@@ -35,7 +37,15 @@
       const resp = await fetch('simulator/results.json');
       if (!resp.ok) throw new Error(resp.statusText);
       resultsData = await resp.json();
+      // Tag Bay Area scenarios
+      for (const r of resultsData) {
+        if (r.name && r.name.toLowerCase().includes('bay area')) {
+          r.category = 'bay_area';
+        }
+      }
+      filteredData = resultsData;
       setupScaleToggle();
+      setupCategoryFilter();
       renderAll();
     } catch (e) {
       console.warn('Could not load simulation results:', e);
@@ -54,8 +64,38 @@
     });
   }
 
+  function setupCategoryFilter() {
+    const btns = document.querySelectorAll('.sim-filter-btn');
+    if (!btns.length) return;
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.cat;
+        btns.forEach(b => {
+          b.style.background = 'transparent';
+          b.style.color = COLORS.textMuted;
+          b.style.borderColor = COLORS.border;
+          b.classList.remove('active');
+        });
+        btn.style.background = 'rgba(34,211,238,0.1)';
+        btn.style.color = COLORS.cyan;
+        btn.style.borderColor = '#0e7490';
+        btn.classList.add('active');
+        applyFilter();
+      });
+    });
+  }
+
+  function applyFilter() {
+    if (activeCategory === 'all') {
+      filteredData = resultsData;
+    } else {
+      filteredData = resultsData.filter(r => r.category === activeCategory);
+    }
+    renderAll();
+  }
+
   function renderAll() {
-    if (!resultsData || !resultsData.length) return;
+    if (!filteredData || !filteredData.length) return;
     renderSummaryTable();
     renderBWChart();
     renderDeliveryChart();
@@ -87,6 +127,10 @@
     'Partition Recovery (40% node loss + degradation)': 'Partition',
     'Large Scale (1000 nodes, 40km)': 'Large 1000',
     'Metro Scale (1500 nodes, 50km)': 'Metro 1500',
+    'Bay Area Mesh (3-tier, 235 nodes)': 'Bay Area',
+    'Bay Area Mesh + Stress (node failure)': 'Bay+Stress',
+    'Bay Area + Silencing (60% redundant muted)': 'Bay+Silent',
+    'Bay Area + Silencing + Stress': 'Bay+Sil+Str',
   };
   function shortName(name) {
     if (SHORT_NAMES[name]) return SHORT_NAMES[name];
@@ -119,7 +163,7 @@
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    for (const r of resultsData) {
+    for (const r of filteredData) {
       const bw = r.comparison ? r.comparison.bw_savings_pct : 0;
       const naive = r.naive_flooding || r.flooding || {};
       const managed = r.managed_flooding || r.flooding || {};
@@ -170,7 +214,7 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    const data = resultsData;
+    const data = filteredData;
     const n = data.length;
     const barW = Math.min(chartW / n * 0.35, 28);
     const gap = chartW / n;
@@ -341,7 +385,7 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    const data = resultsData;
+    const data = filteredData;
     const n = data.length;
 
     // Grid
@@ -456,7 +500,7 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    const data = resultsData;
+    const data = filteredData;
     const n = data.length;
     const gap = chartW / n;
 
@@ -587,9 +631,11 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    // Find a stress scenario with QoS data
-    const stressScenario = resultsData.find(
-      r => r.category === 'stress' && r.system5.qos_breakdown
+    // Find a stress scenario with QoS data (search filtered first, then all)
+    const stressScenario = filteredData.find(
+      r => r.system5 && r.system5.qos_breakdown
+    ) || resultsData.find(
+      r => r.category === 'stress' && r.system5 && r.system5.qos_breakdown
     );
     if (!stressScenario || !stressScenario.system5.qos_breakdown) {
       ctx.fillStyle = COLORS.textMuted;

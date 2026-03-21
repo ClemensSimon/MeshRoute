@@ -695,7 +695,8 @@ class System5Router:
                     valid_routes.append(route)
 
             tried = set()
-            for attempt in range(min(len(valid_routes), 5)):  # try up to 5 routes
+            failed_nodes = set()  # nodes that failed during attempts
+            for attempt in range(min(len(valid_routes), 5)):  # try up to 5 cached routes
                 remaining = [r for r in valid_routes if id(r) not in tried]
                 if not remaining:
                     break
@@ -707,6 +708,21 @@ class System5Router:
                 if self._try_route(network, packet, selected.path, stats):
                     if attempt > 0:
                         self.route_switches += 1
+                    self.qos_stats[packet.priority]["delivered"] += 1
+                    stats.energy = stats.total_tx
+                    return stats
+                # Track which intermediate nodes were on the failed path
+                for nid in selected.path[1:-1]:
+                    failed_nodes.add(nid)
+
+            # Emergency re-route: compute a fresh BFS path avoiding failed nodes
+            # This is cheaper than corridor flooding and often finds an alternative
+            emergency_path = network._bfs_shortest_path(
+                src_node.id, dst_id, exclude=failed_nodes
+            )
+            if emergency_path and len(emergency_path) >= 2:
+                self.route_switches += 1
+                if self._try_route(network, packet, emergency_path, stats):
                     self.qos_stats[packet.priority]["delivered"] += 1
                     stats.energy = stats.total_tx
                     return stats

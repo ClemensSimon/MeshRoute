@@ -92,6 +92,12 @@ typedef struct {
     bool my_is_border;
     uint8_t my_battery_pct;
 
+    // Silencing state
+    bool silent;                 // if true: listen only, no TX (except direct replies)
+    uint32_t silence_until_ms;   // millis() when silence expires (0 = permanent until unsilenced)
+    float redundancy_score;      // 0=critical, 1=fully redundant
+    uint16_t seq_counters[S5_MAX_NODES]; // per-destination sequence numbers
+
     // Neighbor table
     s5_neighbor_t neighbors[S5_MAX_NEIGHBORS];
     uint8_t neighbor_count;

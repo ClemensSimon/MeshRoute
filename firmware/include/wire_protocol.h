@@ -5,7 +5,10 @@
  * Designed to coexist with Meshtastic (different sync word).
  *
  * Packet structure (max 256 bytes):
- * [Header: 22 bytes] [Payload: 0-234 bytes]
+ * [Header: 24 bytes] [Payload: 0-232 bytes]
+ *
+ * v2.0: Added seq (2 bytes) for per-(src,dst) gap detection
+ *       Added PKT_TYPE_SILENCE for node silencing control
  */
 
 #pragma once
@@ -22,6 +25,7 @@ extern "C" {
 #define PKT_TYPE_DATA     0x02  // User data (routed)
 #define PKT_TYPE_ACK      0x03  // Acknowledgement
 #define PKT_TYPE_ROUTE_REQ 0x04 // Route request (on-demand)
+#define PKT_TYPE_SILENCE  0x05  // Node silencing control (mute/unmute)
 
 // ── Header (20 bytes, unencrypted) ─────────────────────────────
 
@@ -35,6 +39,7 @@ typedef struct __attribute__((packed)) {
     uint8_t  ttl;            // remaining hops allowed
     uint32_t next_hop;       // System 5: directed next hop (0 = flood)
     uint8_t  priority;       // QoS 0-7
+    uint16_t seq;            // per-(src,dst) sequence number for gap detection
     uint8_t  payload_len;    // length of payload after header
 } s5_wire_header_t;
 
@@ -52,7 +57,17 @@ typedef struct __attribute__((packed)) {
     uint8_t  is_border;      // 1 if border node
     uint8_t  neighbor_count; // how many neighbors this node has
     uint8_t  pos_source;     // pos_source_t: GPS, manual, triangulated, inherited
+    uint8_t  is_silent;      // 1 if node is currently silenced (listens only)
 } s5_ogm_payload_t;
+
+// ── Silence Control Payload ───────────────────────────────────
+// Sent by cluster coordinators to mute/unmute redundant nodes.
+
+typedef struct __attribute__((packed)) {
+    uint32_t target_node;    // node to silence/unsilence
+    uint16_t duration_sec;   // silence duration (0 = unsilence)
+    uint8_t  reason;         // 0=redundancy, 1=battery_save, 2=manual
+} s5_silence_payload_t;
 
 // ── Helper Functions ───────────────────────────────────────────
 
