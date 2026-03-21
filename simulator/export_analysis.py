@@ -37,7 +37,7 @@ def export():
     for d in data:
         d["delivery"] = round(d["delivery"], 1)
         d["tx"] = int(d["tx"])
-        d["tx_per_del"] = round(d["tx_per_del"], 1) if d["tx_per_del"] else 0
+        d["tx_per_del"] = round(d["tx_per_del"], 1) if d["tx_per_del"] and d["tx_per_del"] != float('inf') else 0
         d["hops"] = round(d["hops"], 1)
         d["max_load"] = int(d["max_load"])
         d["fallback"] = round(d["fallback"], 1)
