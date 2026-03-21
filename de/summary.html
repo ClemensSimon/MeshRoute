@@ -143,7 +143,7 @@
   <h2>1. Kurzfassung</h2>
   <p>Meshtastic (v2.6/2.7) verwendet <strong>Managed Flooding</strong> mit SNR-basierter Unterdrueckung fuer Broadcasts und <strong>Next-Hop-Routing</strong> fuer Direktnachrichten. Das sind clevere Optimierungen gegenueber naivem Flooding — aber beide skalieren weiterhin mit <strong>O(n)</strong> pro Nachricht und erfordern ein Hop-Limit (Standard 3–7), das die Netzwerkreichweite begrenzt.</p>
   <p>Diese Arbeit stellt <strong>System 5</strong> vor, ein Routing-Protokoll, das <strong>O(hops)</strong>-Kosten fuer alle Nachrichtentypen erreicht. Im Vergleich mit Meshtastics aktuellem Managed Flooding bei <strong>realistischen Hop-Limits (3, 5, 7)</strong> ueber 21 Szenarien (20–1500 Knoten, je 6 Router) liefert System 5 <strong>92–100% weniger Uebertragungen</strong> in kleinen bis mittleren Netzwerken bei <strong>gleicher oder hoeherer Zustellrate</strong>.</p>
-  <p>Die wichtigste Erkenntnis: <strong>Das Hop-Limit von Meshtastic begrenzt nicht nur die Reichweite — es verhindert die Zustellung.</strong> Bei 500 Knoten liefert Managed Flooding mit Hop-Limit 7 nur <strong>51%</strong> der Nachrichten aus. Bei 1000 Knoten nur <strong>6%</strong>. System 5 liefert in denselben Szenarien <strong>43–76%</strong>. Bei 1000+ Knoten verbraucht System 5 mehr TX insgesamt als Managed Flooding — liefert aber <strong>7-mal mehr Nachrichten</strong>, wodurch die Kosten pro zugestellter Nachricht weiterhin niedriger sind. Das Hop-Limit ist kein Sicherheitsnetz; es ist die primaere Skalierungsbarriere.</p>
+  <p>Die wichtigste Erkenntnis: <strong>Halbduplex-Funk und Kollisionen zerst&ouml;ren Managed Flooding bereits bei mittleren Netzwerken.</strong> Bei 100 Knoten liefert Managed Flooding nur <strong>27%</strong> der Nachrichten aus. Bei 500 Knoten nur <strong>3%</strong>, bei 1000 Knoten <strong>0%</strong>. System 5 liefert in denselben Szenarien <strong>46&ndash;100%</strong>. Bei 1000+ Knoten verbraucht System 5 mehr TX insgesamt als Managed Flooding &mdash; liefert aber die einzigen Nachrichten, die ueberhaupt ankommen. Halbduplex-Kollisionen und Hop-Limits sind die primaeren Skalierungsbarrieren.</p>
 </div>
 
 <!-- PROBLEM -->
@@ -155,7 +155,7 @@
     <li><strong>Next-Hop-Routing (v2.6+)</strong> — Nur fuer Direktnachrichten. Die erste DM flutet; das System lernt, welches Relay erfolgreich war. Folge-DMs nutzen nur dieses eine gecachte Relay. Faellt bei Ausfall des Next-Hops auf Flooding zurueck.</li>
     <li><strong>Congestion Scaling (v2.6+)</strong> — Netzwerke mit 40+ Knoten strecken Broadcast-Intervalle: <code>Intervall &times; (1 + (Knoten-40) &times; 0,075)</code>.</li>
   </ul>
-  <p><strong>Die verbleibende Einschraenkung:</strong> Sowohl Managed Flooding als auch Next-Hop skalieren weiterhin mit O(n) pro Nachricht. Das Hop-Limit (3–7) ist notwendig, weil jeder Hop die Uebertragungen proportional zur Netzwerkgroesse vervielfacht. Das erzeugt jedoch eine <strong>doppelte Strafe</strong>: Nicht nur verschwendet jede Nachricht Bandbreite — Nachrichten, die mehr Hops als das Limit benoetigen, kommen schlicht <strong>nie an</strong>. Bei 100 Knoten mit Hop-Limit 3 sinkt die Zustellrate auf 92%. Bei 500 Knoten auf 14%. Das Hop-Limit begrenzt nicht nur die Reichweite — es macht grosse Netzwerke grundlegend unzuverlaessig.</p>
+  <p><strong>Die verbleibende Einschraenkung:</strong> Sowohl Managed Flooding als auch Next-Hop skalieren weiterhin mit O(n) pro Nachricht. Das Hop-Limit (3–7) ist notwendig, weil jeder Hop die Uebertragungen proportional zur Netzwerkgroesse vervielfacht. Das erzeugt zusammen mit Halbduplex-Kollisionen eine <strong>doppelte Strafe</strong>: Nicht nur verschwendet jede Nachricht Bandbreite &mdash; die gleichzeitigen Weiterleitungen blockieren sich gegenseitig. Bei 100 Knoten sinkt die Zustellrate auf 27%. Bei 500 Knoten auf 3%. Bei 1000 Knoten auf 0%. Halbduplex und Hop-Limit zusammen machen grosse Netzwerke grundlegend unzuverlaessig.</p>
 </div>
 
 <!-- APPROACHES -->
@@ -296,7 +296,7 @@
         <li>~50% Unterdrueckung via SNR</li>
         <li>Weiterhin O(n)-Skalierung</li>
         <li>Hop-Limit 3–7 erforderlich</li>
-        <li><strong>Zustellung bricht bei 500+ Knoten ein</strong></li>
+        <li><strong>Zustellung bricht bei 100+ Knoten ein (Halbduplex)</strong></li>
         <li>Keine Lastwahrnehmung</li>
       </ul>
     </div>
@@ -307,7 +307,7 @@
         <li><strong>TX = Hops</strong> (nicht proportional zu n)</li>
         <li><strong>92–100%</strong> weniger TX (&le;200 Knoten)</li>
         <li><strong>~1 TX pro Hop</strong> (Hop-Limit irrelevant)</li>
-        <li>7-mal mehr Zustellung bei 1000+ Knoten</li>
+        <li>46% Zustellung bei 1000 Knoten (vs. 0% MF)</li>
         <li>Akkubewusstes Load Balancing</li>
         <li>Ehrlich: mehr TX gesamt bei 1000+ Knoten</li>
       </ul>
@@ -329,19 +329,19 @@
         </tr>
       </thead>
       <tbody style="color:var(--text-dim)">
-        <tr><td style="padding:0.3rem">Klein Lokal (1km)</td><td style="text-align:right">20</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
-        <tr><td style="padding:0.3rem">Mittelgrosse Stadt (5km)</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--red)">92%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
-        <tr><td style="padding:0.3rem">Gross Regional (20km)</td><td style="text-align:right">500</td><td style="text-align:right;color:var(--red);font-weight:700">14%</td><td style="text-align:right;color:var(--red)">31%</td><td style="text-align:right;color:var(--orange)">51%</td><td style="text-align:right;color:var(--yellow)">76%</td></tr>
-        <tr><td style="padding:0.3rem">Dicht Urban (3km)</td><td style="text-align:right">200</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
-        <tr><td style="padding:0.3rem">1000 Knoten (40km)</td><td style="text-align:right">1000</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">6%</td><td style="text-align:right;color:var(--red);font-weight:700">6%</td><td style="text-align:right;color:var(--orange)">43%</td></tr>
-        <tr><td style="padding:0.3rem">1500 Knoten (50km)</td><td style="text-align:right">1500</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">5%</td><td style="text-align:right;color:var(--orange)">42%</td></tr>
-        <tr style="border-top:1px solid var(--border)"><td style="padding:0.3rem">Laendlich Langstrecke</td><td style="text-align:right">50</td><td style="text-align:right;color:var(--yellow)">77%</td><td style="text-align:right;color:var(--yellow)">91%</td><td style="text-align:right;color:var(--yellow)">88%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
-        <tr><td style="padding:0.3rem">Maritim / Kuestennah</td><td style="text-align:right">30</td><td style="text-align:right;color:var(--orange)">69%</td><td style="text-align:right;color:var(--yellow)">82%</td><td style="text-align:right;color:var(--yellow)">84%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
-        <tr><td style="padding:0.3rem">Katastrophenhilfe</td><td style="text-align:right">80</td><td style="text-align:right;color:var(--orange)">62%</td><td style="text-align:right;color:var(--yellow)">87%</td><td style="text-align:right;color:var(--yellow)">84%</td><td style="text-align:right;color:var(--yellow)">78%</td></tr>
-        <tr><td style="padding:0.3rem">Bergtal</td><td style="text-align:right">60</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td></tr>
+        <tr><td style="padding:0.3rem">Klein Lokal (1km)</td><td style="text-align:right">20</td><td style="text-align:right;color:var(--yellow)">87%</td><td style="text-align:right;color:var(--yellow)">87%</td><td style="text-align:right;color:var(--yellow)">87%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Mittelgrosse Stadt (5km)</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--red);font-weight:700">27%</td><td style="text-align:right;color:var(--red);font-weight:700">27%</td><td style="text-align:right;color:var(--red);font-weight:700">27%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Gross Regional (20km)</td><td style="text-align:right">500</td><td style="text-align:right;color:var(--red);font-weight:700">3%</td><td style="text-align:right;color:var(--red);font-weight:700">3%</td><td style="text-align:right;color:var(--red);font-weight:700">3%</td><td style="text-align:right;color:var(--yellow)">76%</td></tr>
+        <tr><td style="padding:0.3rem">Dicht Urban (3km)</td><td style="text-align:right">200</td><td style="text-align:right;color:var(--orange)">51%</td><td style="text-align:right;color:var(--orange)">51%</td><td style="text-align:right;color:var(--orange)">51%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">1000 Knoten (40km)</td><td style="text-align:right">1000</td><td style="text-align:right;color:var(--red);font-weight:700">0%</td><td style="text-align:right;color:var(--red);font-weight:700">0%</td><td style="text-align:right;color:var(--red);font-weight:700">0%</td><td style="text-align:right;color:var(--orange)">46%</td></tr>
+        <tr><td style="padding:0.3rem">1500 Knoten (50km)</td><td style="text-align:right">1500</td><td style="text-align:right;color:var(--red);font-weight:700">1%</td><td style="text-align:right;color:var(--red);font-weight:700">1%</td><td style="text-align:right;color:var(--red);font-weight:700">1%</td><td style="text-align:right;color:var(--orange)">44%</td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:0.3rem">Laendlich Langstrecke</td><td style="text-align:right">50</td><td style="text-align:right;color:var(--red);font-weight:700">25%</td><td style="text-align:right;color:var(--red);font-weight:700">25%</td><td style="text-align:right;color:var(--red);font-weight:700">25%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Maritim / Kuestennah</td><td style="text-align:right">30</td><td style="text-align:right;color:var(--red);font-weight:700">24%</td><td style="text-align:right;color:var(--red);font-weight:700">24%</td><td style="text-align:right;color:var(--red);font-weight:700">24%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Katastrophenhilfe</td><td style="text-align:right">80</td><td style="text-align:right;color:var(--red);font-weight:700">19%</td><td style="text-align:right;color:var(--red);font-weight:700">19%</td><td style="text-align:right;color:var(--red);font-weight:700">19%</td><td style="text-align:right;color:var(--yellow)">78%</td></tr>
+        <tr><td style="padding:0.3rem">Bergtal</td><td style="text-align:right">60</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">5%</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:0.75rem;color:var(--red)"><strong>Das Hop-Limit erzeugt eine Zustellobergrenze.</strong> Bei 1000+ Knoten liefert Managed Flooding weniger als 1 von 10 Nachrichten aus, unabhaengig vom Hop-Limit. System 5 liefert 7-mal mehr Nachrichten. Hinweis: Bergtal (schlechte Ausbreitung, wenige Knoten) ist fuer beide gleich schlecht — gerichtetes Routing kann nicht helfen, wenn das physische Netzwerk zu duenn besetzt ist.</p>
+    <p style="margin-top:0.75rem;color:var(--red)"><strong>Halbduplex und Kollisionen zerst&ouml;ren Managed Flooding.</strong> Bereits bei 100 Knoten nur 27% Zustellung, bei 1000 Knoten 0% &mdash; unabh&auml;ngig vom Hop-Limit. System 5 liefert bei 1000 Knoten noch 46%. Hinweis: Bergtal (schlechte Ausbreitung, wenige Knoten) ist fuer beide Protokolle schlecht &mdash; wenn das physische Netzwerk zu d&uuml;nn besetzt ist, kann kein Routing-Algorithmus helfen.</p>
   </div>
 
   <div class="highlight-box cyan" style="margin-top:1.5rem">
@@ -367,18 +367,18 @@
         <tr><td style="padding:0.3rem">20% Knoten ausgefallen</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">132.780</td><td style="text-align:right;color:var(--cyan)">4.072</td><td style="text-align:right;color:var(--green)">96,9%</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:0.75rem">System 5 spart <strong>92–100% der Uebertragungen</strong> in kleinen bis mittleren Netzwerken gegenueber Managed Flooding — bei <strong>gleicher oder hoeherer</strong> Zustellrate. Bei 1000+ Knoten ist die TX-Gesamtzahl fuer System 5 hoeher, aber die <strong>TX pro zugestellter Nachricht</strong> sind weiterhin 3-mal niedriger (4.229 vs. 13.065).</p>
+    <p style="margin-top:0.75rem">System 5 spart <strong>92&ndash;100% der Uebertragungen</strong> in kleinen bis mittleren Netzwerken gegen&uuml;ber Managed Flooding &mdash; bei <strong>deutlich h&ouml;herer</strong> Zustellrate (100% vs. 27&ndash;87% f&uuml;r MF mit Halbduplex). Bei 1000+ Knoten ist die TX-Gesamtzahl f&uuml;r System 5 h&ouml;her, aber Managed Flooding liefert dort 0&ndash;1% &mdash; System 5 die einzigen zugestellten Nachrichten.</p>
   </div>
 
   <div class="highlight-box" style="margin-top:1.5rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.03)">
     <h4 style="color:var(--cyan)">Schlussfolgerungen</h4>
     <ul>
-      <li><strong>Das Hop-Limit ist kein Stellrad — es ist eine fundamentale Barriere.</strong> Die Erhoehung von 3 auf 7 hilft kaum: Bei 500 Knoten steigt die Zustellung von 14% auf 51%. Die Kosten pro Hop sind O(n), sodass mehr Hops proportional mehr Uebertragungen bei abnehmenden Ertraegen erzeugen.</li>
-      <li><strong>Flooding kann bei keinem Hop-Limit auf grosse Netzwerke skalieren.</strong> Bei 1000+ Knoten liefert selbst Hop-Limit 7 nur 6% der Nachrichten aus. Das Netzwerk verbraucht enorme Bandbreite (78.387+ TX), um 6 von 100 Nachrichten zuzustellen.</li>
-      <li><strong>System 5 durchbricht diesen Zielkonflikt — mit Einschraenkungen.</strong> Bei 1000 Knoten liefert System 5 43% der Nachrichten — 7-mal mehr als Managed Flooding. Es verbraucht jedoch <strong>mehr TX insgesamt</strong> (181.855 vs. 78.387), um das zu erreichen. Die TX <em>pro zugestellter Nachricht</em> sind bei System 5 weiterhin besser (4.229 vs. 13.065). Bei 1500 Knoten zeigt sich dasselbe Muster: 42% vs. 5% Zustellung, aber hoehere TX-Gesamtzahl.</li>
-      <li><strong>Kleine bis mittlere Netzwerke sind der Sweet Spot.</strong> Bei 20–200 Knoten liefert System 5 100% bei 92–100% weniger Bandbreite. Das deckt die grosse Mehrheit realer Meshtastic-Deployments ab.</li>
-      <li><strong>Duenn besetzte Netzwerke bleiben herausfordernd.</strong> Bergtal (60 Knoten, schlechte Ausbreitung) zeigt 2% Zustellung fuer <em>beide</em> Protokolle — wenn das physische Netzwerk zu duenn besetzt ist, kann kein Routing-Algorithmus helfen. System 5 ist keine Magie.</li>
-      <li><strong>Stressszenarien zeigen einen Zustellungs-Kompromiss.</strong> Bei 30–50% Link-Degradierung liefert Managed Flooding 73%, waehrend System 5 100% liefert. Die Routendiversitaet von System 5 <em>hilft</em> tatsaechlich unter Stress — aber die TX-Kosten sind hoeher (11.866–15.772 vs. 208.164–215.372 fuer Managed Flooding). System 5 verbraucht weniger Bandbreite fuer bessere Ergebnisse.</li>
+      <li><strong>Halbduplex zerst&ouml;rt Managed Flooding bereits bei mittleren Netzwerken.</strong> Bei 100 Knoten nur 27% Zustellung, bei 500 Knoten 3% &mdash; unabh&auml;ngig vom Hop-Limit. Die Kollisionskaskaden durch gleichzeitiges Senden dominieren das Hop-Limit als Engpass.</li>
+      <li><strong>Flooding kann mit Halbduplex nicht auf grosse Netzwerke skalieren.</strong> Bei 1000 Knoten liefert Managed Flooding 0% der Nachrichten aus. Das Netzwerk verbraucht TX-Ressourcen, ohne eine einzige Nachricht zuzustellen.</li>
+      <li><strong>System 5 durchbricht diesen Zielkonflikt — mit Einschraenkungen.</strong> Bei 1000 Knoten liefert System 5 46% der Nachrichten. Es verbraucht jedoch <strong>mehr TX insgesamt</strong> als Managed Flooding, um das zu erreichen. Die TX <em>pro zugestellter Nachricht</em> sind bei System 5 weiterhin deutlich besser. Bei 1500 Knoten zeigt sich dasselbe Muster: 44% vs. 1% Zustellung.</li>
+      <li><strong>Kleine Netzwerke sind der Sweet Spot.</strong> Bei 20 Knoten liefert System 5 100% vs. 87% fuer Managed Flooding. Das deckt die grosse Mehrheit realer Meshtastic-Deployments ab.</li>
+      <li><strong>Duenn besetzte Netzwerke bleiben herausfordernd.</strong> Bergtal (60 Knoten, schlechte Ausbreitung) zeigt 4% Zustellung fuer Managed Flooding und 5% fuer System 5 &mdash; wenn das physische Netzwerk zu duenn besetzt ist, kann kein Routing-Algorithmus helfen. System 5 ist keine Magie.</li>
+      <li><strong>Stressszenarien bestaetigen den Vorteil von System 5.</strong> Bei 30% Link-Degradierung liefert Managed Flooding 19%, System 5 73%. Bei 50% Degradierung: Managed Flooding 15%, System 5 73%. Die Routendiversitaet von System 5 <em>hilft</em> tatsaechlich unter Stress bei weniger Bandbreite pro zugestellter Nachricht.</li>
       <li><strong>Weitlaeufige und grosse Netzwerke brauchen gerichtetes Routing.</strong> Laendliche, maritime, Katastrophen- und 500+-Knoten-Szenarien zeigen den Zustellungseinbruch von Flooding am deutlichsten. Das sind genau die Szenarien, in denen Meshtastic am dringendsten gebraucht wird.</li>
     </ul>
   </div>
@@ -386,7 +386,7 @@
   <p style="margin-top:1.5rem">Hauptvorteile gegenueber Meshtastics aktuellem Routing:</p>
   <ul>
     <li><strong>O(hops) vs. O(n)</strong> — Kosten haengen von der Pfadlaenge ab, nicht von der Netzwerkgroesse. Die fundamentale Skalierungsverbesserung.</li>
-    <li><strong>Zustellrate</strong> — System 5 liefert in den meisten Szenarien gleich viele oder mehr Nachrichten. Bei 1000+ Knoten 7-mal mehr als Managed Flooding.</li>
+    <li><strong>Zustellrate</strong> &mdash; System 5 liefert in den meisten Szenarien deutlich mehr Nachrichten. Bei 1000 Knoten 46% vs. 0% f&uuml;r Managed Flooding.</li>
     <li><strong>Hop-Limit eliminiert</strong> — 20 Hops kosten weniger als Managed Flooding fuer 1 kostet. Ermoeglicht Reichweite und Preset-Freiheit.</li>
     <li><strong>Alle Verkehrstypen</strong> — Anders als Next-Hop (nur DMs), routet System 5 alle Nachrichten inklusive Broadcasts.</li>
     <li><strong>Multi-Path-Resilienz</strong> — 5 gecachte Pfade mit sofortigem Failover + BFS-Notfall-Reroute.</li>

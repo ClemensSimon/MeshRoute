@@ -55,7 +55,7 @@
 <section id="tldr">
   <div class="section-tag reveal">00 &mdash; TL;DR</div>
   <div class="tldr-card reveal">
-    <p class="tldr-text">Das aktuelle Meshtastic-Flooding verschwendet <strong>92&ndash;100% der Bandbreite</strong> in kleinen bis mittleren Netzwerken und <strong>scheitert bei der Zustellung</strong> im gro&szlig;en Ma&szlig;stab. <strong>System 5</strong> kombiniert Geo-Clustering, Multi-Pfad-Routing und adaptives QoS zu einem selbstheilenden Protokoll. F&uuml;r Netzwerke bis ~200 Knoten: <strong>100% Zustellung bei 92&ndash;99,9% weniger Bandbreite</strong>. Ab 500+ Knoten: <strong>h&ouml;here Zustellrate als Managed Flooding</strong> (76% vs. 51% bei 500 Knoten), wobei gro&szlig;e, d&uuml;nn besetzte Netzwerke f&uuml;r jedes Protokoll herausfordernd bleiben. Das Hop-Limit &mdash; heute der gr&ouml;&szlig;te Skalierungsengpass &mdash; wird irrelevant: Jeder Hop kostet <strong>~1 &Uuml;bertragung</strong> statt <em>n</em>.</p>
+    <p class="tldr-text">Das aktuelle Meshtastic-Flooding verschwendet <strong>92&ndash;100% der Bandbreite</strong> in kleinen bis mittleren Netzwerken und <strong>scheitert bei der Zustellung</strong> bereits ab 100 Knoten (nur 27% mit Halbduplex). <strong>System 5</strong> kombiniert Geo-Clustering, Multi-Pfad-Routing und adaptives QoS zu einem selbstheilenden Protokoll. F&uuml;r kleine Netzwerke (20 Knoten): <strong>100% Zustellung bei 99%+ weniger Bandbreite</strong>. Ab 500+ Knoten: <strong>76% vs. 3%</strong> f&uuml;r Managed Flooding, bei 1000 Knoten <strong>46% vs. 0%</strong>. Halbduplex-Kollisionen und Hop-Limits &mdash; die gr&ouml;&szlig;ten Skalierungsengp&auml;sse &mdash; werden irrelevant: Jeder Hop kostet <strong>~1 &Uuml;bertragung</strong> statt <em>n</em>.</p>
     <div class="tldr-stats">
       <div class="tldr-stat"><span class="tldr-num">100%</span><span class="tldr-label">Zust. &le;200</span></div>
       <div class="tldr-stat"><span class="tldr-num">99,9%</span><span class="tldr-label">BW gespart</span></div>
@@ -536,51 +536,51 @@
       <tr style="border-top:1px solid var(--border)">
         <td style="padding:0.4rem 0;color:var(--text)">Klein Lokal</td>
         <td style="text-align:right">20</td>
-        <td style="text-align:right;color:var(--green)">100%</td>
-        <td style="text-align:right;color:var(--green)">100%</td>
-        <td style="text-align:right;color:var(--green)">100%</td>
+        <td style="text-align:right;color:var(--yellow)">87%</td>
+        <td style="text-align:right;color:var(--yellow)">87%</td>
+        <td style="text-align:right;color:var(--yellow)">87%</td>
         <td style="text-align:right;color:var(--green)">100%</td>
         <td style="text-align:right;color:var(--cyan)">115</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Mittlere Stadt</td>
         <td style="text-align:right">100</td>
-        <td style="text-align:right;color:var(--red)">92%</td>
-        <td style="text-align:right;color:var(--green)">100%</td>
-        <td style="text-align:right;color:var(--green)">100%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">27%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">27%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">27%</td>
         <td style="text-align:right;color:var(--green)">100%</td>
         <td style="text-align:right;color:var(--cyan)">402</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Gro&szlig; Regional</td>
         <td style="text-align:right">500</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">14%</td>
-        <td style="text-align:right;color:var(--red)">31%</td>
-        <td style="text-align:right;color:var(--orange)">51%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">3%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">3%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">3%</td>
         <td style="text-align:right;color:var(--yellow)">76%</td>
         <td style="text-align:right;color:var(--cyan)">412k</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">1000 Knoten</td>
         <td style="text-align:right">1000</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">2%</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">6%</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">6%</td>
-        <td style="text-align:right;color:var(--orange)">43%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">0%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">0%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">0%</td>
+        <td style="text-align:right;color:var(--orange)">46%</td>
         <td style="text-align:right;color:var(--orange)">182k*</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">1500 Knoten</td>
         <td style="text-align:right">1500</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">2%</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">4%</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">5%</td>
-        <td style="text-align:right;color:var(--orange)">42%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">1%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">1%</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">1%</td>
+        <td style="text-align:right;color:var(--orange)">44%</td>
         <td style="text-align:right;color:var(--orange)">197k*</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* Bei 1000+ Knoten verbraucht System 5 <strong>mehr Gesamt-TX</strong> als Managed Flooding (182k vs. 78k) &mdash; liefert aber <strong>7x mehr Nachrichten</strong> aus. Die Kosten pro zugestellter Nachricht (TX/zugestellt) favorisieren weiterhin System 5: ~4.229 vs. ~13.065.</p>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Kritische Erkenntnis:</strong> Mit Meshtastics realistischem Hop-Limit (3&ndash;7) <strong>bricht</strong> die Zustellrate von Managed Flooding bei Skalierung <strong>zusammen</strong>. Bei 1000 Knoten kommen nur <strong>6%</strong> der Nachrichten an &mdash; unabh&auml;ngig vom Hop-Limit. System 5 liefert <strong>7x mehr Nachrichten</strong> im selben Szenario. Das Hop-Limit begrenzt nicht nur die Reichweite &mdash; es macht gro&szlig;e Netzwerke <strong>grunds&auml;tzlich unzuverl&auml;ssig</strong>.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* Bei 1000+ Knoten verbraucht System 5 <strong>mehr Gesamt-TX</strong> als Managed Flooding &mdash; liefert aber als einziges Protokoll &uuml;berhaupt Nachrichten aus (46% vs. 0% bei 1000 Knoten). Managed Flooding liefert mit Halbduplex bei dieser Gr&ouml;&szlig;e keine einzige Nachricht.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Kritische Erkenntnis:</strong> Mit Halbduplex und Kollisionen zerst&ouml;rt Managed Flooding die Zustellung bei Skalierung <strong>vollst&auml;ndig</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> an, bei 1000 Knoten <strong>0%</strong> &mdash; unabh&auml;ngig vom Hop-Limit. System 5 liefert <strong>46%</strong> bei 1000 Knoten. Das Hop-Limit und die Halbduplex-Kollisionen machen gro&szlig;e Netzwerke <strong>grunds&auml;tzlich unzuverl&auml;ssig</strong>.</p>
   </div>
 
   <div class="problem-grid" style="margin-top:2rem">
@@ -903,7 +903,7 @@
 
   <!-- Key insight -->
   <div class="tldr-card reveal" style="margin-top:2rem">
-    <p class="tldr-text">Mit <strong>realistischen Hop-Limits (3&ndash;7)</strong> verschwendet Managed Flooding nicht nur Bandbreite &mdash; es <strong>scheitert bei der Zustellung</strong>. Bei 500 Knoten mit Hop-Limit 7 kommen nur <strong>51%</strong> der Nachrichten an. Bei 1000 Knoten nur <strong>6%</strong>. System 5 liefert <strong>7,5x mehr Nachrichten</strong> in denselben Szenarien, mit weniger Gesamt&uuml;bertragungen pro zugestellter Nachricht. Das Hop-Limit ist kein Sicherheitsnetz &mdash; es ist die <strong>prim&auml;re Skalierungsbarriere</strong>, die gro&szlig;e Mesh-Netzwerke grunds&auml;tzlich unzuverl&auml;ssig macht.</p>
+    <p class="tldr-text">Mit <strong>Halbduplex-Funk und Kollisionen</strong> verschwendet Managed Flooding nicht nur Bandbreite &mdash; es <strong>scheitert bei der Zustellung</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> der Nachrichten an. Bei 500 Knoten nur <strong>3%</strong>, bei 1000 Knoten <strong>0%</strong>. System 5 liefert <strong>76%</strong> bei 500 Knoten und <strong>46%</strong> bei 1000 Knoten. Halbduplex-Kollisionen und Hop-Limits sind die <strong>prim&auml;ren Skalierungsbarrieren</strong>, die gro&szlig;e Mesh-Netzwerke grunds&auml;tzlich unzuverl&auml;ssig machen.</p>
   </div>
 </section>
 
@@ -939,7 +939,7 @@
 <section id="conclusion">
   <div class="section-tag reveal">13 &mdash; Fazit</div>
   <h2 class="section-title reveal">Der Weg nach vorn</h2>
-  <p class="section-desc reveal">Das Hop-Limit begrenzt nicht nur die Reichweite &mdash; es <strong>verhindert die Zustellung</strong>. Bei 500+ Knoten liefert Managed Flooding nur 2&ndash;14% der Nachrichten aus. Die Bay Area Mesh-Erfahrung best&auml;tigt dies: Halbduplex-Funk-Einschr&auml;nkungen lassen Flooding in realen erh&ouml;hten Topologien auf nur 6% Zustellung zusammenbrechen. System 5 durchbricht diese Barrieren mit gerichtetem Routing bei ~1 TX pro Hop und &uuml;bersteht sowohl die Hop-Limit-Mauer als auch die Halbduplex-Kollisionskaskade. &Uuml;ber 26 Szenarien hinweg (einschlie&szlig;lich einer Bay Area 3-Stufen-Topologie mit Halbduplex-Modellierung) dominiert System 5 kleine bis mittlere Netzwerke und liefert bei Skalierung deutlich mehr &mdash; obwohl sehr gro&szlig;e, d&uuml;nn besetzte Netzwerke f&uuml;r jedes Protokoll herausfordernd bleiben. Das Protokoll ist vollst&auml;ndig spezifiziert, ein funktionierender ESP32-Firmware-Prototyp existiert f&uuml;r drei Board-Typen, und der vollst&auml;ndige Quellcode ist unter MIT-Lizenz verf&uuml;gbar.</p>
+  <p class="section-desc reveal">Halbduplex-Funk und Kollisionen zerst&ouml;ren Managed Flooding bereits bei mittleren Netzwerken &mdash; bei 100 Knoten nur 27% Zustellung, bei 500 Knoten 3%, bei 1000 Knoten 0%. Die Bay Area Mesh-Erfahrung best&auml;tigt dies: Halbduplex-Einschr&auml;nkungen lassen Flooding auf nur 6% Zustellung zusammenbrechen. System 5 durchbricht diese Barrieren mit gerichtetem Routing bei ~1 TX pro Hop und &uuml;bersteht sowohl die Halbduplex-Kollisionskaskade als auch die Hop-Limit-Mauer. &Uuml;ber 26 Szenarien hinweg (alle mit Halbduplex und Kollisionen) dominiert System 5 kleine bis mittlere Netzwerke und liefert bei Skalierung deutlich mehr &mdash; obwohl sehr gro&szlig;e, d&uuml;nn besetzte Netzwerke f&uuml;r jedes Protokoll herausfordernd bleiben. Das Protokoll ist vollst&auml;ndig spezifiziert, ein funktionierender ESP32-Firmware-Prototyp existiert f&uuml;r drei Board-Typen, und der vollst&auml;ndige Quellcode ist unter MIT-Lizenz verf&uuml;gbar.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">

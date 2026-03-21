@@ -62,40 +62,40 @@ The simulator compares all four approaches on identical networks (100 messages e
 
 ### Scale Tests
 
-| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 Del% | S5 vs Managed |
-|----------|------:|-----------------:|------------:|--------:|--------------:|
-| Small Local (1km) | 20 | 16,459 | 115 | 100% | **99.3% less** |
-| Medium City (5km) | 100 | 201,920 | 5,678 | 100% | **97.2% less** |
-| Large Regional (20km) | 500 | 1,002,437 | 624,539 | 76% | **37.7% less** |
-| Dense Urban (3km) | 200 | 1,490,555 | 241,715 | 100% | **83.8% less** |
-| 1000 Nodes (40km) | 1000 | 548,710 | 535,352 | 45% | 2.4% less |
-| 1500 Nodes (50km) | 1500 | 563,607 | 634,546 | **51%** | *S5 delivers more* |
+| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 Del% | MF Del% | S5 vs Managed |
+|----------|------:|-----------------:|------------:|--------:|--------:|--------------:|
+| Small Local (1km) | 20 | 16,459 | 115 | 100% | 87% | **99.3% less** |
+| Medium City (5km) | 100 | 201,920 | 5,678 | 100% | 27% | **97.2% less** |
+| Large Regional (20km) | 500 | 1,002,437 | 624,539 | 76% | 3% | **37.7% less** |
+| Dense Urban (3km) | 200 | 1,490,555 | 241,715 | 100% | 51% | **83.8% less** |
+| 1000 Nodes (40km) | 1000 | 548,710 | 535,352 | 46% | 0% | 2.4% less |
+| 1500 Nodes (50km) | 1500 | 563,607 | 634,546 | 44% | 1% | *S5 delivers more* |
 
 ### Realistic Environments
 
-| Scenario | Managed TX | System 5 TX | S5 Del% | S5 vs Managed |
-|----------|----------:|------------:|--------:|--------------:|
-| Rural Long Range | 30,152 | 287 | 100% | **99.0% less** |
-| Hiking Trail (linear) | 28,894 | 215 | 100% | **99.3% less** |
-| Maritime / Coastal | 9,319 | 339 | 100% | **96.4% less** |
-| Festival / Event | 912,953 | 107 | 100% | **99.99% less** |
-| Building Emergency | 3,651,559 | 386 | 100% | **99.99% less** |
-| Highway Convoy | 52,072 | 189 | 100% | **99.6% less** |
-| Community Mesh | 75,991 | 88 | 100% | **99.9% less** |
-| Indoor-Outdoor Mix | 268,468 | 3,405 | 100% | **98.7% less** |
+| Scenario | Managed TX | System 5 TX | S5 Del% | MF Del% | S5 vs Managed |
+|----------|----------:|------------:|--------:|--------:|--------------:|
+| Rural Long Range | 30,152 | 287 | 100% | 25% | **99.0% less** |
+| Hiking Trail (linear) | 28,894 | 215 | 100% | 38% | **99.3% less** |
+| Maritime / Coastal | 9,319 | 339 | 100% | 24% | **96.4% less** |
+| Festival / Event | 912,953 | 107 | 100% | 94% | **99.99% less** |
+| Building Emergency | 3,651,559 | 386 | 100% | 37% | **99.99% less** |
+| Highway Convoy | 52,072 | 189 | 100% | 44% | **99.6% less** |
+| Community Mesh | 75,991 | 88 | 100% | 60% | **99.9% less** |
+| Indoor-Outdoor Mix | 268,468 | 3,405 | 100% | 37% | **98.7% less** |
 
 ### Stress Tests
 
 | Scenario | Managed TX | System 5 TX | S5 Del% | Managed Del% | S5 vs Managed |
 |----------|----------:|------------:|--------:|--------:|--------------:|
-| 30% Degraded Links | 208,164 | 21,342 | 73% | 100% | **89.7% less** |
-| 50% Degraded Links | 215,372 | 19,231 | 73% | 100% | **91.1% less** |
-| 20% Nodes Killed | 132,780 | 5,292 | 80% | 100% | **96.0% less** |
-| Combined Stress | 170,094 | 15,423 | 80% | 100% | **90.9% less** |
-| Disaster Relief | 35,635 | 252 | 78% | 90% | **99.3% less** |
-| Mountain Valley | 747 | 1,245 | 5% | 3% | *both fail* |
-| Partition Recovery | 62,773 | 26,874 | 56% | 88% | **57.2% less** |
-| Duty Cycle Stress | 404,779 | 18,168 | 100% | 100% | **95.5% less** |
+| 30% Degraded Links | 208,164 | 21,342 | 73% | 19% | **89.7% less** |
+| 50% Degraded Links | 215,372 | 19,231 | 73% | 15% | **91.1% less** |
+| 20% Nodes Killed | 132,780 | 5,292 | 80% | 16% | **96.0% less** |
+| Combined Stress | 170,094 | 15,423 | 80% | 30% | **90.9% less** |
+| Disaster Relief | 35,635 | 252 | 78% | 19% | **99.3% less** |
+| Mountain Valley | 747 | 1,245 | 5% | 4% | *both fail* |
+| Partition Recovery | 62,773 | 26,874 | 54% | 8% | **57.2% less** |
+| Duty Cycle Stress | 404,779 | 18,168 | 100% | 24% | **95.5% less** |
 
 ### Bay Area Real-World Topology (NEW — with half-duplex radio model)
 
@@ -115,13 +115,13 @@ Based on feedback from Bay Area Mesh operators: 3-tier elevation topology (mount
 
 **Node Silencing** (NEW): Redundant nodes are identified and muted — they still listen but don't rebroadcast. 128 of 193 valley nodes are silenced, reducing System 5 TX by ~45% with only ~4% less delivery. Mountain nodes (critical backbone) are never silenced. Battery-fair rotation every 10 minutes ensures even drain.
 
-The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts). System 5's directed routing holds at 77.5% because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
+The half-duplex constraint collapses managed flooding from ~87% → ~6% delivery in Bay Area (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts), and to 0-60% delivery across ALL scenarios. System 5's directed routing holds at ~74% in Bay Area because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
 
 ### Key Findings
 
-- **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with 100% delivery
-- **Stress conditions**: Still saves 57-99% TX, delivery 73-80% (scoped fallback flooding helps)
-- **Metro Scale (1500 nodes)**: S5 delivers **51% vs Managed's 36%** — S5 is actually better at large scale!
+- **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with 100% delivery. Half-duplex collapses managed flooding to **0-60% delivery** in ALL scenarios.
+- **Stress conditions**: S5 delivers 73-80% vs managed flooding's 8-30%. Directed routing survives where flooding collapses.
+- **Metro Scale (1500 nodes)**: S5 delivers **44% vs Managed's 1%** — flooding is essentially dead at this scale.
 - **Bay Area (half-duplex)**: System 5 delivers **~74% vs Flooding's ~6%** — directed routing survives the mountaintop collision cascade that destroys flooding
 - **Extreme conditions** (mountain, partition): Both systems struggle. System 5's fallback keeps it competitive.
 - **Node Silencing**: Muting 57% of redundant nodes halves TX cost with minimal delivery loss
