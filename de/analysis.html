@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshRoute v2.0 — Feature-Wirkungsanalyse</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+.an-hero {
+  min-height: 35vh; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 5rem 2rem 2rem; position: relative;
+}
+.an-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.an { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem 4rem; }
+.an h2 {
+  font-family: var(--font-display); font-size: 1.6rem; font-weight: 700;
+  margin: 3rem 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+}
+.an p { color: var(--text-dim); line-height: 1.7; margin-bottom: 0.8rem; }
+
+.chart-container {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1.5rem; margin: 1.5rem 0; position: relative;
+}
+.chart-container h3 {
+  font-family: var(--font-mono); font-size: 0.9rem; color: var(--cyan);
+  margin-bottom: 0.3rem;
+}
+.chart-container .subtitle {
+  font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;
+}
+.chart-container canvas { width: 100%; height: 400px; display: block; }
+.chart-container.tall canvas { height: 600px; }
+
+.legend { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 0.8rem 0; font-size: 0.8rem; }
+.legend-item { display: flex; align-items: center; gap: 0.4rem; color: var(--text-dim); }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+.filter-bar {
+  display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0;
+}
+.filter-btn {
+  font-family: var(--font-mono); font-size: 0.72rem; padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.filter-btn:hover { border-color: var(--cyan-dim); color: var(--text); }
+.filter-btn.active { background: rgba(34,211,238,0.1); color: var(--cyan); border-color: var(--cyan-dim); }
+
+.insight-box {
+  background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim);
+  border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
+  font-size: 0.9rem; color: var(--text-dim);
+}
+.insight-box strong { color: var(--text); }
+.insight-box .num { color: var(--cyan); font-family: var(--font-mono); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul id="nav-menu">
+      <li><a href="index.html">Pr&auml;sentation</a></li>
+      <li><a href="../simulator.html" style="color:var(--cyan)">Simulator</a></li>
+      <li><a href="how-it-works.html">Wie es funktioniert</a></li>
+      <li><a href="analysis.html" class="active">Analyse</a></li>
+      <li><a href="summary.html">Zusammenfassung</a></li>
+      <li class="nav-sep"></li>
+      <li><a href="../analysis.html" title="English" style="font-size:1.2rem;line-height:1;padding:0.2rem 0.5rem">&#x1F1EC;&#x1F1E7;</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="an-hero">
+  <div>
+    <div class="hero-tag" style="opacity:1;animation:none">Datengetrieben — Jedes Feature gemessen</div>
+    <h1 class="hero-title" style="opacity:1;animation:none;font-size:clamp(1.8rem,4vw,3rem)">Feature-Wirkungs<span class="accent">analyse</span></h1>
+    <p class="hero-sub" style="opacity:1;animation:none;max-width:700px;margin:0.5rem auto">
+      Was bringt jede Verbesserung? Alle Szenarien getestet mit Baseline (idealisiert),
+      Halbduplex (realistisch) und Halbduplex + Stummschaltung. 5 Seeds pro Kombination, 6 Router jeweils.
+    </p>
+  </div>
+</div>
+
+<div class="an">
+
+  <!-- ============================================================ -->
+  <h2>1. Die Realit&auml;tsl&uuml;cke — Was Halbduplex ver&auml;ndert</h2>
+  <p>Die meisten Mesh-Simulatoren ignorieren Halbduplex-Funkbeschr&auml;nkungen. Wenn wir sie aktivieren, bricht Managed Flooding &uuml;ber <strong>alle Szenarien</strong>. Dieses Diagramm zeigt die L&uuml;cke zwischen der idealisierten Welt und der Realit&auml;t.</p>
+
+  <div class="filter-bar" id="filter-scenario">
+    <button class="filter-btn active" data-filter="all">Alle Szenarien</button>
+    <button class="filter-btn" data-filter="small">Klein (&le;50)</button>
+    <button class="filter-btn" data-filter="medium">Mittel (80-200)</button>
+    <button class="filter-btn" data-filter="large">Gro&szlig; (500+)</button>
+  </div>
+
+  <div class="chart-container tall">
+    <h3>Zustellrate: Idealisiert vs Realit&auml;t vs System 5</h3>
+    <div class="subtitle">F&uuml;r jedes Szenario: Baseline (no half-duplex) → half-duplex → System 5 with half-duplex</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Managed Flood (idealisiert)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood (Halbduplex)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5 (Halbduplex)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>S5 + Stummschaltung (Halbduplex)</div>
+    </div>
+    <canvas id="chart-reality-gap"></canvas>
+  </div>
+
+  <div class="insight-box" id="insight-reality">Daten werden geladen...</div>
+
+  <!-- ============================================================ -->
+  <h2>2. Feature-Wirkung — Was jede Verbesserung bringt</h2>
+  <p>Ausgehend von Managed Flooding unter realistischen Bedingungen (Halbduplex): Wie viel tr&auml;gt jedes System-5-Feature bei?</p>
+
+  <div class="chart-container">
+    <h3>Zustellraten-Verbesserung pro Feature (gemittelt &uuml;ber alle Szenarien)</h3>
+    <div class="subtitle">Jeder Balken zeigt die zus&auml;tzliche Zustellrate durch das jeweilige Feature</div>
+    <canvas id="chart-feature-waterfall"></canvas>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>3. Effizienz — TX-Kosten pro zugestellter Nachricht</h2>
+  <p>Nicht nur Zustellrate — wie <strong>effizient</strong> liefert jeder Ansatz? Niedriger = besser.</p>
+
+  <div class="chart-container tall">
+    <h3>TX pro zugestellte Nachricht (Log-Skala)</h3>
+    <div class="subtitle">Wie viele Funk&uuml;bertragungen werden ben&ouml;tigt um eine Nachricht zuzustellen?</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Naive Flood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Managed Flood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Next-Hop</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5</div>
+    </div>
+    <canvas id="chart-efficiency"></canvas>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>4. Szenario-Heatmap — Wo welcher Router funktioniert</h2>
+  <p>Farbcodierte Zustellrate &uuml;ber alle Szenarien und Router. Gr&uuml;n (>80%), Gelb (40-80%), Rot (&lt;40%).</p>
+
+  <div class="chart-container tall">
+    <h3>Zustellraten-Heatmap (Halbduplex, alle Router)</h3>
+    <div class="subtitle">Zeilen = Szenarien, Spalten = Router.</div>
+    <canvas id="chart-heatmap"></canvas>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2>5. Stummschaltungs-Effizienz — TX gespart vs Zustellverlust</h2>
+  <p>Der Sweet Spot ist unten rechts: viel TX gespart, minimaler Zustellverlust. Jeder Punkt ist ein Szenario.</p>
+
+  <div class="chart-container">
+    <h3>Node Silencing: TX-Reduktion vs Zustellungskosten</h3>
+    <div class="subtitle">X = % TX gespart, Y = % Zustellverlust. Ideal: hohes X, niedriges Y.</div>
+    <canvas id="chart-silencing-scatter"></canvas>
+  </div>
+
+</div>
+
+<footer>
+  <p>MeshRoute v2.0 — Feature-Wirkungsanalyse</p>
+  <p style="margin-top:0.3rem;font-size:0.75rem">Daten aus SQLite-Datenbank: 23 Szenarien &times; 3 Feature-Konfigurationen &times; 5 Seeds &times; 6 Router = 2.070 Simulationsl&auml;ufe</p>
+</footer>
+
+<script src="../js/ui.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const C = {
+    cyan: '#22d3ee', red: '#f87171', green: '#4ade80', yellow: '#fbbf24',
+    orange: '#fb923c', purple: '#a855f7', teal: '#14b8a6',
+    text: '#e2e8f0', dim: '#94a3b8', muted: '#64748b',
+    bg: '#0f172a', card: '#1e293b', border: '#334155', gray: '#94a3b8',
+  };
+
+  let DATA = null;
+
+  async function load() {
+    try {
+      const r = await fetch('../analysis-data.json');
+      DATA = await r.json();
+      renderAll();
+    } catch(e) {
+      document.getElementById('insight-reality').textContent = 'Fehler beim Laden: ' + e.message + '. F&uuml;hre aus: python simulator/export_analysis.py';
+    }
+  }
+
+  function getCtx(id) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.W = rect.width; ctx.H = rect.height;
+    return ctx;
+  }
+
+  function fmtNum(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(v>=1e4?0:1)+'K';
+    return String(Math.round(v));
+  }
+
+  // Helper: get result for scenario × features × router
+  function get(scenario, features, router) {
+    return DATA.results.find(r =>
+      r.scenario === scenario && r.features === features && r.router === router
+    );
+  }
+
+  function renderAll() {
+    renderRealityGap();
+    renderFeatureWaterfall();
+    renderEfficiency();
+    renderHeatmap();
+    renderSilencingScatter();
+  }
+
+  // ── 1. Reality Gap ──
+  function renderRealityGap(filter) {
+    const ctx = getCtx('chart-reality-gap');
+    if (!ctx || !DATA) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 20, right: 30, bottom: 120, left: 55 };
+
+    ctx.clearRect(0, 0, W, H);
+
+    let scenarios = DATA.scenarios;
+    if (filter === 'small') scenarios = scenarios.filter(s => s.n_nodes <= 50);
+    else if (filter === 'medium') scenarios = scenarios.filter(s => s.n_nodes >= 80 && s.n_nodes <= 200);
+    else if (filter === 'large') scenarios = scenarios.filter(s => s.n_nodes >= 500);
+
+    const n = scenarios.length;
+    if (!n) return;
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+    const gap = chartW / n;
+    const barW = Math.min(gap * 0.18, 16);
+
+    // Grid
+    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    for (let p = 0; p <= 100; p += 20) {
+      const y = pad.top + chartH - (p/100)*chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+      ctx.fillText(p+'%', pad.left-5, y+3);
+    }
+
+    const bars = [
+      { feat: 'baseline', router: 'Managed (7 hop)', color: C.gray, label: 'MF ideal' },
+      { feat: 'half_duplex', router: 'Managed (7 hop)', color: C.red, label: 'MF real' },
+      { feat: 'half_duplex', router: 'System 5', color: C.cyan, label: 'S5 real' },
+      { feat: 'hd+silencing', router: 'System 5', color: C.green, label: 'S5+Sil' },
+    ];
+
+    for (let i = 0; i < n; i++) {
+      const cx = pad.left + gap*i + gap/2;
+      const groupW = barW * bars.length + (bars.length-1)*2;
+      const startX = cx - groupW/2;
+
+      for (let bi = 0; bi < bars.length; bi++) {
+        const d = get(scenarios[i].name, bars[bi].feat, bars[bi].router);
+        const val = d ? d.delivery : 0;
+        const bh = (val/100) * chartH;
+        const bx = startX + bi*(barW+2);
+
+        ctx.fillStyle = bars[bi].color;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(bx, pad.top+chartH-bh, barW, bh);
+
+        // Value on top
+        if (val > 0) {
+          ctx.globalAlpha = 1;
+          ctx.font = '8px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = bars[bi].color;
+          ctx.fillText(Math.round(val)+'%', bx+barW/2, pad.top+chartH-bh-3);
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // "Gap" arrow between MF ideal and MF real
+      const mfIdeal = get(scenarios[i].name, 'baseline', 'Managed (7 hop)');
+      const mfReal = get(scenarios[i].name, 'half_duplex', 'Managed (7 hop)');
+      if (mfIdeal && mfReal && mfIdeal.delivery - mfReal.delivery > 10) {
+        const y1 = pad.top + chartH - (mfIdeal.delivery/100)*chartH;
+        const y2 = pad.top + chartH - (mfReal.delivery/100)*chartH;
+        const ax = startX + barW + 3;
+        ctx.strokeStyle = 'rgba(248,113,113,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.moveTo(ax, y1+5); ctx.lineTo(ax, y2-5); ctx.stroke();
+        ctx.setLineDash([]);
+        // Arrow head
+        ctx.beginPath();
+        ctx.moveTo(ax-3, y2-8); ctx.lineTo(ax, y2-3); ctx.lineTo(ax+3, y2-8);
+        ctx.stroke();
+      }
+
+      // X label
+      const sn = scenarios[i].name.replace(/\s*\(.*/,'').substring(0,14);
+      ctx.save();
+      ctx.fillStyle = C.muted; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+      ctx.translate(cx, pad.top+chartH+8);
+      ctx.rotate(-Math.PI/4);
+      ctx.fillText(sn, 0, 0);
+      ctx.restore();
+    }
+
+    // Y label
+    ctx.save();
+    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('Delivery Rate', 0, 0);
+    ctx.restore();
+
+    // Insight text
+    const insightEl = document.getElementById('insight-reality');
+    if (insightEl) {
+      let totalGap = 0, count = 0;
+      let totalS5Gain = 0;
+      for (const s of DATA.scenarios) {
+        const mfBase = get(s.name, 'baseline', 'Managed (7 hop)');
+        const mfHD = get(s.name, 'half_duplex', 'Managed (7 hop)');
+        const s5HD = get(s.name, 'half_duplex', 'System 5');
+        if (mfBase && mfHD && s5HD) {
+          totalGap += mfBase.delivery - mfHD.delivery;
+          totalS5Gain += s5HD.delivery - mfHD.delivery;
+          count++;
+        }
+      }
+      const avgGap = count > 0 ? (totalGap/count).toFixed(0) : '?';
+      const avgGain = count > 0 ? (totalS5Gain/count).toFixed(0) : '?';
+      insightEl.innerHTML = `<strong>Die Realit&auml;tsl&uuml;cke:</strong> Im Durchschnitt reduziert Halbduplex die Managed-Flooding-Zustellung um <span class="num">${avgGap} Prozentpunkte</span> &uuml;ber alle Szenarien. System 5 gewinnt <span class="num">${avgGain} points</span> dieser L&uuml;cke durch gerichtetes Routing zur&uuml;ck. Die roten Pfeile zeigen wo Flooding am dramatischsten einbricht.`;
+    }
+  }
+
+  // ── 2. Feature Waterfall ──
+  function renderFeatureWaterfall() {
+    const ctx = getCtx('chart-feature-waterfall');
+    if (!ctx || !DATA) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 30, right: 30, bottom: 60, left: 55 };
+    const chartH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Average delivery across all scenarios for each step
+    let mfBase=0, mfHD=0, s5HD=0, s5Sil=0, cnt=0;
+    for (const s of DATA.scenarios) {
+      const a = get(s.name, 'baseline', 'Managed (7 hop)');
+      const b = get(s.name, 'half_duplex', 'Managed (7 hop)');
+      const c = get(s.name, 'half_duplex', 'System 5');
+      const d = get(s.name, 'hd+silencing', 'System 5');
+      if (a && b && c) {
+        mfBase += a.delivery; mfHD += b.delivery;
+        s5HD += c.delivery; s5Sil += (d ? d.delivery : c.delivery);
+        cnt++;
+      }
+    }
+    mfBase /= cnt; mfHD /= cnt; s5HD /= cnt; s5Sil /= cnt;
+
+    const steps = [
+      { label: 'Managed Flood\n(idealized)', val: mfBase, color: C.gray },
+      { label: 'Half-Duplex\nReality', val: mfHD, color: C.red, delta: mfHD-mfBase },
+      { label: 'System 5\nDirected Routing', val: s5HD, color: C.cyan, delta: s5HD-mfHD },
+      { label: '+ Node\nSilencing', val: s5Sil, color: C.green, delta: s5Sil-s5HD },
+    ];
+
+    const barW = Math.min((W-pad.left-pad.right)/steps.length * 0.5, 80);
+    const gap = (W-pad.left-pad.right) / steps.length;
+
+    // Grid
+    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    for (let p = 0; p <= 100; p += 20) {
+      const y = pad.top + chartH - (p/100)*chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+      ctx.fillText(p+'%', pad.left-5, y+3);
+    }
+
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      const cx = pad.left + gap*i + gap/2;
+      const bh = (s.val/100)*chartH;
+      const by = pad.top+chartH-bh;
+
+      // Bar
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(cx-barW/2, by, barW, bh);
+      ctx.globalAlpha = 1;
+
+      // Value
+      ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = s.color;
+      ctx.fillText(s.val.toFixed(0)+'%', cx, by-8);
+
+      // Delta annotation
+      if (s.delta !== undefined && Math.abs(s.delta) > 0.5) {
+        const sign = s.delta > 0 ? '+' : '';
+        ctx.font = '10px monospace';
+        ctx.fillStyle = s.delta > 0 ? C.green : C.red;
+        ctx.fillText(sign+s.delta.toFixed(0)+'pp', cx, by-22);
+      }
+
+      // Label
+      ctx.font = '9px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'center';
+      const lines = s.label.split('\n');
+      lines.forEach((line, li) => {
+        ctx.fillText(line, cx, pad.top+chartH+15+li*12);
+      });
+
+      // Connector line to next bar
+      if (i < steps.length-1) {
+        const nextVal = steps[i+1].val;
+        const ny = pad.top+chartH-(nextVal/100)*chartH;
+        ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(cx+barW/2+2, by);
+        ctx.lineTo(pad.left+gap*(i+1)+gap/2-barW/2-2, i===0 ? pad.top+chartH-(nextVal/100)*chartH : ny);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  // ── 3. TX Efficiency ──
+  function renderEfficiency() {
+    const ctx = getCtx('chart-efficiency');
+    if (!ctx || !DATA) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 30, right: 30, bottom: 120, left: 65 };
+    const chartW = W-pad.left-pad.right, chartH = H-pad.top-pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const scenarios = DATA.scenarios;
+    const n = scenarios.length;
+    const gap = chartW / n;
+
+    const routers = [
+      { name: 'Naive Flood', color: C.red },
+      { name: 'Managed (7 hop)', color: C.yellow },
+      { name: 'Next-Hop (7 hop)', color: C.orange },
+      { name: 'System 5', color: C.cyan },
+    ];
+    const feat = 'half_duplex';
+
+    // Get max for log scale
+    let maxVal = 1;
+    for (const s of scenarios) {
+      for (const r of routers) {
+        const d = get(s.name, feat, r.name);
+        if (d && d.tx_per_del > 0 && isFinite(d.tx_per_del)) maxVal = Math.max(maxVal, d.tx_per_del);
+      }
+    }
+    const maxLog = Math.ceil(Math.log10(maxVal));
+
+    // Grid
+    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    for (let i = 0; i <= maxLog; i++) {
+      const y = pad.top + chartH - (i/maxLog)*chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+      ctx.fillText(fmtNum(Math.pow(10,i)), pad.left-8, y+3);
+    }
+
+    const barW = Math.min(gap/(routers.length+1)*0.9, 12);
+
+    for (let i = 0; i < n; i++) {
+      const cx = pad.left + gap*i + gap/2;
+      const groupW = barW*routers.length + (routers.length-1)*1;
+      const startX = cx - groupW/2;
+
+      for (let ri = 0; ri < routers.length; ri++) {
+        const d = get(scenarios[i].name, feat, routers[ri].name);
+        if (!d || !d.tx_per_del || !isFinite(d.tx_per_del) || d.tx_per_del <= 0) continue;
+        const bh = (Math.log10(d.tx_per_del)/maxLog)*chartH;
+        ctx.fillStyle = routers[ri].color;
+        ctx.globalAlpha = 0.8;
+        ctx.fillRect(startX+ri*(barW+1), pad.top+chartH-bh, barW, bh);
+      }
+      ctx.globalAlpha = 1;
+
+      // X label
+      const sn = scenarios[i].name.replace(/\s*\(.*/,'').substring(0,12);
+      ctx.save();
+      ctx.fillStyle = C.muted; ctx.font = '9px monospace'; ctx.textAlign = 'right';
+      ctx.translate(cx, pad.top+chartH+8); ctx.rotate(-Math.PI/4);
+      ctx.fillText(sn, 0, 0);
+      ctx.restore();
+    }
+
+    // Y label
+    ctx.save();
+    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('TX per delivered message (log)', 0, 0);
+    ctx.restore();
+
+    // Better arrow
+    ctx.strokeStyle = C.green; ctx.lineWidth = 2;
+    const ax = pad.left+30, ay1 = pad.top+10, ay2 = pad.top+45;
+    ctx.beginPath(); ctx.moveTo(ax,ay1); ctx.lineTo(ax,ay2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax-4,ay2-5); ctx.lineTo(ax,ay2); ctx.lineTo(ax+4,ay2-5); ctx.stroke();
+    ctx.fillStyle = C.green; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Better', ax, ay2+10);
+  }
+
+  // ── 4. Heatmap ──
+  function renderHeatmap() {
+    const ctx = getCtx('chart-heatmap');
+    if (!ctx || !DATA) return;
+    const W = ctx.W, H = ctx.H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const scenarios = DATA.scenarios;
+    const routers = ['Naive Flood', 'Managed (3 hop)', 'Managed (5 hop)', 'Managed (7 hop)', 'Next-Hop (7 hop)', 'System 5'];
+    const feat = 'half_duplex';
+
+    const labelW = 180, headerH = 60;
+    const cellW = Math.min((W-labelW-20)/routers.length, 100);
+    const cellH = Math.min((H-headerH-20)/scenarios.length, 24);
+
+    // Column headers
+    ctx.font = '9px monospace'; ctx.textAlign = 'center';
+    for (let ri = 0; ri < routers.length; ri++) {
+      const x = labelW + ri*cellW + cellW/2;
+      ctx.save();
+      ctx.fillStyle = C.dim;
+      ctx.translate(x, headerH-5);
+      ctx.rotate(-Math.PI/6);
+      ctx.fillText(routers[ri].replace('Managed','MF').replace(' Flood',''), 0, 0);
+      ctx.restore();
+    }
+
+    // Rows
+    for (let si = 0; si < scenarios.length; si++) {
+      const y = headerH + si*cellH;
+      const sn = scenarios[si].name.replace(/\s*\(.*/,'').substring(0,22);
+
+      // Row label
+      ctx.font = '9px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'right';
+      ctx.fillText(sn, labelW-8, y+cellH*0.7);
+
+      // Cells
+      for (let ri = 0; ri < routers.length; ri++) {
+        const x = labelW + ri*cellW;
+        const d = get(scenarios[si].name, feat, routers[ri]);
+        const val = d ? d.delivery : 0;
+
+        // Color
+        let color;
+        if (val >= 80) color = 'rgba(74,222,128,0.6)';      // green
+        else if (val >= 40) color = 'rgba(251,191,36,0.5)';  // yellow
+        else if (val > 0) color = 'rgba(248,113,113,0.5)';   // red
+        else color = 'rgba(153,27,27,0.4)';                   // dark red
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x+1, y+1, cellW-2, cellH-2);
+
+        // Value
+        ctx.font = '8px monospace';
+        ctx.fillStyle = val >= 40 ? '#1e293b' : '#e2e8f0';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(val)+'%', x+cellW/2, y+cellH*0.7);
+      }
+    }
+  }
+
+  // ── 5. Silencing Scatter ──
+  function renderSilencingScatter() {
+    const ctx = getCtx('chart-silencing-scatter');
+    if (!ctx || !DATA) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 30, right: 30, bottom: 50, left: 55 };
+    const chartW = W-pad.left-pad.right, chartH = H-pad.top-pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted;
+    // X axis: TX reduction %
+    ctx.textAlign = 'center';
+    for (let p = 0; p <= 60; p += 10) {
+      const x = pad.left + (p/60)*chartW;
+      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top+chartH); ctx.stroke();
+      ctx.fillText(p+'%', x, pad.top+chartH+15);
+    }
+    // Y axis: Delivery loss %
+    ctx.textAlign = 'right';
+    for (let p = 0; p <= 20; p += 5) {
+      const y = pad.top + (p/20)*chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+chartW, y); ctx.stroke();
+      ctx.fillText(p+'%', pad.left-5, y+3);
+    }
+
+    // Labels
+    ctx.save();
+    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('TX Reduction by Silencing', pad.left+chartW/2, H-5);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
+    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Delivery Loss', 0, 0);
+    ctx.restore();
+
+    // Sweet spot zone
+    ctx.fillStyle = 'rgba(74,222,128,0.06)';
+    ctx.fillRect(pad.left+chartW*0.3, pad.top, chartW*0.7, chartH*0.25);
+    ctx.font = '9px monospace'; ctx.fillStyle = 'rgba(74,222,128,0.3)';
+    ctx.textAlign = 'right';
+    ctx.fillText('Sweet Spot', pad.left+chartW-5, pad.top+15);
+
+    // Plot points
+    for (const s of DATA.scenarios) {
+      const s5hd = get(s.name, 'half_duplex', 'System 5');
+      const s5sil = get(s.name, 'hd+silencing', 'System 5');
+      if (!s5hd || !s5sil || s5hd.tx <= 0) continue;
+
+      const txReduction = Math.max(0, (1 - s5sil.tx / s5hd.tx) * 100);
+      const delLoss = Math.max(0, s5hd.delivery - s5sil.delivery);
+
+      const px = pad.left + (txReduction/60)*chartW;
+      const py = pad.top + (delLoss/20)*chartH;
+
+      // Dot
+      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2);
+      ctx.fillStyle = txReduction > 20 ? C.cyan : C.orange;
+      ctx.globalAlpha = 0.8;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Label
+      const sn = s.name.replace(/\s*\(.*/,'').substring(0,10);
+      ctx.font = '8px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'left';
+      ctx.fillText(sn, px+9, py+3);
+    }
+  }
+
+  // ── Filter buttons ──
+  document.querySelectorAll('#filter-scenario .filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#filter-scenario .filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRealityGap(btn.dataset.filter);
+    });
+  });
+
+  // ── Init ──
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
+  else load();
+
+  window.addEventListener('resize', () => { if (DATA) renderAll(); });
+})();
+</script>
+</body>
+</html>
