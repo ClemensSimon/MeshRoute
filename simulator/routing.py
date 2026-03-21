@@ -76,6 +76,10 @@ class NaiveFloodingRouter:
 
             current_node = network.nodes[current_id]
 
+            # Silenced nodes do NOT rebroadcast (but can still receive)
+            if current_node.silent and current_id != packet.src and current_id != packet.dst:
+                continue
+
             # Half-duplex: skip this rebroadcast if node is busy receiving
             if network.enable_half_duplex:
                 if not network.half_duplex.can_transmit(current_id, sim_time):
@@ -205,6 +209,10 @@ class ManagedFloodingRouter:
                 continue
 
             current_node = network.nodes[current_id]
+
+            # Silenced nodes do NOT rebroadcast (but can still receive)
+            if current_node.silent and current_id != packet.src and current_id != packet.dst:
+                continue
 
             # Half-duplex: skip rebroadcast if node is busy receiving
             if network.enable_half_duplex:
@@ -623,6 +631,11 @@ class System5Router:
                 continue
 
             current_node = network.nodes[current_id]
+
+            # Silenced nodes skip rebroadcast even in fallback flood
+            if current_node.silent and current_id != packet.src and current_id != packet.dst:
+                continue
+
             for neighbor_id, quality in current_node.neighbors.items():
                 if neighbor_id not in flood_nodes:
                     continue

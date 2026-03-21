@@ -34,7 +34,8 @@ class ScenarioConfig:
                  geohash_prefix=4, terrain="urban", asymmetry=0.0,
                  mobile_fraction=0.0, placement="random",
                  enable_duty_cycle=False, enable_collisions=False,
-                 enable_half_duplex=False):
+                 enable_half_duplex=False,
+                 enable_silencing=False, silence_fraction=0.6):
         self.name = name
         self.n_nodes = n_nodes
         self.area_size = area_size
@@ -50,6 +51,8 @@ class ScenarioConfig:
         self.enable_duty_cycle = enable_duty_cycle
         self.enable_collisions = enable_collisions
         self.enable_half_duplex = enable_half_duplex
+        self.enable_silencing = enable_silencing
+        self.silence_fraction = silence_fraction
 
 
 # Standard scenarios
@@ -302,6 +305,39 @@ SCENARIOS = [
         link_degradation=0.2,    # degraded links from weather/interference
         geohash_prefix=3,
     ),
+    # --- Bay Area with Node Silencing ---
+    ScenarioConfig(
+        name="Bay Area + Silencing (60% redundant muted)",
+        n_nodes=235,
+        area_size=50000,
+        lora_range=5000,
+        n_messages=200,
+        terrain="urban",
+        asymmetry=0.15,
+        placement="bay_area",
+        enable_half_duplex=True,
+        enable_collisions=True,
+        enable_silencing=True,     # the new feature
+        silence_fraction=0.6,     # 60% of redundant nodes silenced
+        geohash_prefix=3,
+    ),
+    ScenarioConfig(
+        name="Bay Area + Silencing + Stress",
+        n_nodes=235,
+        area_size=50000,
+        lora_range=5000,
+        n_messages=200,
+        terrain="urban",
+        asymmetry=0.15,
+        placement="bay_area",
+        enable_half_duplex=True,
+        enable_collisions=True,
+        enable_silencing=True,
+        silence_fraction=0.6,
+        node_kill_fraction=0.15,
+        link_degradation=0.2,
+        geohash_prefix=3,
+    ),
 ]
 
 
@@ -432,6 +468,11 @@ def build_network(config, seed=42):
             net.kill_node(nid)
         net.compute_routes()
         net.compute_nhs()
+
+    # Apply node silencing if configured
+    if getattr(config, 'enable_silencing', False):
+        fraction = getattr(config, 'silence_fraction', 0.6)
+        net.compute_silencing(silence_fraction=fraction)
 
     return net
 

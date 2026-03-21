@@ -47,6 +47,11 @@ class Node:
         self.terrain = "urban"  # terrain type at this node's location
         self.sf = 7  # spreading factor (7-12)
         self.airtime_used = 0.0  # total airtime in seconds
+        # Silencing
+        self.silent = False  # if True: node listens but does NOT rebroadcast/send OGMs
+        self.silence_until = 0.0  # sim_time when silence expires (rotation)
+        self.redundancy_score = 0.0  # 0=critical (only path), 1=fully redundant
+        self.silence_priority = 0.0  # higher = more likely to be silenced
         # Stats
         self.packets_sent = 0
         self.packets_forwarded = 0
@@ -921,6 +926,143 @@ class MeshNetwork:
 
             for nid in cluster.members:
                 self.nodes[nid].nhs = nhs
+
+    def compute_silencing(self, silence_fraction=0.6, rotation_interval=600.0):
+        """Compute which nodes should be silenced to reduce network noise.
+
+        Silenced nodes still listen (receive OGMs, accept direct messages)
+        but do NOT rebroadcast or send OGMs. The network still knows they exist.
+
+        Algorithm:
+        1. Compute redundancy score for each node (how replaceable it is)
+        2. Compute silence priority = redundancy × (1 - battery)
+        3. Silence the top N% of nodes by priority within each cluster
+        4. Never silence: border nodes, nodes on active routing paths,
+           nodes that are the only path to a neighbor
+
+        Args:
+            silence_fraction: target fraction of redundant nodes to silence (0-1)
+            rotation_interval: seconds between rotation cycles
+        """
+        for node in self.nodes.values():
+            if node.battery <= 0:
+                continue
+
+            # ── Step 1: Compute redundancy score ──
+            # A node is redundant if ALL its neighbors can also be reached
+            # by other nodes (i.e., removing this node doesn't disconnect anyone)
+
+            if len(node.neighbors) == 0:
+                node.redundancy_score = 0.0
+                node.silence_priority = 0.0
+                node.silent = False
+                continue
+
+            # Check redundancy based on actual path criticality:
+            # 1. How many of my neighbors have plenty of alternative connections?
+            # 2. Am I the ONLY bridge between two clusters? (critical border)
+            n_neighbors = len(node.neighbors)
+            n_redundant_neighbors = 0
+
+            for neighbor_id in node.neighbors:
+                neighbor = self.nodes.get(neighbor_id)
+                if not neighbor or neighbor.battery <= 0:
+                    n_redundant_neighbors += 1
+                    continue
+                # Does this neighbor have at least 2 other alive neighbors?
+                other_connections = sum(
+                    1 for nid in neighbor.neighbors
+                    if nid != node.id and nid in self.nodes
+                    and self.nodes[nid].battery > 0
+                )
+                if other_connections >= 2:
+                    n_redundant_neighbors += 1
+
+            node.redundancy_score = n_redundant_neighbors / n_neighbors
+
+            # Critical border check: penalize nodes that are rare bridges
+            if node.is_border and node.cluster_id is not None:
+                my_cid = node.cluster_id
+                cluster_obj = self.clusters.get(my_cid)
+                if cluster_obj:
+                    n_border_in_cluster = sum(
+                        1 for bid in cluster_obj.border_nodes
+                        if bid in self.nodes and self.nodes[bid].battery > 0
+                    )
+                    if n_border_in_cluster <= 3:
+                        # Very few border nodes — this one is critical
+                        node.redundancy_score *= 0.1
+                    elif n_border_in_cluster <= 6:
+                        node.redundancy_score *= 0.5
+
+            # ── Step 2: Compute silence priority ──
+            # Higher = more likely to be silenced
+            # Low battery → higher priority (save the battery!)
+            # High redundancy → higher priority (safe to silence)
+            battery_factor = 1.0 - node.battery_score()  # 0=full, 1=empty
+            node.silence_priority = node.redundancy_score * 0.6 + battery_factor * 0.4
+
+        # ── Step 3: Apply silencing per cluster ──
+        for cluster in self.clusters.values():
+            # Get alive, non-border members sorted by silence priority
+            candidates = []
+            for nid in cluster.members:
+                n = self.nodes[nid]
+                if n.battery <= 0:
+                    continue
+                if n.redundancy_score < 0.5:
+                    # Not redundant enough — keep active
+                    continue
+                candidates.append(n)
+
+            candidates.sort(key=lambda n: n.silence_priority, reverse=True)
+
+            # Silence the top fraction
+            n_to_silence = int(len(candidates) * silence_fraction)
+            for i, n in enumerate(candidates):
+                if i < n_to_silence:
+                    n.silent = True
+                    n.silence_until = self.sim_time + rotation_interval
+                else:
+                    n.silent = False
+
+    def rotate_silencing(self, silence_fraction=0.6, rotation_interval=600.0):
+        """Rotate which nodes are silenced (battery-fair scheduling).
+
+        Called periodically (every rotation_interval). Re-evaluates
+        redundancy scores (nodes may have moved, died, or changed load)
+        and rotates the silent set so batteries drain evenly.
+        """
+        # Wake up all expired silences
+        for node in self.nodes.values():
+            if node.silent and self.sim_time >= node.silence_until:
+                node.silent = False
+
+        # Recompute with fresh data
+        self.compute_silencing(silence_fraction, rotation_interval)
+
+    def get_silencing_stats(self):
+        """Return statistics about current silencing state."""
+        alive = [n for n in self.nodes.values() if n.battery > 0]
+        silent = [n for n in alive if n.silent]
+        active = [n for n in alive if not n.silent]
+        return {
+            "alive": len(alive),
+            "silent": len(silent),
+            "active": len(active),
+            "silence_pct": round(len(silent) / max(len(alive), 1) * 100, 1),
+            "avg_redundancy": round(
+                sum(n.redundancy_score for n in alive) / max(len(alive), 1), 2
+            ),
+            "silent_by_tier": {
+                tier: sum(1 for n in silent if n.node_tier == tier)
+                for tier in set(n.node_tier for n in silent)
+            } if silent else {},
+            "active_by_tier": {
+                tier: sum(1 for n in active if n.node_tier == tier)
+                for tier in set(n.node_tier for n in active)
+            },
+        }
 
     def get_link(self, a_id, b_id):
         """Get the link between two nodes."""
