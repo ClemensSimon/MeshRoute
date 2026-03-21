@@ -325,3 +325,71 @@ class CollisionModel:
     def reset(self):
         """Reset collision state."""
         self._active_tx.clear()
+
+
+class HalfDuplexRadio:
+    """Models half-duplex LoRa radio constraint.
+
+    A node cannot transmit while receiving and vice versa.
+    Tracks per-node radio state (IDLE, TX, RX) over simulated time.
+    When a node is blocked (receiving other transmissions), its TX
+    is delayed or dropped, modeling the real collision cascade problem
+    seen in high-elevation networks like Bay Area Mesh.
+    """
+
+    STATE_IDLE = 0
+    STATE_TX = 1
+    STATE_RX = 2
+
+    def __init__(self):
+        # node_id -> (state, busy_until_time)
+        self._radio_state = {}
+        self.tx_blocked_count = 0  # times a node wanted to TX but was RX-ing
+        self.rx_blocked_count = 0  # times a node missed RX because TX-ing
+
+    def get_state(self, node_id, current_time):
+        """Get current radio state for a node."""
+        if node_id not in self._radio_state:
+            return self.STATE_IDLE
+        state, busy_until = self._radio_state[node_id]
+        if current_time >= busy_until:
+            return self.STATE_IDLE
+        return state
+
+    def can_transmit(self, node_id, current_time):
+        """Check if a node can transmit (not currently receiving)."""
+        state = self.get_state(node_id, current_time)
+        if state == self.STATE_RX:
+            self.tx_blocked_count += 1
+            return False
+        if state == self.STATE_TX:
+            self.tx_blocked_count += 1
+            return False
+        return True
+
+    def can_receive(self, node_id, current_time):
+        """Check if a node can receive (not currently transmitting)."""
+        state = self.get_state(node_id, current_time)
+        if state == self.STATE_TX:
+            self.rx_blocked_count += 1
+            return False
+        return True
+
+    def start_tx(self, node_id, current_time, duration):
+        """Mark a node as transmitting for duration seconds."""
+        self._radio_state[node_id] = (self.STATE_TX, current_time + duration)
+
+    def start_rx(self, node_id, current_time, duration):
+        """Mark a node as receiving for duration seconds.
+
+        Only marks RX if the node is currently IDLE (TX takes priority).
+        """
+        state = self.get_state(node_id, current_time)
+        if state == self.STATE_IDLE:
+            self._radio_state[node_id] = (self.STATE_RX, current_time + duration)
+
+    def reset(self):
+        """Reset all radio state."""
+        self._radio_state.clear()
+        self.tx_blocked_count = 0
+        self.rx_blocked_count = 0

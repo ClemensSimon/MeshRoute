@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshRoute — How System 5 Works (Step by Step)</title>
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .hw-hero {
+    min-height: 40vh; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 6rem 2rem 3rem; position: relative;
+  }
+  .hw-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hw-hero .hero-tag { opacity: 1; animation: none; }
+  .hw-hero .hero-title { opacity: 1; animation: none; font-size: clamp(2rem, 5vw, 3.5rem); }
+  .hw-hero .hero-sub { opacity: 1; animation: none; max-width: 700px; margin: 0.5rem auto 0; }
+
+  .hw-nav {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem;
+  }
+  .hw-nav a {
+    font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyan);
+    text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid var(--cyan-dim);
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .hw-nav a:hover { background: var(--cyan-glow); }
+
+  .hw { max-width: 900px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+  .hw h2 {
+    font-family: var(--font-display); font-size: 1.8rem; font-weight: 700;
+    margin: 3rem 0 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+  }
+  .hw h3 {
+    font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+    color: var(--cyan); margin: 2rem 0 0.75rem; letter-spacing: 0.03em;
+  }
+  .hw h4 {
+    font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+    color: var(--teal); margin: 1.5rem 0 0.5rem;
+  }
+  .hw p, .hw li { color: var(--text-dim); font-size: 1rem; line-height: 1.8; }
+  .hw p { margin-bottom: 1rem; }
+  .hw ul, .hw ol { padding-left: 1.5rem; margin: 0.5rem 0 1rem; }
+  .hw li { margin-bottom: 0.4rem; }
+  .hw strong { color: var(--text); }
+  .hw em { color: var(--text-muted); font-style: italic; }
+
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2rem; height: 2rem; border-radius: 50%;
+    background: var(--cyan-dim); color: var(--bg-deep);
+    font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem;
+    margin-right: 0.5rem; flex-shrink: 0;
+  }
+  .step-title { display: flex; align-items: center; margin: 2rem 0 0.5rem; }
+  .step-title h3 { margin: 0; }
+
+  .formula-box {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem 1.5rem; margin: 1rem 0; font-family: var(--font-mono);
+    font-size: 1.1rem; color: var(--cyan); text-align: center; overflow-x: auto;
+  }
+  .formula-box .label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem; }
+
+  .info-box {
+    background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
+  }
+  .info-box h5 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--cyan); margin-bottom: 0.3rem; }
+  .info-box p { font-size: 0.9rem; margin: 0; }
+
+  .warn-box {
+    background: rgba(251,146,60,0.04); border: 1px solid var(--orange-dim);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
+  }
+  .warn-box h5 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--orange); margin-bottom: 0.3rem; }
+  .warn-box p { font-size: 0.9rem; margin: 0; }
+
+  .compare-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+  .compare-table th {
+    text-align: left; padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+    border-bottom: 1px solid var(--border); font-weight: 500;
+  }
+  .compare-table td {
+    padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(42,54,84,0.5);
+    color: var(--text-dim);
+  }
+  .compare-table tr:hover td { background: rgba(34,211,238,0.03); }
+  .compare-table .highlight { color: var(--cyan); font-weight: 600; }
+  .compare-table .bad { color: var(--orange); }
+
+  .diagram {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.5rem; margin: 1.5rem 0; font-family: var(--font-mono);
+    font-size: 0.85rem; line-height: 1.8; color: var(--text-dim); overflow-x: auto;
+    white-space: pre;
+  }
+  .diagram .node { color: var(--cyan); font-weight: 600; }
+  .diagram .path { color: var(--green); }
+  .diagram .flood { color: var(--orange); }
+  .diagram .comment { color: var(--text-muted); }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.8rem;
+    color: var(--cyan); text-decoration: none;
+    padding: 0.4rem 1rem; border: 1px solid var(--cyan-dim);
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .back-link:hover { background: var(--cyan-glow); }
+
+  .toc { list-style: none; padding: 0; columns: 2; column-gap: 2rem; }
+  .toc li { margin-bottom: 0.3rem; }
+  .toc a { color: var(--cyan); text-decoration: none; font-family: var(--font-mono); font-size: 0.85rem; }
+  .toc a:hover { text-decoration: underline; }
+  @media (max-width: 600px) { .toc { columns: 1; } }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul id="nav-menu">
+      <li><a href="index.html">Presentation</a></li>
+      <li><a href="simulator.html" style="color:var(--cyan)">Live Simulator</a></li>
+      <li><a href="how-it-works.html" class="active">How It Works</a></li>
+      <li><a href="summary.html">Summary</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hw-hero">
+  <div>
+    <div class="hero-tag">Deep Dive — Every Layer Explained</div>
+    <h1 class="hero-title">How System 5 <span class="accent">Works</span></h1>
+    <p class="hero-sub">A complete technical walkthrough of MeshRoute's geo-clustered, multi-path, load-balanced routing protocol — from boot to delivery.</p>
+    <div class="hw-nav">
+      <a href="#overview">Overview</a>
+      <a href="#step1">1. Boot</a>
+      <a href="#step2">2. Neighbors</a>
+      <a href="#step3">3. Clusters</a>
+      <a href="#step4">4. Routes</a>
+      <a href="#step5">5. Routing</a>
+      <a href="#step6">6. QoS</a>
+      <a href="#step7">7. Fallback</a>
+      <a href="#step8">8. Maintenance</a>
+      <a href="#halfduplex">Half-Duplex</a>
+      <a href="#memory">Memory</a>
+      <a href="#bayarea">Bay Area</a>
+    </div>
+  </div>
+</div>
+
+<div class="hw">
+
+<!-- ============================================================ -->
+<h2 id="overview">The Big Picture</h2>
+
+<p>Every routing protocol answers one question: <strong>when node A wants to send a message to node Z, which intermediate nodes should carry it?</strong></p>
+
+<p>Current Meshtastic uses <strong>managed flooding</strong>: every node rebroadcasts every message, hoping it reaches the destination. This works for small networks but creates a bandwidth explosion at scale — 100 nodes means ~100 transmissions per message.</p>
+
+<p>System 5 takes a fundamentally different approach: <strong>nodes self-organize into geographic clusters, discover multi-hop routes, and send each message along a specific computed path.</strong> The cost per message is proportional to the number of hops, not the number of nodes.</p>
+
+<div class="diagram"><span class="flood">Managed Flooding (Meshtastic today)</span>
+A sends → <span class="flood">every node rebroadcasts</span> → Z receives (eventually)
+Cost: O(n) transmissions per message — scales with network size
+
+<span class="path">System 5 (MeshRoute proposal)</span>
+A sends → <span class="path">B → D → G → Z</span> (computed path)
+Cost: O(hops) transmissions per message — scales with distance, not size</div>
+
+<p>The following sections explain every step in detail.</p>
+
+<!-- ============================================================ -->
+<h2 id="step1">Step 1: Boot — What Happens When a Node Turns On</h2>
+
+<p>When a System 5 node powers up, it doesn't know anything about the network yet. Here's the exact sequence:</p>
+
+<ol>
+  <li><strong>Hardware init</strong>: LoRa radio starts listening on the configured frequency (EU 868MHz). GPS module begins acquiring satellites (if available).</li>
+  <li><strong>Position acquisition</strong>: The node tries three methods in order:
+    <ul>
+      <li><strong>Real GPS</strong> — best option, accurate to ~5m (T-Beam, RAK4631 with GPS module)</li>
+      <li><strong>RSSI triangulation</strong> — if no GPS but 3+ neighbors with known positions, estimate position from signal strength</li>
+      <li><strong>Cluster inheritance</strong> — if neither works, adopt the cluster ID of the strongest neighbor</li>
+    </ul>
+  </li>
+  <li><strong>Geohash computation</strong>: GPS coordinates are converted to a <strong>geohash string</strong> (e.g., <code>"u33d"</code>). The first 4 characters define the node's cluster. Nodes with the same 4-char prefix are in the same cluster.</li>
+  <li><strong>OGM broadcast</strong>: The node sends its first <strong>Originator Message (OGM)</strong> — a small packet announcing: "I exist, here's my position, battery level, and cluster ID."</li>
+</ol>
+
+<div class="info-box">
+  <h5>What is a Geohash?</h5>
+  <p>A geohash encodes a GPS coordinate into a string where <strong>shared prefixes mean geographic proximity</strong>. Two nodes with geohash <code>"u33d8"</code> and <code>"u33d9"</code> share the prefix <code>"u33d"</code> — they're in the same cluster. A node with <code>"u33e1"</code> is in a neighboring cluster. At 4-character precision, each cluster covers roughly <strong>40km × 20km</strong>.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="step2">Step 2: Neighbor Discovery via OGM</h2>
+
+<p>Every <strong>30 seconds</strong>, each node broadcasts an OGM (Originator Message). This is a lightweight packet (~20 bytes) containing:</p>
+
+<table class="compare-table">
+  <tr><th>Field</th><th>Size</th><th>Purpose</th></tr>
+  <tr><td>Node ID</td><td>4 bytes</td><td>Unique identifier (derived from hardware MAC)</td></tr>
+  <tr><td>Position</td><td>8 bytes</td><td>Latitude + longitude (or cluster ID if no GPS)</td></tr>
+  <tr><td>Battery</td><td>1 byte</td><td>Current charge level (0-100%)</td></tr>
+  <tr><td>Cluster ID</td><td>4 bytes</td><td>Geohash prefix of this node's cluster</td></tr>
+  <tr><td>Neighbor count</td><td>1 byte</td><td>How many neighbors this node currently has</td></tr>
+  <tr><td>NHS</td><td>1 byte</td><td>Network Health Score of this node's cluster</td></tr>
+</table>
+
+<p>When a node receives an OGM, it:</p>
+<ol>
+  <li><strong>Measures RSSI/SNR</strong> of the received signal → determines link quality to the sender</li>
+  <li><strong>Adds/updates the sender in its neighbor table</strong> (max 16 neighbors per node)</li>
+  <li><strong>Notes the cluster ID</strong> — if the sender is in a different cluster, this node might be a <strong>border node</strong></li>
+</ol>
+
+<div class="info-box">
+  <h5>Why max 16 neighbors?</h5>
+  <p>Memory constraint. Each neighbor entry costs ~80 bytes. On nRF52 devices with 256KB RAM, 16 neighbors × 80 bytes = 1,280 bytes — affordable. If a node hears more than 16 neighbors, it evicts the one with the lowest link quality. This is fine because routing only needs the <strong>best</strong> neighbors, not all of them.</p>
+</div>
+
+<h3>Link Quality Is Asymmetric</h3>
+
+<p>A critical detail: <strong>the link from A→B can have different quality than B→A.</strong> A mountaintop node with clear line-of-sight might send to a valley node with quality 0.95, but the valley node (surrounded by buildings) can only reach back with quality 0.3. System 5 tracks both directions independently.</p>
+
+<div class="diagram"><span class="node">Mountain (600m, free-space)</span>  ——— quality 0.95 ———→  <span class="node">Valley (50m, urban)</span>
+<span class="node">Mountain</span>  ←—— quality 0.30 ——————  <span class="node">Valley</span>
+
+System 5 knows both values. When routing TO the valley, it uses the 0.95 link.
+When routing FROM the valley, it finds a different path (maybe through a hill node).</div>
+
+<!-- ============================================================ -->
+<h2 id="step3">Step 3: Geo-Clustering — Self-Organizing Geography</h2>
+
+<p>After a few OGM rounds (~1-2 minutes), nodes have discovered their neighbors. Now the network self-organizes into <strong>geographic clusters</strong>.</p>
+
+<h3>How Clustering Works</h3>
+
+<p>There is no central coordinator. Each node independently:</p>
+<ol>
+  <li>Computes its geohash from its GPS position</li>
+  <li>Takes the first 4 characters as its cluster ID</li>
+  <li>Nodes with the same 4-char prefix are automatically in the same cluster</li>
+</ol>
+
+<p>This is completely decentralized — no node needs to "know" the full network. If you turn on a new node in Munich, it computes its geohash (<code>"u281"</code>), and it's automatically part of the Munich cluster. It doesn't need permission or coordination.</p>
+
+<h3>Border Nodes — The Bridges Between Clusters</h3>
+
+<p>A <strong>border node</strong> is any node that has neighbors in a <strong>different cluster</strong>. Border nodes are critical — they're the bridges for inter-cluster routing.</p>
+
+<div class="diagram">    Cluster "u33d"              Cluster "u33e"
+   ┌──────────────┐          ┌──────────────┐
+   │  A   B   C   │          │  F   G   H   │
+   │      D       │          │      I       │
+   │         <span class="node">[E]</span> ─┼── link ──┼─ <span class="node">[J]</span>         │
+   └──────────────┘          └──────────────┘
+
+<span class="node">[E]</span> and <span class="node">[J]</span> are <span class="path">border nodes</span> — they have neighbors across cluster boundaries.
+To send from A to H: A → D → <span class="node">E</span> → <span class="node">J</span> → G → H
+                      (within u33d) (bridge) (within u33e)</div>
+
+<p>System 5 limits bridge links to <strong>2 per cluster pair</strong> to prevent route explosion. The two strongest links between each pair of adjacent clusters are selected.</p>
+
+<h3>Why This Scales</h3>
+
+<p>Each node only needs to know:</p>
+<ul>
+  <li><strong>Full topology within its own cluster</strong> (direct neighbor knowledge, ~20-50 nodes)</li>
+  <li><strong>Border nodes to adjacent clusters</strong> (2 per pair × ~8 neighbor clusters = 16 nodes)</li>
+  <li><strong>Cluster-level routes</strong> for distant clusters (abstract — "to reach cluster u33e, go through border node E")</li>
+</ul>
+
+<p>A node in San Francisco doesn't need to know every individual node in Oakland. It just needs to know: "to reach Oakland, route through border node #47 on the Bay Bridge ridge."</p>
+
+<!-- ============================================================ -->
+<h2 id="step4">Step 4: Route Computation — Finding Multiple Paths</h2>
+
+<p>Once clusters and border nodes are known, each node computes <strong>up to 5 routes</strong> to every destination it might want to reach.</p>
+
+<h3>The Algorithm: BFS with Progressive Exclusion</h3>
+
+<ol>
+  <li><strong>Find the shortest path</strong> via Breadth-First Search (BFS) from source to destination</li>
+  <li><strong>Record the intermediate nodes</strong> of that path</li>
+  <li><strong>Exclude those intermediates</strong> and find the next shortest path (forcing a different route)</li>
+  <li>Repeat up to 5 times — each new path must use at least one different intermediate node</li>
+</ol>
+
+<div class="diagram">Route computation: A → Z
+
+Path 1 (BFS):      A → <span class="path">B → D → G</span> → Z     (shortest, quality 0.92)
+  Exclude: B, D, G
+
+Path 2 (BFS\{B,D,G}): A → <span class="path">C → F → H</span> → Z  (second best, quality 0.85)
+  Exclude: B, D, G, C, F, H
+
+Path 3 (BFS\{...}): A → <span class="path">E → J → K</span> → Z     (third, quality 0.71)
+
+Result: 3 cached routes with independent failure domains.</div>
+
+<h3>Route Quality Computation</h3>
+
+<p>For each route, quality is the <strong>product of all link qualities along the path</strong>:</p>
+
+<div class="formula-box">
+  <span class="label">Route Quality</span>
+  Q(route) = q(A→B) × q(B→D) × q(D→G) × q(G→Z)
+</div>
+
+<p>If any single link has quality 0.5, the overall route quality drops significantly. This naturally penalizes long paths and paths with weak links.</p>
+
+<h3>Lazy vs. Eager Computation</h3>
+
+<ul>
+  <li><strong>Small networks (&lt;200 nodes)</strong>: Routes are pre-computed for all pairs at startup (<em>eager mode</em>)</li>
+  <li><strong>Large networks (&gt;200 nodes)</strong>: Routes are computed on-demand when a message needs to be sent (<em>lazy mode</em>). Once computed, they're cached.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="step5">Step 5: Sending a Message — Weighted Route Selection</h2>
+
+<p>When node A wants to send a message to node Z, this is the exact decision process:</p>
+
+<div class="step-title"><span class="step-num">1</span><h3>Check QoS Gate</h3></div>
+<p>Is this message's priority high enough for the current network health? (See <a href="#step6">Step 6</a>)</p>
+
+<div class="step-title"><span class="step-num">2</span><h3>Get Cached Routes</h3></div>
+<p>Look up all cached routes to destination Z. Typically 2-5 routes.</p>
+
+<div class="step-title"><span class="step-num">3</span><h3>Filter Dead Routes</h3></div>
+<p>Remove routes where any intermediate node has died (battery = 0) or any link is broken.</p>
+
+<div class="step-title"><span class="step-num">4</span><h3>Compute Weights</h3></div>
+<p>For each surviving route, compute a weight that balances three factors:</p>
+
+<div class="formula-box">
+  <span class="label">Route Weight (the core formula)</span>
+  W(r) = 0.4 × Q(r) + 0.35 × (1 − Load(r)) + 0.25 × Batt(r)
+</div>
+
+<table class="compare-table">
+  <tr><th>Factor</th><th>Weight</th><th>What It Measures</th><th>Why It Matters</th></tr>
+  <tr>
+    <td><strong>Q(r)</strong> — Quality</td><td class="highlight">0.4 (40%)</td>
+    <td>Product of all link qualities along the path</td>
+    <td>Higher = fewer packet losses, fewer retries needed</td>
+  </tr>
+  <tr>
+    <td><strong>1−Load(r)</strong> — Spare capacity</td><td class="highlight">0.35 (35%)</td>
+    <td>Average queue utilization of intermediate nodes (inverted)</td>
+    <td>Avoid routing through congested nodes</td>
+  </tr>
+  <tr>
+    <td><strong>Batt(r)</strong> — Battery</td><td class="highlight">0.25 (25%)</td>
+    <td>Minimum battery level across all nodes in the path</td>
+    <td>Don't drain low-battery nodes; they might be solar and need reserves</td>
+  </tr>
+</table>
+
+<div class="step-title"><span class="step-num">5</span><h3>Proportional Selection (Not Best-Only!)</h3></div>
+
+<p>This is a critical design choice. System 5 does <strong>not</strong> always pick the best route. It selects routes <strong>probabilistically, proportional to their weight</strong>:</p>
+
+<div class="formula-box">
+  <span class="label">Selection Probability</span>
+  P(route r) = W(r) / Σ W(all routes)
+</div>
+
+<p><strong>Example</strong>: If route 1 has weight 0.8 and route 2 has weight 0.4:</p>
+<ul>
+  <li>Route 1 is selected ~67% of the time (0.8 / 1.2)</li>
+  <li>Route 2 is selected ~33% of the time (0.4 / 1.2)</li>
+</ul>
+
+<p>This keeps secondary routes "warm" — traffic occasionally flows through them, so the network knows they still work. If route 1 fails, route 2 is immediately available with recent quality data.</p>
+
+<div class="step-title"><span class="step-num">6</span><h3>Hop-by-Hop Forwarding</h3></div>
+
+<p>The message is sent along the selected path, one hop at a time:</p>
+
+<ol>
+  <li>A sends to B (first hop in the path)</li>
+  <li>If B receives it → B forwards to D (next hop)</li>
+  <li>If B doesn't receive it → A retries (up to 3 times for good links, 5 for poor links)</li>
+  <li>If all retries fail → try the next cached route (up to 5 route attempts)</li>
+  <li>If all routes fail → fall back to <a href="#step7">scoped cluster flooding</a></li>
+</ol>
+
+<div class="info-box">
+  <h5>Adaptive Retries</h5>
+  <p>Links with quality &gt; 0.5 get <strong>3 retries</strong> (likely to succeed quickly). Links with quality ≤ 0.5 get <strong>5 retries</strong> (need more attempts). This balances delivery probability against airtime cost.</p>
+</div>
+
+<h3>Backpressure — Automatic Congestion Avoidance</h3>
+
+<p>When an intermediate node's queue is filling up, System 5 applies <strong>gradual backpressure</strong>:</p>
+
+<table class="compare-table">
+  <tr><th>Queue Load</th><th>Action</th></tr>
+  <tr><td>&lt; 80%</td><td>Normal operation — route weight unaffected</td></tr>
+  <tr><td>80–95%</td><td class="bad">Route weight penalized (× 0.8–0.95) — traffic shifts to alternatives</td></tr>
+  <tr><td>&gt; 95%</td><td class="bad">Route fully blocked — no new traffic routed through this node</td></tr>
+</table>
+
+<p>This prevents cascading overload: when a node starts getting congested, traffic naturally redistributes to other paths <strong>before</strong> the node drops packets.</p>
+
+<!-- ============================================================ -->
+<h2 id="step6">Step 6: QoS — Priority Under Pressure</h2>
+
+<p>Not all messages are equal. System 5 uses a <strong>Network Health Score (NHS)</strong> per cluster to throttle low-priority traffic when the network is stressed.</p>
+
+<h3>NHS Calculation</h3>
+<p>NHS is a value from 0.0 to 1.0 representing the cluster's health, based on:</p>
+<ul>
+  <li>Average link quality across all links in the cluster</li>
+  <li>Number of active (alive) nodes vs. expected nodes</li>
+  <li>Average queue utilization of cluster members</li>
+</ul>
+
+<h3>Priority Gating</h3>
+
+<table class="compare-table">
+  <tr><th>NHS Range</th><th>Network State</th><th>Allowed Priorities</th><th>Example</th></tr>
+  <tr><td class="highlight">0.8 – 1.0</td><td>Healthy</td><td>All (0–7)</td><td>Everything gets through</td></tr>
+  <tr><td>0.6 – 0.8</td><td>Moderate</td><td>0–5 only</td><td>Low-priority telemetry throttled</td></tr>
+  <tr><td class="bad">0.4 – 0.6</td><td>Degraded</td><td>0–3 only</td><td>Only important messages</td></tr>
+  <tr><td class="bad">0.2 – 0.4</td><td>Critical</td><td>0–1 only</td><td>Emergency/SOS only</td></tr>
+  <tr><td class="bad">&lt; 0.2</td><td>Collapsed</td><td>0 only</td><td>SOS messages only</td></tr>
+</table>
+
+<p>Priority 0 = SOS/Emergency — <strong>always gets through</strong>, regardless of network state. This ensures that in a disaster scenario, critical messages are never blocked by routine telemetry.</p>
+
+<!-- ============================================================ -->
+<h2 id="step7">Step 7: Fallback — When All Routes Fail</h2>
+
+<p>If all 5 cached routes fail (after retries on each), System 5 doesn't give up. It falls back to <strong>scoped cluster flooding</strong> — a targeted mini-flood along the corridor between source and destination.</p>
+
+<h3>How Scoped Flooding Works</h3>
+
+<ol>
+  <li><strong>Find the cluster-level path</strong>: BFS on the cluster adjacency graph from source cluster to destination cluster</li>
+  <li><strong>Define the corridor</strong>: Source cluster + destination cluster + all border nodes along the cluster path</li>
+  <li><strong>Flood only within the corridor</strong>: Message is broadcast only to nodes in the corridor — not the entire network</li>
+</ol>
+
+<div class="diagram">Full network (flooding would touch all 5 clusters):
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│ C1  │──│ C2  │──│ C3  │──│ C4  │──│ C5  │
+└─────┘  └─────┘  └─────┘  └─────┘  └─────┘
+
+Source in C1, destination in C4.
+Cluster path: C1 → C2 → C3 → C4
+
+<span class="path">Scoped flood corridor (System 5 fallback):</span>
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│<span class="path"> C1 </span> │──│ <span class="node">B2</span>  │──│ <span class="node">B3</span>  │──│<span class="path"> C4 </span> │   C5 is NOT flooded
+└─────┘  └─────┘  └─────┘  └─────┘
+
+<span class="path">C1</span> and <span class="path">C4</span>: full cluster flood (all members)
+<span class="node">B2</span> and <span class="node">B3</span>: only border nodes + their immediate neighbors</div>
+
+<p>This is dramatically cheaper than full-network flooding. In a 500-node network with 10 clusters, a full flood touches all 500 nodes. A scoped corridor flood touches ~100 nodes (2 full clusters + border nodes).</p>
+
+<div class="warn-box">
+  <h5>Known Limitation</h5>
+  <p>When the corridor flood triggers frequently (as in the Bay Area half-duplex scenario), it can still generate high TX counts. This is the #1 optimization target: try more alternative directed routes before triggering the corridor flood.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="step8">Step 8: Self-Maintenance — Keeping Routes Fresh</h2>
+
+<p>Networks change constantly: nodes move, batteries drain, links degrade. System 5 maintains itself through several mechanisms:</p>
+
+<h3>Route Quality Decay (Pheromone Model)</h3>
+<p>Inspired by ant colony optimization: every 30 seconds, all cached route qualities decay by 5%:</p>
+
+<div class="formula-box">
+  <span class="label">Quality Decay (every 30s)</span>
+  Q(route) = Q(route) × 0.95
+</div>
+
+<p>Routes that are actually used get their quality <strong>refreshed</strong> from real link measurements. Routes that are never used gradually fade to zero and are eventually replaced. This ensures the routing table always reflects <strong>current</strong> network conditions, not stale historical data.</p>
+
+<h3>Route Feedback</h3>
+<p>After each message delivery attempt:</p>
+<ul>
+  <li><strong>Success</strong>: Route quality boosted by 5% (capped at 1.0). Fail count reset to 0.</li>
+  <li><strong>Failure</strong>: Route quality halved. Fail count incremented. After 3 failures, route is excluded from selection until refreshed by the next OGM round.</li>
+</ul>
+
+<h3>Neighbor Eviction</h3>
+<p>When a node discovers a new neighbor but its table is full (16 entries), it evicts the neighbor with the lowest link quality. This ensures the routing table always contains the <strong>best available</strong> connections.</p>
+
+<h3>Dynamic Hop Limit</h3>
+<p>Unlike Meshtastic's fixed 3-7 hop limit, System 5 uses a dynamic limit that scales with network size:</p>
+
+<div class="formula-box">
+  <span class="label">Dynamic Max Hops</span>
+  max_hops = clamp(√n × 3, 15, 40)
+</div>
+
+<p>For a 100-node network: max_hops = √100 × 3 = 30. For a 1000-node network: max_hops = 40 (capped). This allows messages to traverse large networks without artificial limits, while preventing infinite loops.</p>
+
+<!-- ============================================================ -->
+<h2 id="halfduplex">The Half-Duplex Problem (Bay Area Discovery)</h2>
+
+<p>This is the single most important real-world constraint that simulators typically ignore. LoRa radios are <strong>half-duplex</strong>: a node <strong>cannot transmit while it is receiving</strong>.</p>
+
+<h3>Why This Matters for Flooding</h3>
+
+<p>Consider a mountaintop router at 2000 ft elevation that can hear 100 nodes. When a message floods through the network:</p>
+
+<ol>
+  <li>Node A sends a message. The mountaintop hears it (now in RX state).</li>
+  <li>10 rooftop nodes near A also hear it and rebroadcast simultaneously.</li>
+  <li>The mountaintop is <strong>still receiving</strong> those 10 rebroadcasts — it <strong>cannot transmit</strong>.</li>
+  <li>4 long-range router nodes also rebroadcast. The mountaintop is still stuck in RX.</li>
+  <li>By the time the mountaintop can transmit, the managed flooding algorithm's suppression timer has expired — it either rebroadcasts (causing more collisions) or suppresses (message dies).</li>
+</ol>
+
+<p>Result: 5% actual utilization becomes <strong>50% channel utilization</strong> at the mountaintop, and messages fail to propagate beyond the first hop.</p>
+
+<h3>Why System 5 Survives Half-Duplex</h3>
+
+<p>With directed routing, the mountaintop node receives <strong>one targeted packet</strong> (not 14 simultaneous rebroadcasts). It processes it, waits for a clear TX window, and forwards to the next hop. The radio state machine is simple:</p>
+
+<div class="diagram">Managed Flooding at mountaintop:
+  RX(A) → RX(B) → RX(C) → ... → RX(N) → <span class="bad">TX window? ALL BLOCKED</span>
+  Duration: 10-20 seconds of continuous RX → message dies
+
+System 5 directed routing:
+  RX(packet for us) → <span class="path">TX(forward to next hop)</span> → IDLE
+  Duration: ~2 seconds total → message continues</div>
+
+<h3>Simulation Results</h3>
+
+<p>We built a Bay Area-style simulation with 235 nodes in 3 elevation tiers and half-duplex radio modeling. The results confirm the real-world observations:</p>
+
+<table class="compare-table">
+  <tr><th>Scenario</th><th>Router</th><th>Delivery</th><th>Total TX</th></tr>
+  <tr><td rowspan="2">Bay Area <strong>without</strong> half-duplex</td>
+    <td>Managed Flood</td><td>87.5%</td><td>908,785</td></tr>
+  <tr><td class="highlight">System 5</td><td class="highlight">80.5%</td><td class="highlight">47,094</td></tr>
+  <tr><td rowspan="2">Bay Area <strong>with</strong> half-duplex</td>
+    <td>Managed Flood</td><td class="bad">6.0%</td><td>6,752</td></tr>
+  <tr><td class="highlight">System 5</td><td class="highlight">77.5%</td><td>540,780</td></tr>
+</table>
+
+<p>Half-duplex collapses flooding from 87.5% → 6% delivery. System 5 holds at 77.5%. <a href="simulator.html">Try the Bay Area scenario in the live simulator →</a></p>
+
+<!-- ============================================================ -->
+<h2 id="memory">Memory Footprint — Can This Run on nRF52?</h2>
+
+<p>Real-world mesh devices have tight memory constraints. The nRF52840 (used in RAK4631 solar routers) has 256KB RAM, with ~64KB available after BLE and LoRa stacks.</p>
+
+<h3>Data Structures</h3>
+
+<table class="compare-table">
+  <tr><th>Structure</th><th>Size</th><th>Count</th><th>Total</th></tr>
+  <tr><td>Neighbor entry</td><td>~80 bytes</td><td>16 max</td><td>1,280 bytes</td></tr>
+  <tr><td>Route entry (per destination)</td><td>~410 bytes</td><td>5 routes × N destinations</td><td>varies</td></tr>
+  <tr><td>Cluster metadata</td><td>~100 bytes</td><td>8 clusters</td><td>800 bytes</td></tr>
+  <tr><td>Node own state</td><td>~100 bytes</td><td>1</td><td>100 bytes</td></tr>
+</table>
+
+<h3>Scaling with Network Size</h3>
+
+<table class="compare-table">
+  <tr><th>Network Size</th><th>Destinations Tracked</th><th>Routing Memory</th><th>Fits nRF52?</th></tr>
+  <tr><td>20 nodes (local)</td><td>20</td><td>~10 KB</td><td class="highlight">Yes</td></tr>
+  <tr><td>100 nodes (city)</td><td>100</td><td>~43 KB</td><td class="highlight">Yes (tight)</td></tr>
+  <tr><td>500 nodes (regional)</td><td>~70 (cluster view)</td><td>~30 KB</td><td class="highlight">Yes</td></tr>
+  <tr><td>1000 nodes</td><td>~70 (cluster view)</td><td>~30 KB</td><td class="highlight">Yes</td></tr>
+  <tr><td>10,000 nodes</td><td>~200 (cluster + borders)</td><td>~84 KB</td><td class="bad">Needs reduced params</td></tr>
+</table>
+
+<p>The key insight: <strong>geo-clustering means a node only tracks its own cluster + border routes.</strong> A 10,000-node network doesn't mean 10,000 route entries — it means ~200 entries (own cluster members + border nodes to adjacent clusters).</p>
+
+<h3>nRF52 Optimization</h3>
+<p>For memory-constrained devices, reduce these firmware constants:</p>
+<ul>
+  <li><code>S5_MAX_ROUTES</code>: 5 → 2 (cuts memory 60%)</li>
+  <li><code>S5_MAX_PATH_LEN</code>: 15 → 8 (cuts per-route size 47%)</li>
+  <li>Use lazy route computation (only cache routes to recently-contacted destinations)</li>
+  <li>Result: <strong>~15 KB</strong> for 200-destination view → fits nRF52 comfortably</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="bayarea">Bay Area Topology — The Real-World Stress Test</h2>
+
+<p>Based on feedback from Bay Area Mesh operators, we built a simulation that models the actual network structure:</p>
+
+<h3>Three-Tier Elevation Model</h3>
+
+<table class="compare-table">
+  <tr><th>Tier</th><th>Nodes</th><th>Elevation</th><th>Range</th><th>Terrain</th><th>Role</th></tr>
+  <tr>
+    <td><strong>Mountain</strong></td><td>7 (3%)</td><td>600-1200m</td><td>45km</td><td>Free-space</td>
+    <td>Backbone routers (Mt Diablo, Mt Tam, etc.)</td>
+  </tr>
+  <tr>
+    <td><strong>Hill/Rooftop</strong></td><td>35 (15%)</td><td>150-500m</td><td>10km</td><td>Suburban</td>
+    <td>Bridge between mountain and valley</td>
+  </tr>
+  <tr>
+    <td><strong>Valley/Indoor</strong></td><td>193 (82%)</td><td>0-100m</td><td>0.75-2.5km</td><td>Urban/Indoor</td>
+    <td>End-user handhelds and indoor nodes</td>
+  </tr>
+</table>
+
+<h3>What Makes This Scenario Hard</h3>
+
+<ul>
+  <li><strong>Extreme asymmetry</strong>: Mountain→Valley quality ~1.0 (clear line-of-sight), Valley→Mountain quality ~0 (urban terrain + distance)</li>
+  <li><strong>Half-duplex blocking</strong>: Mountain nodes hear every transmission within 45km — they're permanently in RX state during flooding</li>
+  <li><strong>Collision cascade</strong>: 10+ nodes transmitting simultaneously at the mountaintop → capture effect only helps if one signal is 6dB stronger</li>
+  <li><strong>Hidden terminal</strong>: Two valley nodes can't hear each other but both transmit to the same mountaintop simultaneously</li>
+</ul>
+
+<p><strong><a href="simulator.html">Try this scenario in the Live Simulator →</a></strong> — select "Bay Area Mesh (235 nodes, 3-tier elevation)" from the dropdown.</p>
+
+<p><strong><a href="docs/bay-area-feedback-response.md">Read the full Q&A with Bay Area Mesh community →</a></strong></p>
+
+<!-- ============================================================ -->
+<h2 id="packet">Packet Format — What Goes Over the Air</h2>
+
+<p>Every System 5 packet has a 22-byte header:</p>
+
+<table class="compare-table">
+  <tr><th>Offset</th><th>Field</th><th>Size</th><th>Description</th></tr>
+  <tr><td>0</td><td>Version</td><td>1 byte</td><td>Protocol version (currently 0x01)</td></tr>
+  <tr><td>1</td><td>Type</td><td>1 byte</td><td>DATA (0x01), OGM (0x02), ACK (0x03), CLUSTER_ANNOUNCE (0x04)</td></tr>
+  <tr><td>2</td><td>Source ID</td><td>4 bytes</td><td>Originator node ID</td></tr>
+  <tr><td>6</td><td>Destination ID</td><td>4 bytes</td><td>Target node ID (0xFFFFFFFF = broadcast)</td></tr>
+  <tr><td>10</td><td>Packet ID</td><td>4 bytes</td><td>Unique per-packet (for deduplication)</td></tr>
+  <tr><td>14</td><td>Hop Count</td><td>1 byte</td><td>Current hop count (incremented each hop)</td></tr>
+  <tr><td>15</td><td>Max Hops</td><td>1 byte</td><td>TTL — dynamic, based on √n × 3</td></tr>
+  <tr><td>16</td><td>Priority</td><td>1 byte</td><td>QoS priority (0 = SOS, 7 = lowest)</td></tr>
+  <tr><td>17</td><td>Flags</td><td>1 byte</td><td>Fallback bit, route-request bit, etc.</td></tr>
+  <tr><td>18</td><td>Payload Length</td><td>2 bytes</td><td>Payload size in bytes</td></tr>
+  <tr><td>20</td><td>Checksum</td><td>2 bytes</td><td>CRC-16 of header + payload</td></tr>
+  <tr><td>22+</td><td>Payload</td><td>variable</td><td>Application data (max ~230 bytes for LoRa)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="comparison">System 5 vs. Everything Else</h2>
+
+<table class="compare-table">
+  <tr><th>Property</th><th>Naive Flood</th><th>Managed Flood</th><th>Next-Hop</th><th class="highlight">System 5</th></tr>
+  <tr><td>TX cost per message</td><td class="bad">O(n)</td><td class="bad">O(n) × 0.5</td><td>O(hops)*</td><td class="highlight">O(hops)</td></tr>
+  <tr><td>Works for broadcasts</td><td>Yes</td><td>Yes</td><td class="bad">No</td><td class="highlight">Yes</td></tr>
+  <tr><td>Hop limit needed</td><td>Yes (3-7)</td><td>Yes (3-7)</td><td>Partially</td><td class="highlight">No (dynamic)</td></tr>
+  <tr><td>Multi-path failover</td><td class="bad">No</td><td class="bad">No</td><td class="bad">No</td><td class="highlight">5 routes</td></tr>
+  <tr><td>Load balancing</td><td class="bad">No</td><td class="bad">No</td><td class="bad">No</td><td class="highlight">Weighted</td></tr>
+  <tr><td>Congestion avoidance</td><td class="bad">No</td><td class="bad">No</td><td class="bad">No</td><td class="highlight">Backpressure</td></tr>
+  <tr><td>QoS priority</td><td class="bad">No</td><td class="bad">No</td><td class="bad">No</td><td class="highlight">8 levels + NHS gate</td></tr>
+  <tr><td>Half-duplex resilient</td><td class="bad">No</td><td class="bad">No</td><td>Partially</td><td class="highlight">Yes</td></tr>
+  <tr><td>GPS required</td><td>No</td><td>No</td><td>No</td><td class="bad">Yes**</td></tr>
+  <tr><td>Memory overhead</td><td>Minimal</td><td>Minimal</td><td>Low</td><td>Moderate (~8-30KB)</td></tr>
+</table>
+
+<p><em>* Next-hop only works for direct messages after a learning flood. First message still floods.</em><br>
+<em>** GPS required for clustering, but RSSI triangulation and cluster inheritance provide fallbacks.</em></p>
+
+<!-- ============================================================ -->
+
+<div style="text-align:center; margin: 4rem 0 2rem;">
+  <a href="simulator.html" class="back-link">Try the Live Simulator →</a>
+  <a href="index.html" class="back-link" style="margin-left:1rem">← Back to Presentation</a>
+</div>
+
+</div>
+
+<script src="js/ui.js"></script>
+</body>
+</html>

@@ -18,6 +18,7 @@ from lora_model import (
     time_on_air,
     DutyCycleTracker,
     CollisionModel,
+    HalfDuplexRadio,
     TERRAIN_PL_EXPONENTS,
 )
 
@@ -29,6 +30,9 @@ class Node:
         self.id = node_id
         self.x = x
         self.y = y
+        self.elevation = 0.0  # meters above sea level
+        self.tx_range = 0  # effective TX range in meters (0 = use network default)
+        self.node_tier = "valley"  # mountain, hill, valley — for topology reports
         self.geohash = ""
         self.cluster_id = None
         self.is_border = False
@@ -181,8 +185,10 @@ class MeshNetwork:
         self.asymmetry = 0.0  # link asymmetry factor (0=symmetric, 0.3=moderate)
         self.duty_cycle = DutyCycleTracker()
         self.collisions = CollisionModel()
+        self.half_duplex = HalfDuplexRadio()
         self.enable_duty_cycle = False
         self.enable_collisions = False
+        self.enable_half_duplex = False
         self.mobile_fraction = 0.0  # fraction of mobile nodes
 
     def build_topology(self, n_nodes, area_size, lora_range=2000,
@@ -210,12 +216,16 @@ class MeshNetwork:
             self._place_linear(n_nodes, area_size)
         elif placement == "clustered":
             self._place_clustered(n_nodes, area_size)
+        elif placement == "bay_area":
+            self._place_bay_area(n_nodes, area_size)
         else:
             self._place_random(n_nodes, area_size)
 
         # Set terrain and mobility
-        for node in self.nodes.values():
-            node.terrain = terrain
+        # (bay_area placement sets per-node terrain, don't override)
+        if placement != "bay_area":
+            for node in self.nodes.values():
+                node.terrain = terrain
 
         # Mark mobile nodes
         if mobile_fraction > 0:
@@ -270,23 +280,155 @@ class MeshNetwork:
             node.battery = self.rng.uniform(50, 100)
             self.nodes[i] = node
 
+    def _place_bay_area(self, n_nodes, area_size):
+        """Place nodes in a Bay Area-style 3-tier elevation topology.
+
+        Models the real Bay Area Mesh structure:
+        - Mountain nodes (2000+ ft / 600+ m): 5 nodes on ridgelines, 30+ mile range,
+          can hear everything but are blocked by half-duplex when lower tiers TX
+        - Hill/Rooftop nodes (200-600m): ~15% of nodes, 5-10 mile range,
+          bridge between mountains and valleys
+        - Valley/Indoor nodes (0-200m): ~80% of nodes, 1-2 mile range,
+          typical handheld/indoor clients
+
+        Each tier has different terrain characteristics and TX ranges.
+        """
+        node_id = 0
+
+        # Tier distribution (matches Bay Area Mesh description)
+        n_mountain = max(3, int(n_nodes * 0.03))  # ~3% mountain routers
+        n_hill = max(5, int(n_nodes * 0.15))       # ~15% hill/rooftop
+        n_valley = n_nodes - n_mountain - n_hill    # ~82% valley/indoor
+
+        # Mountain ridgeline positions (spread along area edges at high points)
+        # Bay Area: Mt Diablo, Mt Tam, Mt Hamilton, Sunol Ridge, San Bruno Mtn
+        for i in range(n_mountain):
+            angle = (i / n_mountain) * 2 * math.pi
+            radius = area_size * 0.30
+            cx = area_size / 2 + radius * math.cos(angle)
+            cy = area_size / 2 + radius * math.sin(angle)
+            x = max(0, min(area_size, cx + self.rng.gauss(0, area_size * 0.03)))
+            y = max(0, min(area_size, cy + self.rng.gauss(0, area_size * 0.03)))
+
+            node = Node(node_id, x, y)
+            node.elevation = self.rng.uniform(600, 1200)  # 600-1200m (2000-4000 ft)
+            node.node_tier = "mountain"
+            node.terrain = "free_space"  # clear line-of-sight from peaks
+            node.tx_range = int(area_size * 0.9)  # can reach across entire area
+            node.battery = 100.0  # solar-powered, always full
+            node.sf = 12  # long range spreading factor
+            self.nodes[node_id] = node
+            node_id += 1
+
+        # Hill/Rooftop nodes — scattered around populated areas, key bridges
+        # These are the critical relays between mountains and valleys
+        hill_centers = [
+            (area_size * 0.3, area_size * 0.3),   # Oakland hills
+            (area_size * 0.7, area_size * 0.4),   # SF hills (Twin Peaks etc)
+            (area_size * 0.5, area_size * 0.7),   # Peninsula hills
+            (area_size * 0.2, area_size * 0.6),   # Marin headlands
+            (area_size * 0.6, area_size * 0.65),  # San Bruno Mountain
+        ]
+        for i in range(n_hill):
+            cx, cy = self.rng.choice(hill_centers)
+            x = max(0, min(area_size, cx + self.rng.gauss(0, area_size * 0.06)))
+            y = max(0, min(area_size, cy + self.rng.gauss(0, area_size * 0.06)))
+
+            node = Node(node_id, x, y)
+            node.elevation = self.rng.uniform(150, 500)  # 150-500m (500-1600 ft)
+            node.node_tier = "hill"
+            node.terrain = "suburban"  # partial obstructions
+            node.tx_range = int(area_size * 0.20)  # ~10 miles at 50km area
+            node.battery = self.rng.uniform(70, 100)  # rooftop = usually powered
+            node.sf = 10  # moderate range SF
+            self.nodes[node_id] = node
+            node_id += 1
+
+        # Valley/Indoor nodes — dense clusters near hill centers (realistic:
+        # people live near the hills, not randomly across the Bay)
+        valley_centers = [
+            (area_size * 0.35, area_size * 0.35),  # downtown Oakland
+            (area_size * 0.65, area_size * 0.45),  # SF downtown
+            (area_size * 0.5, area_size * 0.65),   # San Mateo / Redwood City
+            (area_size * 0.25, area_size * 0.5),   # Berkeley / Richmond
+            (area_size * 0.7, area_size * 0.55),   # SF Sunset / Richmond dist
+            (area_size * 0.45, area_size * 0.45),  # central Bay / Alameda
+        ]
+        for i in range(n_valley):
+            cx, cy = self.rng.choice(valley_centers)
+            # Tight clusters — valley nodes are dense, within a few km of each other
+            spread = area_size * 0.04
+            x = max(0, min(area_size, cx + self.rng.gauss(0, spread)))
+            y = max(0, min(area_size, cy + self.rng.gauss(0, spread)))
+
+            node = Node(node_id, x, y)
+            node.elevation = self.rng.uniform(0, 100)  # sea level to 100m
+            node.node_tier = "valley"
+            node.terrain = "urban"  # buildings, obstacles
+            # 20% are indoor nodes with very short range
+            if self.rng.random() < 0.2:
+                node.terrain = "indoor"
+                node.tx_range = int(area_size * 0.015)  # ~750m
+            else:
+                node.tx_range = int(area_size * 0.05)  # ~2.5km
+            node.battery = self.rng.uniform(30, 90)  # handheld, variable charge
+            node.sf = 7  # short range, fast
+            self.nodes[node_id] = node
+            node_id += 1
+
     def _create_links(self):
-        """Create links between nodes within range."""
+        """Create links between nodes within range.
+
+        Supports per-node TX ranges (for tiered topologies like Bay Area).
+        Link exists if either node can reach the other — but quality is
+        asymmetric based on each node's terrain and effective range.
+        """
         node_list = list(self.nodes.values())
         for i in range(len(node_list)):
             for j in range(i + 1, len(node_list)):
                 na = node_list[i]
                 nb = node_list[j]
                 dist = na.distance_to(nb)
-                if dist <= self.lora_range:
-                    asym = self.rng.uniform(-self.asymmetry, self.asymmetry) if self.asymmetry > 0 else 0.0
-                    link = Link(na.id, nb.id, dist, terrain=self.terrain, asymmetry=asym)
-                    if link.quality > 0.01:
-                        self.links.append(link)
-                        key = (min(na.id, nb.id), max(na.id, nb.id))
-                        self.link_map[key] = link
-                        na.neighbors[nb.id] = link.quality_ab
-                        nb.neighbors[na.id] = link.quality_ba
+
+                # Use per-node TX range if set, otherwise network default
+                range_a = na.tx_range if na.tx_range > 0 else self.lora_range
+                range_b = nb.tx_range if nb.tx_range > 0 else self.lora_range
+
+                # Link exists if at least one node can reach the other
+                if dist > max(range_a, range_b):
+                    continue
+
+                # Compute asymmetric quality based on each node's terrain
+                # A->B quality depends on A's TX power/terrain reaching B
+                terrain_ab = na.terrain  # TX from A uses A's terrain
+                terrain_ba = nb.terrain  # TX from B uses B's terrain
+
+                quality_ab = link_quality_from_distance(dist, terrain=terrain_ab)
+                quality_ba = link_quality_from_distance(dist, terrain=terrain_ba)
+
+                # If node can't reach (beyond its own TX range), heavily penalize
+                if dist > range_a:
+                    quality_ab *= 0.05  # very weak — only occasional reception
+                if dist > range_b:
+                    quality_ba *= 0.05
+
+                # Apply random asymmetry on top
+                if self.asymmetry > 0:
+                    asym = self.rng.uniform(-self.asymmetry, self.asymmetry)
+                    quality_ab = max(0.01, min(1.0, quality_ab * (1.0 + asym)))
+                    quality_ba = max(0.01, min(1.0, quality_ba * (1.0 - asym)))
+
+                if max(quality_ab, quality_ba) > 0.01:
+                    # Create link with pre-computed asymmetric qualities
+                    link = Link(na.id, nb.id, dist, terrain=self.terrain, asymmetry=0.0)
+                    link.quality_ab = quality_ab
+                    link.quality_ba = quality_ba
+                    link.quality = (quality_ab + quality_ba) / 2
+                    self.links.append(link)
+                    key = (min(na.id, nb.id), max(na.id, nb.id))
+                    self.link_map[key] = link
+                    na.neighbors[nb.id] = link.quality_ab
+                    nb.neighbors[na.id] = link.quality_ba
 
     def _ensure_connectivity(self):
         """Connect isolated nodes to their nearest neighbor."""
@@ -845,13 +987,22 @@ class MeshNetwork:
         if route_counts:
             avg_routes = sum(route_counts) / len(route_counts)
 
-        return {
+        result = {
             "nodes": n_nodes,
             "links": n_links,
             "clusters": n_clusters,
             "avg_neighbors": round(avg_neighbors, 1),
             "avg_routes_per_dest": round(avg_routes, 1),
         }
+
+        # Add tier breakdown if any nodes have non-default tiers
+        tier_counts = defaultdict(int)
+        for node in self.nodes.values():
+            tier_counts[node.node_tier] += 1
+        if len(tier_counts) > 1 or "valley" not in tier_counts:
+            result["tiers"] = dict(tier_counts)
+
+        return result
 
     def ascii_visualization(self, width=60, height=30):
         """Generate an ASCII art visualization of the network.

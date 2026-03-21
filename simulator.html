@@ -188,6 +188,10 @@
             <option value="disaster">Disaster Relief (60 nodes, failures)</option>
             <option value="partition">Partition Recovery (120 nodes, 40% loss)</option>
           </optgroup>
+          <optgroup label="Bay Area (Real-World)">
+            <option value="bayarea">Bay Area Mesh (235 nodes, 3-tier elevation)</option>
+            <option value="bayarea_s">Bay Area + Stress (235 nodes, 15% failure)</option>
+          </optgroup>
           <optgroup label="Mixed Mode (Backward Compat.)">
             <option value="mixed10">10% S5 + 90% Legacy</option>
             <option value="mixed30">30% S5 + 70% Legacy</option>
@@ -343,6 +347,8 @@ const SCENARIOS = {
   highway:   { nodes: 50,  area: 10000, range: 3000, terrain:'rural',       placement:'linear',    mobile:0.9, kills:0,   degrade:0 },
   community: { nodes: 80,  area: 8000,  range: 2500, terrain:'suburban',    placement:'clustered', mobile:0,   kills:0,   degrade:0 },
   partition: { nodes: 120, area: 8000,  range: 2500, terrain:'urban',       placement:'random',    mobile:0,   kills:0.4, degrade:0.4 },
+  bayarea:   { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0,   degrade:0 },
+  bayarea_s: { nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0.15,degrade:0.2 },
   // Mixed-mode: S5 nodes coexist with legacy flooding nodes
   mixed10:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.1 },
   mixed30:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.3 },
@@ -403,6 +409,49 @@ function buildNetwork(scenarioKey, rng) {
         mobile: false, speed: 0, heading: 0, isS5: false, neighbors: {},
       });
     }
+  } else if (cfg.placement === 'bay_area') {
+    // 3-tier Bay Area topology: mountain (3%), hill (15%), valley (82%)
+    const nMtn = Math.max(3, Math.floor(cfg.nodes * 0.03));
+    const nHill = Math.max(5, Math.floor(cfg.nodes * 0.15));
+    const nValley = cfg.nodes - nMtn - nHill;
+    let nid = 0;
+    // Mountains — ring around center
+    for (let i = 0; i < nMtn; i++) {
+      const angle = (i / nMtn) * PI2;
+      const r = cfg.area * 0.30;
+      nodes.push({
+        id: nid++,
+        x: Math.max(0, Math.min(cfg.area, cfg.area/2 + r*Math.cos(angle) + rng.gauss(0, cfg.area*0.03))),
+        y: Math.max(0, Math.min(cfg.area, cfg.area/2 + r*Math.sin(angle) + rng.gauss(0, cfg.area*0.03))),
+        cluster: -1, border: false, battery: 100, mobile: false, speed: 0, heading: 0,
+        isS5: false, neighbors: {}, tier: 'mountain', txRange: cfg.area * 0.9,
+      });
+    }
+    // Hills — near populated areas
+    const hillCenters = [[0.3,0.3],[0.7,0.4],[0.5,0.7],[0.2,0.6],[0.6,0.65]];
+    for (let i = 0; i < nHill; i++) {
+      const [cx, cy] = rng.choice(hillCenters);
+      nodes.push({
+        id: nid++,
+        x: Math.max(0, Math.min(cfg.area, cx*cfg.area + rng.gauss(0, cfg.area*0.06))),
+        y: Math.max(0, Math.min(cfg.area, cy*cfg.area + rng.gauss(0, cfg.area*0.06))),
+        cluster: -1, border: false, battery: rng.uniform(70, 100), mobile: false, speed: 0, heading: 0,
+        isS5: false, neighbors: {}, tier: 'hill', txRange: cfg.area * 0.20,
+      });
+    }
+    // Valley — dense urban clusters
+    const valCenters = [[0.35,0.35],[0.65,0.45],[0.5,0.65],[0.25,0.5],[0.7,0.55],[0.45,0.45]];
+    for (let i = 0; i < nValley; i++) {
+      const [cx, cy] = rng.choice(valCenters);
+      const isIndoor = rng.uniform(0,1) < 0.2;
+      nodes.push({
+        id: nid++,
+        x: Math.max(0, Math.min(cfg.area, cx*cfg.area + rng.gauss(0, cfg.area*0.04))),
+        y: Math.max(0, Math.min(cfg.area, cy*cfg.area + rng.gauss(0, cfg.area*0.04))),
+        cluster: -1, border: false, battery: rng.uniform(30, 90), mobile: false, speed: 0, heading: 0,
+        isS5: false, neighbors: {}, tier: 'valley', txRange: isIndoor ? cfg.area * 0.015 : cfg.area * 0.05,
+      });
+    }
   } else {
     for (let i = 0; i < cfg.nodes; i++) {
       nodes.push({
@@ -432,17 +481,26 @@ function buildNetwork(scenarioKey, rng) {
     for (const id of s5Ids) nodes[id].isS5 = true;
   }
 
-  // Create links
+  // Create links (supports per-node TX ranges for bay_area topology)
+  const isBayArea = cfg.placement === 'bay_area';
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist <= cfg.range) {
-        const quality = Math.max(0, 1 - (dist / cfg.range) * (dist / cfg.range));
-        if (quality > 0.02) {
+      const rangeI = (isBayArea && nodes[i].txRange) ? nodes[i].txRange : cfg.range;
+      const rangeJ = (isBayArea && nodes[j].txRange) ? nodes[j].txRange : cfg.range;
+      if (dist <= Math.max(rangeI, rangeJ)) {
+        // Asymmetric quality: each node's reach depends on its own range
+        let qIJ = Math.max(0, 1 - (dist / rangeI) * (dist / rangeI));
+        let qJI = Math.max(0, 1 - (dist / rangeJ) * (dist / rangeJ));
+        // Penalize heavily if beyond own range
+        if (dist > rangeI) qIJ *= 0.05;
+        if (dist > rangeJ) qJI *= 0.05;
+        const quality = (qIJ + qJI) / 2;
+        if (quality > 0.01) {
           links.push({ a: i, b: j, dist, quality, alive: true });
-          nodes[i].neighbors[j] = quality;
-          nodes[j].neighbors[i] = quality;
+          nodes[i].neighbors[j] = qIJ;
+          nodes[j].neighbors[i] = qJI;
         }
       }
     }
@@ -1310,8 +1368,55 @@ class SimRenderer {
       }
     }
 
+    // Distance scale bar (bottom-left corner)
+    this._drawScaleBar(ctx);
+
     // Stats overlay
     this._updateStats();
+  }
+
+  _drawScaleBar(ctx) {
+    if (!this.net) return;
+    const pixelsPerMeter = this.scale * this.zoom;
+
+    // Choose a nice round distance for the scale bar
+    const maxBarPx = 120; // max bar width in pixels
+    const maxBarMeters = maxBarPx / pixelsPerMeter;
+    // Find nearest round number: 100m, 200m, 500m, 1km, 2km, 5km, 10km, 20km, 50km
+    const steps = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
+    let barMeters = steps[0];
+    for (const s of steps) {
+      if (s <= maxBarMeters) barMeters = s;
+      else break;
+    }
+    const barPx = barMeters * pixelsPerMeter;
+    const label = barMeters >= 1000 ? `${barMeters / 1000} km` : `${barMeters} m`;
+
+    // Draw at bottom-left
+    const x = 15;
+    const y = this.H - 20;
+
+    // Background
+    ctx.fillStyle = 'rgba(15,23,42,0.7)';
+    ctx.fillRect(x - 4, y - 16, barPx + 8, 24);
+
+    // Bar line with end caps
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + barPx, y);
+    ctx.stroke();
+    // End caps
+    ctx.beginPath();
+    ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5);
+    ctx.moveTo(x + barPx, y - 5); ctx.lineTo(x + barPx, y + 5);
+    ctx.stroke();
+
+    // Label
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x + barPx / 2, y - 5);
   }
 
   _drawHopLimitRings(ctx) {

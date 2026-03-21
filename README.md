@@ -56,7 +56,7 @@ A routing protocol that achieves **O(hops) cost** instead of O(n) — for all me
 
 This makes the hop limit irrelevant: 20 hops cost less than managed flooding costs for 1.
 
-## Simulation Results (22 Scenarios, 4 Routers)
+## Simulation Results (24 Scenarios, 6 Routers)
 
 The simulator compares all four approaches on identical networks (100 messages each). Results with improved System 5 (multi-path + scoped fallback):
 
@@ -97,11 +97,26 @@ The simulator compares all four approaches on identical networks (100 messages e
 | Partition Recovery | 62,773 | 26,874 | 56% | 88% | **57.2% less** |
 | Duty Cycle Stress | 404,779 | 18,168 | 100% | 100% | **95.5% less** |
 
+### Bay Area Real-World Topology (NEW — with half-duplex radio model)
+
+Based on feedback from Bay Area Mesh operators: 3-tier elevation topology (mountain/hill/valley) with **half-duplex radio constraint** (nodes can't TX while receiving). This models the real collision cascade problem at mountaintop routers.
+
+**[Detailed analysis and Q&A](docs/bay-area-feedback-response.md)** | **[Try the Bay Area scenario in the Live Simulator](https://clemenssimon.github.io/MeshRoute/simulator.html)**
+
+| Scenario | Managed TX | S5 TX | Managed Del% | S5 Del% | Key Insight |
+|----------|----------:|------:|:-----------:|:------:|------------|
+| Bay Area (no half-duplex) | 908,785 | 47,094 | 87.5% | 80.5% | S5 saves **94.8% TX** |
+| **Bay Area (half-duplex)** | **6,752** | **540,780** | **6.0%** | **77.5%** | **Half-duplex destroys flooding** |
+| Bay Area + Stress | 6,417 | 301,757 | 4.0% | 54.5% | S5 delivers **13.6× more** |
+
+The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts). System 5's directed routing holds at 77.5% because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
+
 ### Key Findings
 
 - **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with 100% delivery
 - **Stress conditions**: Still saves 57-99% TX, delivery 73-80% (scoped fallback flooding helps)
 - **Metro Scale (1500 nodes)**: S5 delivers **51% vs Managed's 36%** — S5 is actually better at large scale!
+- **Bay Area (half-duplex)**: System 5 delivers **77.5% vs Flooding's 6%** — directed routing survives the mountaintop collision cascade that destroys flooding
 - **Extreme conditions** (mountain, partition): Both systems struggle. System 5's fallback keeps it competitive.
 - **Backward compatibility**: Mixed-mode works — S5 nodes ignore hop limit (they don't flood), prefer S5 neighbors
 
@@ -171,13 +186,13 @@ Open `index.html` in a browser. No build step, no dependencies.
 
 ```bash
 cd simulator
-python run.py                          # run all 22 scenarios (4 routers each)
+python run.py                          # run all 24 scenarios (6 routers each)
 python run.py --scenario 2             # single scenario
 python run.py --parallel scenarios     # parallel across all CPU cores
 python run.py --visualize              # ASCII network topology
 ```
 
-### Scenarios (22 total)
+### Scenarios (24 total)
 
 | Category | Scenarios |
 |----------|-----------|
@@ -186,6 +201,7 @@ python run.py --visualize              # ASCII network topology
 | **Terrain** | Rural Long Range (SF12), Hiking Trail (linear), Mountain Valley, Maritime (line of sight) |
 | **Mobile** | Festival/Event (dense + mobile), Building Emergency (indoor), Highway Convoy |
 | **Realistic** | Community Mesh (stable), Indoor-Outdoor Mix, Disaster Relief, Partition Recovery |
+| **Bay Area** | Bay Area Mesh (3-tier, half-duplex), Bay Area + Stress (node failure + degradation) |
 
 ### Simulator Architecture
 

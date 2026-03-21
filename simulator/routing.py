@@ -15,6 +15,10 @@ from collections import defaultdict
 from lora_model import packet_success_rate, time_on_air
 
 
+# Default time-on-air for a typical 50-byte LoRa packet at SF7
+DEFAULT_TOA = time_on_air(50, sf=7)
+
+
 class RoutingStats:
     """Statistics from routing a single packet."""
 
@@ -25,6 +29,7 @@ class RoutingStats:
         self.path = []  # actual path taken
         self.energy = 0.0  # energy consumed (proportional to tx count)
         self.node_tx_counts = defaultdict(int)  # per-node transmission count
+        self.half_duplex_blocked = 0  # times TX was blocked by half-duplex
 
     def __repr__(self):
         status = "OK" if self.delivered else "FAIL"
@@ -62,6 +67,7 @@ class NaiveFloodingRouter:
         broadcast_queue = [(packet.src, 0, [packet.src])]
         delivery_path = None
         hop_limit = self.hop_limit
+        sim_time = network.sim_time
 
         while broadcast_queue:
             current_id, hop_count, path = broadcast_queue.pop(0)
@@ -69,6 +75,13 @@ class NaiveFloodingRouter:
                 continue
 
             current_node = network.nodes[current_id]
+
+            # Half-duplex: skip this rebroadcast if node is busy receiving
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue  # node blocked, can't rebroadcast
+
             for neighbor_id, quality in current_node.neighbors.items():
                 stats.total_tx += 1
                 stats.node_tx_counts[current_id] += 1
@@ -92,6 +105,14 @@ class NaiveFloodingRouter:
                     continue
 
                 broadcast_queue.append((neighbor_id, hop_count + 1, new_path))
+
+            # Half-duplex: mark TX and neighbors as RX
+            if network.enable_half_duplex:
+                toa = time_on_air(packet.payload_size, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, sim_time, toa)
+                sim_time += toa * 0.3  # partial overlap (managed flooding staggers)
 
         if delivery_path:
             stats.delivered = True
@@ -176,6 +197,7 @@ class ManagedFloodingRouter:
         broadcast_queue = [(packet.src, 0, [packet.src], 1.0)]
         delivery_path = None
         hop_limit = self.hop_limit
+        sim_time = network.sim_time
 
         while broadcast_queue:
             current_id, hop_count, path, recv_quality = broadcast_queue.pop(0)
@@ -183,6 +205,12 @@ class ManagedFloodingRouter:
                 continue
 
             current_node = network.nodes[current_id]
+
+            # Half-duplex: skip rebroadcast if node is busy receiving
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue
 
             # Decision: should this node rebroadcast?
             is_router = current_id in self._router_nodes
@@ -229,6 +257,14 @@ class ManagedFloodingRouter:
                     continue
 
                 broadcast_queue.append((neighbor_id, hop_count + 1, new_path, quality))
+
+            # Half-duplex: mark TX and neighbors as RX
+            if network.enable_half_duplex:
+                toa = time_on_air(packet.payload_size, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, sim_time, toa)
+                sim_time += toa * 0.3  # staggered managed flooding
 
         if delivery_path:
             stats.delivered = True
@@ -447,6 +483,7 @@ class System5Router:
 
     def _try_route(self, network, packet, path, stats):
         current_path = [path[0]]
+        sim_time = network.sim_time
 
         for i in range(len(path) - 1):
             current_id = path[i]
@@ -455,10 +492,28 @@ class System5Router:
             current_node = network.nodes[current_id]
             link = network.get_link(current_id, next_id)
 
+            # Half-duplex check: can this node transmit right now?
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    # Wait briefly and retry once (node finishes RX)
+                    sim_time += DEFAULT_TOA * 2
+                    if not network.half_duplex.can_transmit(current_id, sim_time):
+                        return False  # still blocked, route fails
+
             stats.total_tx += 1
             stats.node_tx_counts[current_id] += 1
             current_node.packets_forwarded += 1
             current_node.battery = max(0, current_node.battery - 0.01)
+
+            # Mark TX and all neighbors as RX (half-duplex: they hear this TX)
+            toa = time_on_air(packet.payload_size, sf=current_node.sf)
+            if network.enable_half_duplex:
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                # All neighbors within range hear this TX and are blocked from TX
+                for neighbor_id in current_node.neighbors:
+                    network.half_duplex.start_rx(neighbor_id, sim_time, toa)
+                sim_time += toa  # advance time
 
             quality = link.quality if link else 0.1
             delivered_hop = False
@@ -470,6 +525,8 @@ class System5Router:
                     break
                 stats.total_tx += 1
                 stats.node_tx_counts[current_id] += 1
+                if network.enable_half_duplex:
+                    sim_time += toa  # each retry takes time
 
             if not delivered_hop:
                 return False
