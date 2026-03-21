@@ -197,11 +197,14 @@
     if (!canvas) return null;
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    const w = rect.width || canvas.parentElement.clientWidth || 800;
+    const h = rect.height || 400;
+    if (w < 10 || h < 10) return null; // not visible yet
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    ctx.W = rect.width; ctx.H = rect.height;
+    ctx.W = w; ctx.H = h;
     return ctx;
   }
 
@@ -665,6 +668,10 @@
   // ── Init ──
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
   else load();
+
+  // Retry rendering after a short delay (canvas may not be sized yet)
+  setTimeout(() => { if (DATA) renderAll(); }, 500);
+  setTimeout(() => { if (DATA) renderAll(); }, 1500);
 
   window.addEventListener('resize', () => { if (DATA) renderAll(); });
 })();
