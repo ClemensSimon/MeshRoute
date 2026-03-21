@@ -105,13 +105,15 @@ Based on feedback from Bay Area Mesh operators: 3-tier elevation topology (mount
 
 | Scenario | Managed TX | S5 TX | Managed Del% | S5 Del% | Key Insight |
 |----------|----------:|------:|:-----------:|:------:|------------|
-| Bay Area (no half-duplex) | 908,785 | 47,094 | 87.5% | 80.5% | S5 saves **94.8% TX** |
-| **Bay Area (half-duplex)** | **6,752** | **540,780** | **6.0%** | **77.5%** | **Half-duplex destroys flooding** |
-| Bay Area + Stress | 6,417 | 301,757 | 4.0% | 52.0% | S5 delivers **13× more** |
-| **Bay Area + Silencing** | **6,752** | **267,927** | **6.0%** | **74.5%** | **TX halved, 57% nodes muted** |
-| Bay Area + Silencing + Stress | 6,417 | 155,393 | 4.0% | 51.0% | Silencing + stress combined |
+| Bay Area (no half-duplex) | ~909K | ~47K | ~87% | ~80% | S5 saves **~95% TX** |
+| **Bay Area (half-duplex)** | **~7K** | **~516K** | **~6%** | **~74%** | **Half-duplex destroys flooding** |
+| Bay Area + Stress | ~6K | ~283K | ~5% | ~55% | S5 delivers **~11× more** |
+| **Bay Area + Silencing** | **~7K** | **~284K** | **~6%** | **~70%** | **TX halved, 57% nodes muted** |
+| Bay Area + Silencing + Stress | ~6K | ~132K | ~5% | ~49% | Silencing + stress combined |
 
-**Node Silencing** (NEW): Redundant nodes are identified and muted — they still listen but don't rebroadcast. 128 of 193 valley nodes are silenced, reducing System 5 TX by 50% with only 3% less delivery. Mountain nodes (critical backbone) are never silenced. Battery-fair rotation every 10 minutes ensures even drain.
+*Results averaged over 5 random seeds for statistical reliability.*
+
+**Node Silencing** (NEW): Redundant nodes are identified and muted — they still listen but don't rebroadcast. 128 of 193 valley nodes are silenced, reducing System 5 TX by ~45% with only ~4% less delivery. Mountain nodes (critical backbone) are never silenced. Battery-fair rotation every 10 minutes ensures even drain.
 
 The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts). System 5's directed routing holds at 77.5% because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
 
@@ -120,7 +122,7 @@ The half-duplex constraint collapses managed flooding from 87.5% → 6% delivery
 - **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with 100% delivery
 - **Stress conditions**: Still saves 57-99% TX, delivery 73-80% (scoped fallback flooding helps)
 - **Metro Scale (1500 nodes)**: S5 delivers **51% vs Managed's 36%** — S5 is actually better at large scale!
-- **Bay Area (half-duplex)**: System 5 delivers **77.5% vs Flooding's 6%** — directed routing survives the mountaintop collision cascade that destroys flooding
+- **Bay Area (half-duplex)**: System 5 delivers **~74% vs Flooding's ~6%** — directed routing survives the mountaintop collision cascade that destroys flooding
 - **Extreme conditions** (mountain, partition): Both systems struggle. System 5's fallback keeps it competitive.
 - **Node Silencing**: Muting 57% of redundant nodes halves TX cost with minimal delivery loss
 - **Backward compatibility**: Mixed-mode works — S5 nodes ignore hop limit (they don't flood), prefer S5 neighbors

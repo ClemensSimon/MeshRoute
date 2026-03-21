@@ -399,7 +399,7 @@
     <p style="margin-bottom:0.8rem">Feedback from Bay Area Mesh operators revealed that <strong>half-duplex radio physics</strong> — not routing algorithms — is the true scaling bottleneck at elevated nodes. Five features were built in response:</p>
     <ul>
       <li><strong>Half-Duplex Radio Model</strong> — Simulator now models TX/RX exclusion. Flooding collapses from 87.5% → 6% delivery at mountaintops. System 5 holds at 77.5%.</li>
-      <li><strong>Node Silencing</strong> — Redundant nodes are muted (listen but don't rebroadcast). Battery-fair rotation every 10 min. In Bay Area: 128 of 193 valley nodes silenced, <strong>TX halved</strong> with only 3% less delivery. All mountain nodes stay active.</li>
+      <li><strong>Node Silencing</strong> — Redundant nodes are muted (listen but don't rebroadcast). Battery-fair rotation every 10 min. In Bay Area: 128 of 193 valley nodes silenced, <strong>TX halved</strong> with only ~4% less delivery. All mountain nodes stay active.</li>
       <li><strong>Sequence Numbers</strong> — 2-byte per-(src,dst) counter in packet header for out-of-order and gap detection. Zero extra TX cost.</li>
       <li><strong>Emergency Re-Route</strong> — Fresh BFS excluding failed nodes before corridor flooding. Reduces expensive fallback floods.</li>
       <li><strong>Bay Area 3-Tier Topology</strong> — 7 mountain (45km range) + 35 hill (10km) + 193 valley (2.5km) nodes with asymmetric links and half-duplex.</li>
@@ -415,10 +415,10 @@
         </tr>
       </thead>
       <tbody style="color:var(--text-dim)">
-        <tr><td style="padding:0.3rem">Bay Area (half-duplex)</td><td style="text-align:right;color:var(--red);font-weight:700">6.0%</td><td style="text-align:right;color:var(--green)">77.5%</td><td style="text-align:right">540K</td><td style="text-align:right">—</td></tr>
-        <tr><td style="padding:0.3rem;font-weight:600">Bay Area + Silencing</td><td style="text-align:right;color:var(--red);font-weight:700">6.0%</td><td style="text-align:right;color:var(--green)">74.5%</td><td style="text-align:right;color:var(--cyan);font-weight:600">268K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
-        <tr><td style="padding:0.3rem">Bay Area + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4.0%</td><td style="text-align:right;color:var(--yellow)">52.0%</td><td style="text-align:right">302K</td><td style="text-align:right">—</td></tr>
-        <tr><td style="padding:0.3rem">Bay Area + Silencing + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4.0%</td><td style="text-align:right;color:var(--yellow)">51.0%</td><td style="text-align:right;color:var(--cyan)">155K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area (half-duplex)</td><td style="text-align:right;color:var(--red);font-weight:700">~6%</td><td style="text-align:right;color:var(--green)">~74%</td><td style="text-align:right">~516K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem;font-weight:600">Bay Area + Silencing</td><td style="text-align:right;color:var(--red);font-weight:700">~6%</td><td style="text-align:right;color:var(--green)">~70%</td><td style="text-align:right;color:var(--cyan);font-weight:600">~284K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">~5%</td><td style="text-align:right;color:var(--yellow)">~55%</td><td style="text-align:right">~283K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Silencing + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">~5%</td><td style="text-align:right;color:var(--yellow)">~49%</td><td style="text-align:right;color:var(--cyan)">~132K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
       </tbody>
     </table>
     <p style="margin-top:0.6rem"><a href="how-it-works.html#silencing" style="color:var(--cyan)">Technical deep-dive on all v2.0 features →</a></p>

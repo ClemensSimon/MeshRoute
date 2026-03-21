@@ -416,7 +416,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
       <h4>Half-Duplex Radio Model <span class="arrow">&rarr;</span> Realistic Simulation</h4>
-      <p>LoRa radios are half-duplex: a node <strong>cannot TX while receiving</strong>. When a mountaintop hears 10 rebroadcasts, it's blocked from forwarding for 10-20 seconds. Our simulator now models this per-node radio state (IDLE/TX/RX). Result: flooding collapses from <strong>87.5% → 6%</strong> delivery. System 5 holds at <strong>77.5%</strong>.</p>
+      <p>LoRa radios are half-duplex: a node <strong>cannot TX while receiving</strong>. When a mountaintop hears 10 rebroadcasts, it's blocked from forwarding for 10-20 seconds. Our simulator now models this per-node radio state (IDLE/TX/RX). Result: flooding collapses from <strong>~87% → ~6%</strong> delivery. System 5 holds at <strong>~74%</strong>. (Averaged over 5 random seeds.)</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
@@ -437,7 +437,7 @@
 
   <!-- Node Silencing Results -->
   <div class="highlight-box cyan reveal" style="margin:2rem auto;max-width:800px;padding:1.5rem 2rem;border:1px solid var(--cyan-dim);background:rgba(34,211,238,0.04);border-radius:12px">
-    <h4 style="font-family:var(--font-mono);font-size:0.85rem;color:var(--cyan);margin-bottom:0.8rem">Bay Area Results — Half-Duplex + Node Silencing</h4>
+    <h4 style="font-family:var(--font-mono);font-size:0.85rem;color:var(--cyan);margin-bottom:0.8rem">Bay Area Results — Half-Duplex + Node Silencing (averaged over 5 random seeds)</h4>
     <table style="width:100%;font-family:var(--font-mono);font-size:0.82rem;border-collapse:collapse">
       <tr style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em">
         <td style="padding:0.3rem 0">Scenario</td>
@@ -448,41 +448,41 @@
       </tr>
       <tr style="border-top:1px solid var(--border)">
         <td style="padding:0.4rem 0;color:var(--text)">Bay Area (no half-duplex)</td>
-        <td style="text-align:right;color:var(--green)">87.5%</td>
-        <td style="text-align:right;color:var(--green)">80.5%</td>
-        <td style="text-align:right;color:var(--cyan)">47K</td>
+        <td style="text-align:right;color:var(--green)">~87%</td>
+        <td style="text-align:right;color:var(--green)">~80%</td>
+        <td style="text-align:right;color:var(--cyan)">~47K</td>
         <td style="text-align:right;color:var(--text-muted)">—</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Bay Area (half-duplex)</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">6.0%</td>
-        <td style="text-align:right;color:var(--green)">77.5%</td>
-        <td style="text-align:right;color:var(--orange)">541K</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">~6%</td>
+        <td style="text-align:right;color:var(--green)">~74%</td>
+        <td style="text-align:right;color:var(--orange)">~516K</td>
         <td style="text-align:right;color:var(--text-muted)">0%</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text);font-weight:600">Bay Area + Silencing</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">6.0%</td>
-        <td style="text-align:right;color:var(--green)">74.5%</td>
-        <td style="text-align:right;color:var(--cyan);font-weight:600">268K</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">~6%</td>
+        <td style="text-align:right;color:var(--green)">~70%</td>
+        <td style="text-align:right;color:var(--cyan);font-weight:600">~284K</td>
         <td style="text-align:right;color:var(--cyan)">57%</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Bay Area + Stress</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">4.0%</td>
-        <td style="text-align:right;color:var(--yellow)">52.0%</td>
-        <td style="text-align:right;color:var(--orange)">302K</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">~5%</td>
+        <td style="text-align:right;color:var(--yellow)">~55%</td>
+        <td style="text-align:right;color:var(--orange)">~283K</td>
         <td style="text-align:right;color:var(--text-muted)">0%</td>
       </tr>
       <tr style="border-top:1px solid rgba(42,54,84,0.5)">
         <td style="padding:0.4rem 0;color:var(--text)">Bay Area + Silencing + Stress</td>
-        <td style="text-align:right;color:var(--red);font-weight:700">4.0%</td>
-        <td style="text-align:right;color:var(--yellow)">51.0%</td>
-        <td style="text-align:right;color:var(--cyan)">155K</td>
+        <td style="text-align:right;color:var(--red);font-weight:700">~5%</td>
+        <td style="text-align:right;color:var(--yellow)">~49%</td>
+        <td style="text-align:right;color:var(--cyan)">~132K</td>
         <td style="text-align:right;color:var(--cyan)">57%</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Key insight:</strong> Half-duplex destroys flooding (87.5% → 6%), but System 5 holds at 77.5%. Node Silencing halves TX cost (541K → 268K) with only 3% less delivery. 128 of 193 valley nodes are muted — all 7 mountain nodes stay active.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Key insight:</strong> Half-duplex destroys flooding (~87% → ~6%), but System 5 holds at ~74%. Node Silencing halves TX cost (~516K → ~284K) with only ~4% less delivery. 128 of 193 valley nodes are muted — all 7 mountain nodes stay active. Results averaged over 5 random seeds for statistical reliability.</p>
   </div>
 </section>
 

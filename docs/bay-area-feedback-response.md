@@ -20,15 +20,18 @@ For the technical deep-dive on each feature, see **[How System 5 Works](https://
 
 ---
 
-## Bay Area Results (235 nodes, half-duplex)
+## Bay Area Results (235 nodes, half-duplex, averaged over 5 random seeds)
 
-| Scenario | Managed Flood | System 5 | S5 + Silencing | Silenced |
-|----------|:------------:|:--------:|:--------------:|:--------:|
-| **Delivery Rate** | **6.0%** | **77.5%** | **74.5%** | 57% of nodes |
-| **Total TX** | 6,752 | 540,780 | **267,927** | — |
-| **Under Stress** | 4.0% | 52.0% | 51.0% | 57% |
+```
+                    Managed Flood    System 5    S5 + Silencing
+Delivery Rate           ~6%          ~74%          ~70%
+Total TX               ~7K          ~516K         ~284K
+Under Stress           ~5%          ~55%          ~49%
+Nodes Silenced            0             0        134 (57%)
+Fallback Floods           —           ~70           ~72
+```
 
-**The key finding:** Half-duplex collapses managed flooding from 87.5% → 6% delivery (your SUNL problem exactly — mountaintop stuck in RX from 10+ simultaneous rebroadcasts). System 5's directed routing holds at 77.5%. Node Silencing halves the TX cost by muting 128 of 193 valley nodes. All 7 mountain nodes stay active.
+**Key finding:** Half-duplex collapses managed flooding from ~87% to ~6% delivery — your SUNL problem exactly. Mountaintop stuck in RX from 10+ simultaneous rebroadcasts. System 5's directed routing holds at ~74%. Node Silencing halves TX cost (~516K to ~284K) by muting 128 of 193 valley nodes. All 7 mountain nodes stay active.
 
 ---
 
