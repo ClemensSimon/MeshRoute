@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshRoute — Wie System 5 funktioniert (Schritt für Schritt)</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  .hw-hero {
+    min-height: 40vh; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 6rem 2rem 3rem; position: relative;
+  }
+  .hw-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hw-hero .hero-tag { opacity: 1; animation: none; }
+  .hw-hero .hero-title { opacity: 1; animation: none; font-size: clamp(2rem, 5vw, 3.5rem); }
+  .hw-hero .hero-sub { opacity: 1; animation: none; max-width: 700px; margin: 0.5rem auto 0; }
+
+  .hw-nav {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.5rem;
+  }
+  .hw-nav a {
+    font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyan);
+    text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid var(--cyan-dim);
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .hw-nav a:hover { background: var(--cyan-glow); }
+
+  .hw { max-width: 900px; margin: 0 auto; padding: 2rem 2rem 4rem; }
+  .hw h2 {
+    font-family: var(--font-display); font-size: 1.8rem; font-weight: 700;
+    margin: 3rem 0 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+  }
+  .hw h3 {
+    font-family: var(--font-mono); font-size: 1rem; font-weight: 600;
+    color: var(--cyan); margin: 2rem 0 0.75rem; letter-spacing: 0.03em;
+  }
+  .hw h4 {
+    font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600;
+    color: var(--teal); margin: 1.5rem 0 0.5rem;
+  }
+  .hw p, .hw li { color: var(--text-dim); font-size: 1rem; line-height: 1.8; }
+  .hw p { margin-bottom: 1rem; }
+  .hw ul, .hw ol { padding-left: 1.5rem; margin: 0.5rem 0 1rem; }
+  .hw li { margin-bottom: 0.4rem; }
+  .hw strong { color: var(--text); }
+  .hw em { color: var(--text-muted); font-style: italic; }
+
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2rem; height: 2rem; border-radius: 50%;
+    background: var(--cyan-dim); color: var(--bg-deep);
+    font-family: var(--font-mono); font-weight: 700; font-size: 0.9rem;
+    margin-right: 0.5rem; flex-shrink: 0;
+  }
+  .step-title { display: flex; align-items: center; margin: 2rem 0 0.5rem; }
+  .step-title h3 { margin: 0; }
+
+  .formula-box {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem 1.5rem; margin: 1rem 0; font-family: var(--font-mono);
+    font-size: 1.1rem; color: var(--cyan); text-align: center; overflow-x: auto;
+  }
+  .formula-box .label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem; }
+
+  .info-box {
+    background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
+  }
+  .info-box h5 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--cyan); margin-bottom: 0.3rem; }
+  .info-box p { font-size: 0.9rem; margin: 0; }
+
+  .warn-box {
+    background: rgba(251,146,60,0.04); border: 1px solid var(--orange-dim);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
+  }
+  .warn-box h5 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--orange); margin-bottom: 0.3rem; }
+  .warn-box p { font-size: 0.9rem; margin: 0; }
+
+  .compare-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+  .compare-table th {
+    text-align: left; padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+    border-bottom: 1px solid var(--border); font-weight: 500;
+  }
+  .compare-table td {
+    padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(42,54,84,0.5);
+    color: var(--text-dim);
+  }
+  .compare-table tr:hover td { background: rgba(34,211,238,0.03); }
+  .compare-table .highlight { color: var(--cyan); font-weight: 600; }
+  .compare-table .bad { color: var(--orange); }
+
+  .diagram {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1.5rem; margin: 1.5rem 0; font-family: var(--font-mono);
+    font-size: 0.85rem; line-height: 1.8; color: var(--text-dim); overflow-x: auto;
+    white-space: pre;
+  }
+  .diagram .node { color: var(--cyan); font-weight: 600; }
+  .diagram .path { color: var(--green); }
+  .diagram .flood { color: var(--orange); }
+  .diagram .comment { color: var(--text-muted); }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.8rem;
+    color: var(--cyan); text-decoration: none;
+    padding: 0.4rem 1rem; border: 1px solid var(--cyan-dim);
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .back-link:hover { background: var(--cyan-glow); }
+
+  .toc { list-style: none; padding: 0; columns: 2; column-gap: 2rem; }
+  .toc li { margin-bottom: 0.3rem; }
+  .toc a { color: var(--cyan); text-decoration: none; font-family: var(--font-mono); font-size: 0.85rem; }
+  .toc a:hover { text-decoration: underline; }
+  @media (max-width: 600px) { .toc { columns: 1; } }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul id="nav-menu">
+      <li><a href="index.html">Präsentation</a></li>
+      <li><a href="../simulator.html" style="color:var(--cyan)">Live-Simulator</a></li>
+      <li><a href="how-it-works.html" class="active">Wie es funktioniert</a></li>
+      <li><a href="summary.html">Zusammenfassung</a></li>
+      <li><a href="../how-it-works.html" style="font-family:var(--font-mono);font-size:0.8rem;border:1px solid var(--cyan-dim);border-radius:4px;padding:0.15rem 0.5rem">EN</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hw-hero">
+  <div>
+    <div class="hero-tag">Deep Dive — Jede Schicht erklärt</div>
+    <h1 class="hero-title">Wie System 5 <span class="accent">funktioniert</span></h1>
+    <p class="hero-sub">Eine vollständige technische Erklärung von MeshRoutes geo-geclustertem, Multi-Pfad, lastverteiltem Routing-Protokoll — vom Start bis zur Zustellung.</p>
+    <div class="hw-nav">
+      <a href="#overview">Überblick</a>
+      <a href="#step1">1. Start</a>
+      <a href="#step2">2. Nachbarn</a>
+      <a href="#step3">3. Cluster</a>
+      <a href="#step4">4. Routen</a>
+      <a href="#step5">5. Routing</a>
+      <a href="#step6">6. QoS</a>
+      <a href="#step7">7. Fallback</a>
+      <a href="#step8">8. Wartung</a>
+      <a href="#halfduplex">Half-Duplex</a>
+      <a href="#memory">Speicher</a>
+      <a href="#bayarea">Bay Area</a>
+      <a href="#silencing">Node Silencing</a>
+      <a href="#seqnums">Seq-Nummern</a>
+    </div>
+  </div>
+</div>
+
+<div class="hw">
+
+<!-- ============================================================ -->
+<h2 id="overview">Das große Bild</h2>
+
+<p>Jedes Routing-Protokoll beantwortet eine Frage: <strong>Wenn Knoten A eine Nachricht an Knoten Z senden will, welche Zwischenknoten sollen sie weiterleiten?</strong></p>
+
+<p>Das aktuelle Meshtastic verwendet <strong>Managed Flooding</strong>: Jeder Knoten sendet jede Nachricht weiter, in der Hoffnung, dass sie das Ziel erreicht. Das funktioniert für kleine Netzwerke, erzeugt aber eine Bandbreitenexplosion bei Skalierung — 100 Knoten bedeuten ~100 Übertragungen pro Nachricht.</p>
+
+<p>System 5 verfolgt einen grundlegend anderen Ansatz: <strong>Knoten organisieren sich selbst in geografische Cluster, entdecken Multi-Hop-Routen und senden jede Nachricht über einen spezifisch berechneten Pfad.</strong> Die Kosten pro Nachricht sind proportional zur Anzahl der Hops, nicht zur Anzahl der Knoten.</p>
+
+<div class="diagram"><span class="flood">Managed Flooding (Meshtastic heute)</span>
+A sendet → <span class="flood">jeder Knoten sendet weiter</span> → Z empfängt (irgendwann)
+Kosten: O(n) Übertragungen pro Nachricht — skaliert mit Netzwerkgröße
+
+<span class="path">System 5 (MeshRoute-Vorschlag)</span>
+A sendet → <span class="path">B → D → G → Z</span> (berechneter Pfad)
+Kosten: O(Hops) Übertragungen pro Nachricht — skaliert mit Entfernung, nicht Größe</div>
+
+<p>Die folgenden Abschnitte erklären jeden Schritt im Detail.</p>
+
+<!-- ============================================================ -->
+<h2 id="step1">Schritt 1: Start — Was passiert, wenn ein Knoten eingeschaltet wird</h2>
+
+<p>Wenn ein System 5-Knoten hochfährt, weiß er noch nichts über das Netzwerk. Hier ist die genaue Abfolge:</p>
+
+<ol>
+  <li><strong>Hardware-Initialisierung</strong>: Das LoRa-Funkmodul beginnt auf der konfigurierten Frequenz zu lauschen (EU 868MHz). Das GPS-Modul beginnt mit der Satellitenerfassung (falls vorhanden).</li>
+  <li><strong>Positionsbestimmung</strong>: Der Knoten versucht drei Methoden in dieser Reihenfolge:
+    <ul>
+      <li><strong>Echtes GPS</strong> — beste Option, genau auf ~5m (T-Beam, RAK4631 mit GPS-Modul)</li>
+      <li><strong>RSSI-Triangulation</strong> — falls kein GPS, aber 3+ Nachbarn mit bekannten Positionen, wird die Position aus der Signalstärke geschätzt</li>
+      <li><strong>Cluster-Übernahme</strong> — falls beides nicht funktioniert, wird die Cluster-ID des stärksten Nachbarn übernommen</li>
+    </ul>
+  </li>
+  <li><strong>Geohash-Berechnung</strong>: GPS-Koordinaten werden in einen <strong>Geohash-String</strong> umgewandelt (z.B. <code>"u33d"</code>). Die ersten 4 Zeichen definieren den Cluster des Knotens. Knoten mit dem gleichen 4-Zeichen-Präfix befinden sich im selben Cluster.</li>
+  <li><strong>OGM-Broadcast</strong>: Der Knoten sendet seine erste <strong>Originator Message (OGM)</strong> — ein kleines Paket das verkündet: „Ich existiere, hier sind meine Position, mein Batteriestand und meine Cluster-ID."</li>
+</ol>
+
+<div class="info-box">
+  <h5>Was ist ein Geohash?</h5>
+  <p>Ein Geohash kodiert eine GPS-Koordinate in einen String, bei dem <strong>gemeinsame Präfixe geografische Nähe bedeuten</strong>. Zwei Knoten mit Geohash <code>"u33d8"</code> und <code>"u33d9"</code> teilen das Präfix <code>"u33d"</code> — sie sind im selben Cluster. Ein Knoten mit <code>"u33e1"</code> ist in einem benachbarten Cluster. Bei 4-Zeichen-Genauigkeit deckt jeder Cluster ungefähr <strong>40km × 20km</strong> ab.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="step2">Schritt 2: Nachbarerkennung via OGM</h2>
+
+<p>Alle <strong>30 Sekunden</strong> sendet jeder Knoten eine OGM (Originator Message). Das ist ein kompaktes Paket (~20 Bytes) mit folgendem Inhalt:</p>
+
+<table class="compare-table">
+  <tr><th>Feld</th><th>Größe</th><th>Zweck</th></tr>
+  <tr><td>Node ID</td><td>4 Bytes</td><td>Eindeutige Kennung (abgeleitet von der Hardware-MAC)</td></tr>
+  <tr><td>Position</td><td>8 Bytes</td><td>Breitengrad + Längengrad (oder Cluster-ID falls kein GPS)</td></tr>
+  <tr><td>Batterie</td><td>1 Byte</td><td>Aktueller Ladestand (0–100%)</td></tr>
+  <tr><td>Cluster-ID</td><td>4 Bytes</td><td>Geohash-Präfix des Clusters dieses Knotens</td></tr>
+  <tr><td>Nachbaranzahl</td><td>1 Byte</td><td>Wie viele Nachbarn dieser Knoten aktuell hat</td></tr>
+  <tr><td>NHS</td><td>1 Byte</td><td>Network Health Score des Clusters dieses Knotens</td></tr>
+</table>
+
+<p>Wenn ein Knoten eine OGM empfängt, geschieht Folgendes:</p>
+<ol>
+  <li><strong>RSSI/SNR messen</strong> des empfangenen Signals → bestimmt die Verbindungsqualität zum Sender</li>
+  <li><strong>Sender in die Nachbartabelle eintragen/aktualisieren</strong> (max. 16 Nachbarn pro Knoten)</li>
+  <li><strong>Cluster-ID vermerken</strong> — falls der Sender in einem anderen Cluster ist, könnte dieser Knoten ein <strong>Border Node</strong> sein</li>
+</ol>
+
+<div class="info-box">
+  <h5>Warum maximal 16 Nachbarn?</h5>
+  <p>Speicherbeschränkung. Jeder Nachbareintrag kostet ~80 Bytes. Auf nRF52-Geräten mit 256KB RAM bedeuten 16 Nachbarn × 80 Bytes = 1.280 Bytes — leistbar. Falls ein Knoten mehr als 16 Nachbarn hört, wird der mit der niedrigsten Verbindungsqualität entfernt. Das ist unproblematisch, da das Routing nur die <strong>besten</strong> Nachbarn braucht, nicht alle.</p>
+</div>
+
+<h3>Verbindungsqualität ist asymmetrisch</h3>
+
+<p>Ein kritisches Detail: <strong>Die Verbindung von A→B kann eine andere Qualität haben als B→A.</strong> Ein Berggipfel-Knoten mit freier Sichtlinie sendet möglicherweise mit Qualität 0,95 zum Talknoten, aber der Talknoten (umgeben von Gebäuden) kann nur mit Qualität 0,3 zurücksenden. System 5 verfolgt beide Richtungen unabhängig.</p>
+
+<div class="diagram"><span class="node">Berggipfel (600m, Freiraum)</span>  ——— Qualität 0,95 ———→  <span class="node">Tal (50m, urban)</span>
+<span class="node">Berggipfel</span>  ←—— Qualität 0,30 ——————  <span class="node">Tal</span>
+
+System 5 kennt beide Werte. Beim Routing ZUM Tal wird die 0,95-Verbindung genutzt.
+Beim Routing VOM Tal wird ein anderer Pfad gefunden (vielleicht über einen Hügelknoten).</div>
+
+<!-- ============================================================ -->
+<h2 id="step3">Schritt 3: Geo-Clustering — Selbstorganisierende Geografie</h2>
+
+<p>Nach einigen OGM-Runden (~1–2 Minuten) haben die Knoten ihre Nachbarn entdeckt. Nun organisiert sich das Netzwerk selbst in <strong>geografische Cluster</strong>.</p>
+
+<h3>Wie Clustering funktioniert</h3>
+
+<p>Es gibt keinen zentralen Koordinator. Jeder Knoten handelt unabhängig:</p>
+<ol>
+  <li>Berechnet seinen Geohash aus seiner GPS-Position</li>
+  <li>Nimmt die ersten 4 Zeichen als seine Cluster-ID</li>
+  <li>Knoten mit dem gleichen 4-Zeichen-Präfix sind automatisch im selben Cluster</li>
+</ol>
+
+<p>Das ist komplett dezentral — kein Knoten muss das gesamte Netzwerk „kennen". Wenn ein neuer Knoten in München eingeschaltet wird, berechnet er seinen Geohash (<code>"u281"</code>) und ist automatisch Teil des München-Clusters. Er braucht keine Genehmigung und keine Koordination.</p>
+
+<h3>Border Nodes — Die Brücken zwischen Clustern</h3>
+
+<p>Ein <strong>Border Node</strong> ist jeder Knoten, der Nachbarn in einem <strong>anderen Cluster</strong> hat. Border Nodes sind entscheidend — sie sind die Brücken für das clusterübergreifende Routing.</p>
+
+<div class="diagram">    Cluster "u33d"              Cluster "u33e"
+   ┌──────────────┐          ┌──────────────┐
+   │  A   B   C   │          │  F   G   H   │
+   │      D       │          │      I       │
+   │         <span class="node">[E]</span> ─┼── Link ──┼─ <span class="node">[J]</span>         │
+   └──────────────┘          └──────────────┘
+
+<span class="node">[E]</span> und <span class="node">[J]</span> sind <span class="path">Border Nodes</span> — sie haben Nachbarn über Clustergrenzen hinweg.
+Um von A nach H zu senden: A → D → <span class="node">E</span> → <span class="node">J</span> → G → H
+                      (innerhalb u33d) (Brücke) (innerhalb u33e)</div>
+
+<p>System 5 begrenzt Brückenverbindungen auf <strong>2 pro Clusterpaar</strong>, um eine Routenexplosion zu verhindern. Die zwei stärksten Verbindungen zwischen jedem Paar benachbarter Cluster werden ausgewählt.</p>
+
+<h3>Warum das skaliert</h3>
+
+<p>Jeder Knoten muss nur Folgendes kennen:</p>
+<ul>
+  <li><strong>Vollständige Topologie innerhalb seines eigenen Clusters</strong> (direkte Nachbarkenntnis, ~20–50 Knoten)</li>
+  <li><strong>Border Nodes zu benachbarten Clustern</strong> (2 pro Paar × ~8 Nachbarcluster = 16 Knoten)</li>
+  <li><strong>Cluster-Level-Routen</strong> für entfernte Cluster (abstrakt — „um Cluster u33e zu erreichen, gehe über Border Node E")</li>
+</ul>
+
+<p>Ein Knoten in San Francisco muss nicht jeden einzelnen Knoten in Oakland kennen. Er muss nur wissen: „Um Oakland zu erreichen, route über Border Node #47 auf dem Bay Bridge-Kamm."</p>
+
+<!-- ============================================================ -->
+<h2 id="step4">Schritt 4: Routenberechnung — Mehrere Pfade finden</h2>
+
+<p>Sobald Cluster und Border Nodes bekannt sind, berechnet jeder Knoten <strong>bis zu 5 Routen</strong> zu jedem Ziel, das er erreichen möchte.</p>
+
+<h3>Der Algorithmus: BFS mit progressivem Ausschluss</h3>
+
+<ol>
+  <li><strong>Kürzesten Pfad finden</strong> via Breadth-First Search (BFS) von Quelle zu Ziel</li>
+  <li><strong>Zwischenknoten aufzeichnen</strong> dieses Pfades</li>
+  <li><strong>Diese Zwischenknoten ausschließen</strong> und den nächstkürzesten Pfad finden (erzwingt eine andere Route)</li>
+  <li>Bis zu 5 Mal wiederholen — jeder neue Pfad muss mindestens einen anderen Zwischenknoten verwenden</li>
+</ol>
+
+<div class="diagram">Routenberechnung: A → Z
+
+Pfad 1 (BFS):      A → <span class="path">B → D → G</span> → Z     (kürzester, Qualität 0,92)
+  Ausschluss: B, D, G
+
+Pfad 2 (BFS\{B,D,G}): A → <span class="path">C → F → H</span> → Z  (zweitbester, Qualität 0,85)
+  Ausschluss: B, D, G, C, F, H
+
+Pfad 3 (BFS\{...}): A → <span class="path">E → J → K</span> → Z     (dritter, Qualität 0,71)
+
+Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
+
+<h3>Routenqualitätsberechnung</h3>
+
+<p>Für jede Route ist die Qualität das <strong>Produkt aller Verbindungsqualitäten entlang des Pfades</strong>:</p>
+
+<div class="formula-box">
+  <span class="label">Routenqualität</span>
+  Q(route) = q(A→B) × q(B→D) × q(D→G) × q(G→Z)
+</div>
+
+<p>Wenn eine einzelne Verbindung Qualität 0,5 hat, sinkt die Gesamtroutenqualität erheblich. Das bestraft natürlich lange Pfade und Pfade mit schwachen Verbindungen.</p>
+
+<h3>Lazy vs. Eager Berechnung</h3>
+
+<ul>
+  <li><strong>Kleine Netzwerke (&lt;200 Knoten)</strong>: Routen werden beim Start für alle Paare vorberechnet (<em>Eager-Modus</em>)</li>
+  <li><strong>Große Netzwerke (&gt;200 Knoten)</strong>: Routen werden bei Bedarf berechnet, wenn eine Nachricht gesendet werden muss (<em>Lazy-Modus</em>). Einmal berechnet, werden sie gecacht.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="step5">Schritt 5: Eine Nachricht senden — Gewichtete Routenauswahl</h2>
+
+<p>Wenn Knoten A eine Nachricht an Knoten Z senden will, ist dies der genaue Entscheidungsprozess:</p>
+
+<div class="step-title"><span class="step-num">1</span><h3>QoS-Gate prüfen</h3></div>
+<p>Ist die Priorität dieser Nachricht hoch genug für den aktuellen Netzwerkzustand? (Siehe <a href="#step6">Schritt 6</a>)</p>
+
+<div class="step-title"><span class="step-num">2</span><h3>Gecachte Routen abrufen</h3></div>
+<p>Alle gecachten Routen zum Ziel Z nachschlagen. Typischerweise 2–5 Routen.</p>
+
+<div class="step-title"><span class="step-num">3</span><h3>Tote Routen filtern</h3></div>
+<p>Routen entfernen, bei denen ein Zwischenknoten ausgefallen ist (Batterie = 0) oder eine Verbindung unterbrochen ist.</p>
+
+<div class="step-title"><span class="step-num">4</span><h3>Gewichte berechnen</h3></div>
+<p>Für jede verbleibende Route wird ein Gewicht berechnet, das drei Faktoren ausbalanciert:</p>
+
+<div class="formula-box">
+  <span class="label">Routengewicht (die Kernformel)</span>
+  W(r) = 0.4 × Q(r) + 0.35 × (1 − Load(r)) + 0.25 × Batt(r)
+</div>
+
+<table class="compare-table">
+  <tr><th>Faktor</th><th>Gewicht</th><th>Was er misst</th><th>Warum er wichtig ist</th></tr>
+  <tr>
+    <td><strong>Q(r)</strong> — Qualität</td><td class="highlight">0,4 (40%)</td>
+    <td>Produkt aller Verbindungsqualitäten entlang des Pfades</td>
+    <td>Höher = weniger Paketverluste, weniger Wiederholungen nötig</td>
+  </tr>
+  <tr>
+    <td><strong>1−Load(r)</strong> — Freie Kapazität</td><td class="highlight">0,35 (35%)</td>
+    <td>Durchschnittliche Warteschlangenauslastung der Zwischenknoten (invertiert)</td>
+    <td>Vermeidet Routing durch überlastete Knoten</td>
+  </tr>
+  <tr>
+    <td><strong>Batt(r)</strong> — Batterie</td><td class="highlight">0,25 (25%)</td>
+    <td>Minimaler Batteriestand über alle Knoten im Pfad</td>
+    <td>Knoten mit niedrigem Akku nicht entleeren; sie könnten solar sein und Reserven brauchen</td>
+  </tr>
+</table>
+
+<div class="step-title"><span class="step-num">5</span><h3>Proportionale Auswahl (nicht nur die Beste!)</h3></div>
+
+<p>Dies ist eine kritische Designentscheidung. System 5 wählt <strong>nicht</strong> immer die beste Route. Es wählt Routen <strong>probabilistisch, proportional zu ihrem Gewicht</strong>:</p>
+
+<div class="formula-box">
+  <span class="label">Auswahlwahrscheinlichkeit</span>
+  P(route r) = W(r) / Σ W(alle Routen)
+</div>
+
+<p><strong>Beispiel</strong>: Wenn Route 1 Gewicht 0,8 und Route 2 Gewicht 0,4 hat:</p>
+<ul>
+  <li>Route 1 wird ~67% der Zeit gewählt (0,8 / 1,2)</li>
+  <li>Route 2 wird ~33% der Zeit gewählt (0,4 / 1,2)</li>
+</ul>
+
+<p>Das hält sekundäre Routen „warm" — gelegentlich fließt Verkehr durch sie, sodass das Netzwerk weiß, dass sie noch funktionieren. Wenn Route 1 ausfällt, ist Route 2 sofort mit aktuellen Qualitätsdaten verfügbar.</p>
+
+<div class="step-title"><span class="step-num">6</span><h3>Hop-by-Hop-Weiterleitung</h3></div>
+
+<p>Die Nachricht wird entlang des gewählten Pfades gesendet, ein Hop nach dem anderen:</p>
+
+<ol>
+  <li>A sendet an B (erster Hop im Pfad)</li>
+  <li>Wenn B empfängt → B leitet an D weiter (nächster Hop)</li>
+  <li>Wenn B nicht empfängt → A wiederholt (bis zu 3 Mal bei guten Verbindungen, 5 bei schlechten)</li>
+  <li>Wenn alle Wiederholungen scheitern → nächste gecachte Route versuchen (bis zu 5 Routenversuche)</li>
+  <li>Wenn alle Routen scheitern → Fallback auf <a href="#step7">begrenztes Cluster-Flooding</a></li>
+</ol>
+
+<div class="info-box">
+  <h5>Adaptive Wiederholungen</h5>
+  <p>Verbindungen mit Qualität &gt; 0,5 bekommen <strong>3 Wiederholungen</strong> (werden wahrscheinlich schnell erfolgreich). Verbindungen mit Qualität ≤ 0,5 bekommen <strong>5 Wiederholungen</strong> (brauchen mehr Versuche). Das balanciert Zustellwahrscheinlichkeit gegen Sendezeit-Kosten.</p>
+</div>
+
+<h3>Backpressure — Automatische Stau-Vermeidung</h3>
+
+<p>Wenn die Warteschlange eines Zwischenknotens sich füllt, wendet System 5 <strong>graduellen Gegendruck</strong> an:</p>
+
+<table class="compare-table">
+  <tr><th>Warteschlangenlast</th><th>Aktion</th></tr>
+  <tr><td>&lt; 80%</td><td>Normaler Betrieb — Routengewicht unverändert</td></tr>
+  <tr><td>80–95%</td><td class="bad">Routengewicht bestraft (× 0,8–0,95) — Verkehr verlagert sich auf Alternativen</td></tr>
+  <tr><td>&gt; 95%</td><td class="bad">Route vollständig blockiert — kein neuer Verkehr durch diesen Knoten</td></tr>
+</table>
+
+<p>Das verhindert kaskadierende Überlastung: Wenn ein Knoten beginnt, überlastet zu werden, verteilt sich der Verkehr natürlich auf andere Pfade, <strong>bevor</strong> der Knoten Pakete verwirft.</p>
+
+<!-- ============================================================ -->
+<h2 id="step6">Schritt 6: QoS — Priorisierung unter Druck</h2>
+
+<p>Nicht alle Nachrichten sind gleich. System 5 verwendet einen <strong>Network Health Score (NHS)</strong> pro Cluster, um niedrig priorisierten Verkehr zu drosseln, wenn das Netzwerk belastet ist.</p>
+
+<h3>NHS-Berechnung</h3>
+<p>NHS ist ein Wert von 0,0 bis 1,0, der den Gesundheitszustand des Clusters repräsentiert, basierend auf:</p>
+<ul>
+  <li>Durchschnittliche Verbindungsqualität über alle Verbindungen im Cluster</li>
+  <li>Anzahl aktiver (lebender) Knoten vs. erwartete Knoten</li>
+  <li>Durchschnittliche Warteschlangenauslastung der Cluster-Mitglieder</li>
+</ul>
+
+<h3>Prioritäts-Gating</h3>
+
+<table class="compare-table">
+  <tr><th>NHS-Bereich</th><th>Netzwerkzustand</th><th>Erlaubte Prioritäten</th><th>Beispiel</th></tr>
+  <tr><td class="highlight">0,8 – 1,0</td><td>Gesund</td><td>Alle (0–7)</td><td>Alles kommt durch</td></tr>
+  <tr><td>0,6 – 0,8</td><td>Mäßig</td><td>Nur 0–5</td><td>Niedrig priorisierte Telemetrie gedrosselt</td></tr>
+  <tr><td class="bad">0,4 – 0,6</td><td>Verschlechtert</td><td>Nur 0–3</td><td>Nur wichtige Nachrichten</td></tr>
+  <tr><td class="bad">0,2 – 0,4</td><td>Kritisch</td><td>Nur 0–1</td><td>Nur Notfall/SOS</td></tr>
+  <tr><td class="bad">&lt; 0,2</td><td>Zusammengebrochen</td><td>Nur 0</td><td>Nur SOS-Nachrichten</td></tr>
+</table>
+
+<p>Priorität 0 = SOS/Notfall — <strong>kommt immer durch</strong>, unabhängig vom Netzwerkzustand. Das stellt sicher, dass in einem Katastrophenszenario kritische Nachrichten niemals durch routinemäßige Telemetrie blockiert werden.</p>
+
+<!-- ============================================================ -->
+<h2 id="step7">Schritt 7: Fallback — Wenn alle Routen versagen</h2>
+
+<p>Wenn alle 5 gecachten Routen versagen (nach Wiederholungen auf jeder einzelnen), gibt System 5 nicht auf. Es fällt zurück auf <strong>begrenztes Cluster-Flooding</strong> — eine gezielte Mini-Flut entlang des Korridors zwischen Quelle und Ziel.</p>
+
+<h3>Wie begrenztes Flooding funktioniert</h3>
+
+<ol>
+  <li><strong>Cluster-Level-Pfad finden</strong>: BFS auf dem Cluster-Nachbarschaftsgraphen vom Quell-Cluster zum Ziel-Cluster</li>
+  <li><strong>Korridor definieren</strong>: Quell-Cluster + Ziel-Cluster + alle Border Nodes entlang des Cluster-Pfads</li>
+  <li><strong>Nur innerhalb des Korridors fluten</strong>: Nachricht wird nur an Knoten im Korridor gesendet — nicht ans gesamte Netzwerk</li>
+</ol>
+
+<div class="diagram">Gesamtes Netzwerk (Flooding würde alle 5 Cluster betreffen):
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│ C1  │──│ C2  │──│ C3  │──│ C4  │──│ C5  │
+└─────┘  └─────┘  └─────┘  └─────┘  └─────┘
+
+Quelle in C1, Ziel in C4.
+Cluster-Pfad: C1 → C2 → C3 → C4
+
+<span class="path">Begrenzter Flood-Korridor (System 5 Fallback):</span>
+┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
+│<span class="path"> C1 </span> │──│ <span class="node">B2</span>  │──│ <span class="node">B3</span>  │──│<span class="path"> C4 </span> │   C5 wird NICHT geflutet
+└─────┘  └─────┘  └─────┘  └─────┘
+
+<span class="path">C1</span> und <span class="path">C4</span>: vollständiges Cluster-Flooding (alle Mitglieder)
+<span class="node">B2</span> und <span class="node">B3</span>: nur Border Nodes + ihre direkten Nachbarn</div>
+
+<p>Das ist dramatisch günstiger als netzwerkweites Flooding. In einem 500-Knoten-Netzwerk mit 10 Clustern betrifft ein vollständiges Flooding alle 500 Knoten. Ein begrenztes Korridor-Flooding betrifft ~100 Knoten (2 vollständige Cluster + Border Nodes).</p>
+
+<div class="warn-box">
+  <h5>Bekannte Einschränkung</h5>
+  <p>Wenn das Korridor-Flooding häufig ausgelöst wird (wie im Bay Area Half-Duplex-Szenario), kann es dennoch hohe TX-Zahlen erzeugen. Dies ist das wichtigste Optimierungsziel: mehr alternative gerichtete Routen versuchen, bevor das Korridor-Flooding ausgelöst wird.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="step8">Schritt 8: Selbstwartung — Routen aktuell halten</h2>
+
+<p>Netzwerke ändern sich ständig: Knoten bewegen sich, Batterien entleeren sich, Verbindungen verschlechtern sich. System 5 wartet sich durch mehrere Mechanismen selbst:</p>
+
+<h3>Routenqualitäts-Abklingung (Pheromon-Modell)</h3>
+<p>Inspiriert von der Ameisenkolonie-Optimierung: Alle 30 Sekunden klingen alle gecachten Routenqualitäten um 5% ab:</p>
+
+<div class="formula-box">
+  <span class="label">Qualitätsabklingung (alle 30s)</span>
+  Q(route) = Q(route) × 0.95
+</div>
+
+<p>Routen, die tatsächlich genutzt werden, erhalten ihre Qualität <strong>aktualisiert</strong> aus realen Verbindungsmessungen. Routen, die nie genutzt werden, verblassen allmählich auf null und werden schließlich ersetzt. Das stellt sicher, dass die Routing-Tabelle immer die <strong>aktuellen</strong> Netzwerkbedingungen widerspiegelt, nicht veraltete historische Daten.</p>
+
+<h3>Routen-Feedback</h3>
+<p>Nach jedem Nachrichtenzustellungsversuch:</p>
+<ul>
+  <li><strong>Erfolg</strong>: Routenqualität um 5% erhöht (gedeckelt bei 1,0). Fehlerzähler auf 0 zurückgesetzt.</li>
+  <li><strong>Misserfolg</strong>: Routenqualität halbiert. Fehlerzähler erhöht. Nach 3 Fehlschlägen wird die Route bis zur Aktualisierung durch die nächste OGM-Runde von der Auswahl ausgeschlossen.</li>
+</ul>
+
+<h3>Nachbar-Verdrängung</h3>
+<p>Wenn ein Knoten einen neuen Nachbarn entdeckt, aber seine Tabelle voll ist (16 Einträge), wird der Nachbar mit der niedrigsten Verbindungsqualität verdrängt. Das stellt sicher, dass die Routing-Tabelle immer die <strong>besten verfügbaren</strong> Verbindungen enthält.</p>
+
+<h3>Dynamisches Hop-Limit</h3>
+<p>Anders als Meshtastics festes 3–7 Hop-Limit verwendet System 5 ein dynamisches Limit, das mit der Netzwerkgröße skaliert:</p>
+
+<div class="formula-box">
+  <span class="label">Dynamisches Max-Hops</span>
+  max_hops = clamp(√n × 3, 15, 40)
+</div>
+
+<p>Für ein 100-Knoten-Netzwerk: max_hops = √100 × 3 = 30. Für ein 1000-Knoten-Netzwerk: max_hops = 40 (gedeckelt). Das ermöglicht Nachrichten, große Netzwerke zu durchqueren, ohne künstliche Grenzen, und verhindert gleichzeitig Endlosschleifen.</p>
+
+<!-- ============================================================ -->
+<h2 id="halfduplex">Das Half-Duplex-Problem (Bay Area-Entdeckung)</h2>
+
+<p>Dies ist die wichtigste reale Beschränkung, die Simulatoren typischerweise ignorieren. LoRa-Funkmodule sind <strong>Half-Duplex</strong>: Ein Knoten <strong>kann nicht senden, während er empfängt</strong>.</p>
+
+<h3>Warum das für Flooding wichtig ist</h3>
+
+<p>Betrachten wir einen Berggipfel-Router auf 600m Höhe, der 100 Knoten hören kann. Wenn eine Nachricht durch das Netzwerk flutet:</p>
+
+<ol>
+  <li>Knoten A sendet eine Nachricht. Der Berggipfel hört sie (jetzt im RX-Zustand).</li>
+  <li>10 Dachknoten nahe A hören sie ebenfalls und senden gleichzeitig weiter.</li>
+  <li>Der Berggipfel <strong>empfängt noch</strong> diese 10 Weitersendungen — er <strong>kann nicht senden</strong>.</li>
+  <li>4 Langstrecken-Router senden ebenfalls weiter. Der Berggipfel steckt immer noch im RX-Zustand fest.</li>
+  <li>Bis der Berggipfel senden kann, ist der Timer des Managed-Flooding-Algorithmus abgelaufen — er sendet entweder weiter (verursacht weitere Kollisionen) oder unterdrückt (Nachricht stirbt).</li>
+</ol>
+
+<p>Ergebnis: 5% tatsächliche Nutzung wird zu <strong>50% Kanalauslastung</strong> am Berggipfel, und Nachrichten schaffen es nicht über den ersten Hop hinaus.</p>
+
+<h3>Warum System 5 Half-Duplex überlebt</h3>
+
+<p>Mit gerichtetem Routing empfängt der Berggipfel-Knoten <strong>ein gezieltes Paket</strong> (nicht 14 gleichzeitige Weitersendungen). Er verarbeitet es, wartet auf ein freies TX-Fenster und leitet an den nächsten Hop weiter. Die Funk-Zustandsmaschine ist einfach:</p>
+
+<div class="diagram">Managed Flooding am Berggipfel:
+  RX(A) → RX(B) → RX(C) → ... → RX(N) → <span class="bad">TX-Fenster? ALLES BLOCKIERT</span>
+  Dauer: 10–20 Sekunden kontinuierlicher Empfang → Nachricht stirbt
+
+System 5 gerichtetes Routing:
+  RX(Paket für uns) → <span class="path">TX(Weiterleitung an nächsten Hop)</span> → IDLE
+  Dauer: ~2 Sekunden gesamt → Nachricht geht weiter</div>
+
+<h3>Simulationsergebnisse</h3>
+
+<p>Wir haben eine Bay Area-artige Simulation mit 235 Knoten in 3 Höhenstufen und Half-Duplex-Funkmodellierung erstellt. Die Ergebnisse bestätigen die realen Beobachtungen:</p>
+
+<table class="compare-table">
+  <tr><th>Szenario</th><th>Router</th><th>Zustellung</th><th>Gesamt-TX</th></tr>
+  <tr><td rowspan="2">Bay Area <strong>ohne</strong> Half-Duplex</td>
+    <td>Managed Flood</td><td>87,5%</td><td>908.785</td></tr>
+  <tr><td class="highlight">System 5</td><td class="highlight">80,5%</td><td class="highlight">47.094</td></tr>
+  <tr><td rowspan="2">Bay Area <strong>mit</strong> Half-Duplex</td>
+    <td>Managed Flood</td><td class="bad">6,0%</td><td>6.752</td></tr>
+  <tr><td class="highlight">System 5</td><td class="highlight">77,5%</td><td>540.780</td></tr>
+</table>
+
+<p>Half-Duplex lässt Flooding von 87,5% → 6% Zustellung zusammenbrechen. System 5 hält bei 77,5%. <a href="../simulator.html">Probiere das Bay Area-Szenario im Live-Simulator →</a></p>
+
+<!-- ============================================================ -->
+<h2 id="memory">Speicherbedarf — Läuft das auf dem nRF52?</h2>
+
+<p>Reale Mesh-Geräte haben enge Speichergrenzen. Der nRF52840 (verwendet im RAK4631 Solar-Router) hat 256KB RAM, mit ~64KB verfügbar nach BLE- und LoRa-Stacks.</p>
+
+<h3>Datenstrukturen</h3>
+
+<table class="compare-table">
+  <tr><th>Struktur</th><th>Größe</th><th>Anzahl</th><th>Gesamt</th></tr>
+  <tr><td>Nachbareintrag</td><td>~80 Bytes</td><td>max. 16</td><td>1.280 Bytes</td></tr>
+  <tr><td>Routeneintrag (pro Ziel)</td><td>~410 Bytes</td><td>5 Routen × N Ziele</td><td>variabel</td></tr>
+  <tr><td>Cluster-Metadaten</td><td>~100 Bytes</td><td>8 Cluster</td><td>800 Bytes</td></tr>
+  <tr><td>Eigener Knotenzustand</td><td>~100 Bytes</td><td>1</td><td>100 Bytes</td></tr>
+</table>
+
+<h3>Skalierung mit Netzwerkgröße</h3>
+
+<table class="compare-table">
+  <tr><th>Netzwerkgröße</th><th>Verfolgte Ziele</th><th>Routing-Speicher</th><th>Passt auf nRF52?</th></tr>
+  <tr><td>20 Knoten (lokal)</td><td>20</td><td>~10 KB</td><td class="highlight">Ja</td></tr>
+  <tr><td>100 Knoten (Stadt)</td><td>100</td><td>~43 KB</td><td class="highlight">Ja (knapp)</td></tr>
+  <tr><td>500 Knoten (regional)</td><td>~70 (Cluster-Sicht)</td><td>~30 KB</td><td class="highlight">Ja</td></tr>
+  <tr><td>1000 Knoten</td><td>~70 (Cluster-Sicht)</td><td>~30 KB</td><td class="highlight">Ja</td></tr>
+  <tr><td>10.000 Knoten</td><td>~200 (Cluster + Grenzen)</td><td>~84 KB</td><td class="bad">Braucht reduzierte Parameter</td></tr>
+</table>
+
+<p>Die Kernidee: <strong>Geo-Clustering bedeutet, dass ein Knoten nur seinen eigenen Cluster + Grenzrouten verfolgt.</strong> Ein 10.000-Knoten-Netzwerk bedeutet nicht 10.000 Routeneinträge — es bedeutet ~200 Einträge (eigene Cluster-Mitglieder + Border Nodes zu benachbarten Clustern).</p>
+
+<h3>nRF52-Optimierung</h3>
+<p>Für speicherbeschränkte Geräte können diese Firmware-Konstanten reduziert werden:</p>
+<ul>
+  <li><code>S5_MAX_ROUTES</code>: 5 → 2 (spart 60% Speicher)</li>
+  <li><code>S5_MAX_PATH_LEN</code>: 15 → 8 (reduziert Routengröße um 47%)</li>
+  <li>Lazy-Routenberechnung verwenden (nur Routen zu kürzlich kontaktierten Zielen cachen)</li>
+  <li>Ergebnis: <strong>~15 KB</strong> für 200-Ziel-Ansicht → passt komfortabel auf den nRF52</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="bayarea">Bay Area-Topologie — Der Praxistest unter Extrembedingungen</h2>
+
+<p>Basierend auf Feedback von Bay Area Mesh-Betreibern haben wir eine Simulation erstellt, die die tatsächliche Netzwerkstruktur modelliert:</p>
+
+<h3>Drei-Stufen-Höhenmodell</h3>
+
+<table class="compare-table">
+  <tr><th>Stufe</th><th>Knoten</th><th>Höhe</th><th>Reichweite</th><th>Gelände</th><th>Rolle</th></tr>
+  <tr>
+    <td><strong>Berg</strong></td><td>7 (3%)</td><td>600–1200m</td><td>45km</td><td>Freiraum</td>
+    <td>Backbone-Router (Mt Diablo, Mt Tam, etc.)</td>
+  </tr>
+  <tr>
+    <td><strong>Hügel/Dach</strong></td><td>35 (15%)</td><td>150–500m</td><td>10km</td><td>Vorstadt</td>
+    <td>Brücke zwischen Berg und Tal</td>
+  </tr>
+  <tr>
+    <td><strong>Tal/Innenraum</strong></td><td>193 (82%)</td><td>0–100m</td><td>0,75–2,5km</td><td>Urban/Innen</td>
+    <td>Endnutzer-Handgeräte und Indoor-Knoten</td>
+  </tr>
+</table>
+
+<h3>Was dieses Szenario schwierig macht</h3>
+
+<ul>
+  <li><strong>Extreme Asymmetrie</strong>: Berg→Tal Qualität ~1,0 (freie Sichtlinie), Tal→Berg Qualität ~0 (urbanes Gelände + Distanz)</li>
+  <li><strong>Half-Duplex-Blockierung</strong>: Bergknoten hören jede Übertragung im 45km-Radius — sie sind während des Floodings permanent im RX-Zustand</li>
+  <li><strong>Kollisionskaskade</strong>: 10+ Knoten senden gleichzeitig am Berggipfel → Capture Effect hilft nur, wenn ein Signal 6dB stärker ist</li>
+  <li><strong>Hidden Terminal</strong>: Zwei Talknoten können sich gegenseitig nicht hören, senden aber beide gleichzeitig an denselben Berggipfel</li>
+</ul>
+
+<p><strong><a href="../simulator.html">Probiere dieses Szenario im Live-Simulator →</a></strong> — wähle „Bay Area Mesh (235 nodes, 3-tier elevation)" aus dem Dropdown.</p>
+
+<p><strong><a href="../docs/bay-area-feedback-response.md">Lies die vollständige Q&A mit der Bay Area Mesh-Community →</a></strong></p>
+
+<!-- ============================================================ -->
+<h2 id="silencing">Node Silencing — Redundante Knoten stummschalten</h2>
+
+<p>Eines der wirkungsvollsten v2.0-Features, inspiriert durch Feedback der Bay Area Mesh-Community. Die Kernerkenntnis: In einem 235-Knoten-Netzwerk sind die meisten Talknoten <strong>redundant</strong> — ihre Nachbarn können alle über andere Pfade erreicht werden. Jedes Mal, wenn diese redundanten Knoten weitersenden, fügen sie Kollisionsrauschen an Berggipfel-Empfängern hinzu, ohne zur Nachrichtenzustellung beizutragen.</p>
+
+<h3>Wie es funktioniert</h3>
+
+<ol>
+  <li><strong>Redundanz-Bewertung</strong>: Für jeden Knoten wird jeder Nachbar geprüft — kann dieser Nachbar von mindestens 2 anderen lebenden Knoten erreicht werden? Falls ja, ist diese Nachbarverbindung „redundant". Der Redundanzwert des Knotens = Anteil redundanter Nachbarverbindungen (0,0 = kritisch, 1,0 = vollständig ersetzbar).</li>
+  <li><strong>Schutz kritischer Brücken</strong>: Border Nodes mit wenigen Alternativen (≤3 andere Brücken zum selben Clusterpaar) werden stark abgewertet. Bergknoten und essentielle Hügelknoten werden nie stummgeschaltet.</li>
+  <li><strong>Batteriegewichtete Priorität</strong>: <code>silence_priority = redundancy × 0.6 + (1 - battery) × 0.4</code>. Knoten mit niedrigem Akkustand werden zuerst stummgeschaltet. Solarknoten (immer 100%) bleiben am längsten aktiv.</li>
+  <li><strong>Anwendung pro Cluster</strong>: Innerhalb jedes Clusters werden die oberen 60% der Kandidaten (nach Priorität) stummgeschaltet. Mindestens 2 Knoten bleiben pro Cluster immer aktiv.</li>
+</ol>
+
+<h3>Was stummgeschaltete Knoten tun (und nicht tun)</h3>
+
+<table class="compare-table">
+  <tr><th>Aktion</th><th>Stummgeschalteter Knoten</th><th>Aktiver Knoten</th></tr>
+  <tr><td>OGMs empfangen</td><td class="highlight">Ja — bleibt über das Netzwerk informiert</td><td class="highlight">Ja</td></tr>
+  <tr><td>Direkte Nachrichten empfangen</td><td class="highlight">Ja — kann adressiert werden</td><td class="highlight">Ja</td></tr>
+  <tr><td>Eigene Nachrichten senden</td><td class="highlight">Ja — kann initiieren</td><td class="highlight">Ja</td></tr>
+  <tr><td>Flooding weitersenden</td><td class="bad">Nein — bleibt still</td><td class="highlight">Ja</td></tr>
+  <tr><td>OGMs senden</td><td class="bad">Nein — spart Sendezeit</td><td class="highlight">Ja</td></tr>
+  <tr><td>Gerichtete S5-Pakete weiterleiten</td><td class="highlight">Ja — wenn auf dem berechneten Pfad</td><td class="highlight">Ja</td></tr>
+</table>
+
+<h3>Batteriefaire Rotation</h3>
+
+<p>Dieselben Knoten können nicht für immer stummgeschaltet sein — ihre Batterien würden länger halten, aber die aktiven Knoten würden schneller entladen. System 5 <strong>rotiert die stille Gruppe alle 10 Minuten</strong>:</p>
+
+<ol>
+  <li>Alle abgelaufenen Stummschaltungen werden aufgehoben</li>
+  <li>Redundanzwerte werden neu berechnet (Knoten können sich bewegt haben, ausgefallen sein oder ihre Last geändert haben)</li>
+  <li>Eine neue Gruppe von Knoten wird zur Stummschaltung ausgewählt, gewichtet nach aktuellem Batteriestand</li>
+</ol>
+
+<p>Ergebnis: Jeder Knoten verbringt ungefähr gleich viel Zeit aktiv und still. Der Batterieverbrauch wird gleichmäßig über das Netzwerk verteilt.</p>
+
+<h3>Ergebnisse</h3>
+
+<table class="compare-table">
+  <tr><th>Bay Area-Szenario</th><th>S5-Zustellung</th><th>S5-TX</th><th>Stummgeschaltete Knoten</th></tr>
+  <tr><td>Ohne Node Silencing</td><td>77,5%</td><td>540.780</td><td>0</td></tr>
+  <tr><td class="highlight">Mit Node Silencing</td><td class="highlight">74,5%</td><td class="highlight">267.927</td><td class="highlight">134 (57%)</td></tr>
+  <tr><td colspan="4" style="font-size:0.85rem;color:var(--text-muted)">128 Talknoten stummgeschaltet, 6 Hügelknoten stummgeschaltet, 0 Bergknoten stummgeschaltet</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="emergency">Notfall-Umleitung — Letzter Ausweg vor Flooding</h2>
+
+<p>Wenn alle 5 gecachten Routen versagen (jeder Hop wurde mit Wiederholungen versucht), löste das ursprüngliche System 5 sofort begrenztes Korridor-Flooding aus. Das war teuer — im Bay Area-Szenario lösten 73 von 200 Nachrichten Fallback-Floods aus.</p>
+
+<p>Die v2.0-Verbesserung fügt einen weiteren Schritt vor dem Flooding hinzu:</p>
+
+<ol>
+  <li>Alle Zwischenknoten der gescheiterten Routen in eine <code>failed_nodes</code>-Menge sammeln</li>
+  <li>Eine neue BFS von Quelle zu Ziel durchführen, <strong>unter Ausschluss aller gescheiterten Knoten</strong></li>
+  <li>Wenn ein neuer Pfad gefunden wird, einmal versuchen (gerichtet, kein Flooding)</li>
+  <li>Nur wenn auch dieser Notfallpfad scheitert → Korridor-Flooding auslösen</li>
+</ol>
+
+<p>Das ist günstig (eine BFS-Berechnung, keine zusätzlichen TX außer der Pfad funktioniert) und oft erfolgreich, weil die gescheiterten Knoten das eigentliche Problem waren — der Rest des Netzwerks hat möglicherweise einwandfreie Pfade.</p>
+
+<!-- ============================================================ -->
+<h2 id="seqnums">Sequenznummern — Fehlende Nachrichten erkennen</h2>
+
+<p>Multi-Pfad-Routing kann Nachrichten in falscher Reihenfolge zustellen. Wenn Nachrichten A, B, C über drei verschiedene Pfade mit unterschiedlichen Latenzen gesendet werden, könnte der Empfänger C, B, A sehen — oder schlimmer, C, A (B auf einem gescheiterten Pfad verloren).</p>
+
+<p>Das v2.0-Übertragungsprotokoll fügt einen <strong>2-Byte-Sequenzzähler</strong> (<code>uint16_t seq</code>) pro (Quelle, Ziel)-Paar hinzu:</p>
+
+<ul>
+  <li>Der Sender erhöht <code>seq</code> für jede Nachricht an ein bestimmtes Ziel</li>
+  <li>Der Empfänger verfolgt die zuletzt gesehene Sequenznummer pro Quelle</li>
+  <li>Lücken sind erkennbar: „seq 3 empfangen, dann seq 5 — seq 4 fehlt"</li>
+  <li>Falsche Reihenfolge ist erkennbar: „seq 5 empfangen, dann seq 4 — Umsortierung"</li>
+</ul>
+
+<div class="info-box">
+  <h5>Warum nicht erneut senden?</h5>
+  <p>Erneutes Senden erfordert einen ACK + Wiederholungs-Zyklus. Bei LoRa benötigt jedes Paket 500ms–2s Sendezeit. Eine 5-Hop-Wiederholung kostet 5–10 Sekunden Kanalzeit — während derer der Berggipfel für allen anderen Verkehr blockiert ist. Sequenznummern bieten <strong>Lückenerkennung bei null TX-Kosten</strong> (nur 2 zusätzliche Bytes im Header). Die Anwendungsschicht kann entscheiden, ob eine Wiederholung angefordert wird oder einfach „1 Nachricht fehlt" angezeigt wird.</p>
+</div>
+
+<p>Die Sequenzzähler werden effizient in der Firmware gespeichert: Nachbar-indiziertes Array für bekannte Nachbarn (32 Bytes) + LRU-Cache für andere (96 Bytes) = <strong>insgesamt 128 Bytes</strong>, unabhängig von der Netzwerkgröße.</p>
+
+<!-- ============================================================ -->
+<h2 id="packet">Paketformat — Was über den Äther geht</h2>
+
+<p>Jedes System 5-Paket hat einen 22-Byte-Header:</p>
+
+<table class="compare-table">
+  <tr><th>Offset</th><th>Feld</th><th>Größe</th><th>Beschreibung</th></tr>
+  <tr><td>0</td><td>Version</td><td>1 Byte</td><td>Protokollversion (aktuell 0x01)</td></tr>
+  <tr><td>1</td><td>Typ</td><td>1 Byte</td><td>DATA (0x01), OGM (0x02), ACK (0x03), CLUSTER_ANNOUNCE (0x04)</td></tr>
+  <tr><td>2</td><td>Quell-ID</td><td>4 Bytes</td><td>Ursprungsknoten-ID</td></tr>
+  <tr><td>6</td><td>Ziel-ID</td><td>4 Bytes</td><td>Zielknoten-ID (0xFFFFFFFF = Broadcast)</td></tr>
+  <tr><td>10</td><td>Paket-ID</td><td>4 Bytes</td><td>Eindeutig pro Paket (zur Deduplizierung)</td></tr>
+  <tr><td>14</td><td>Hop-Zähler</td><td>1 Byte</td><td>Aktueller Hop-Zähler (wird bei jedem Hop erhöht)</td></tr>
+  <tr><td>15</td><td>Max Hops</td><td>1 Byte</td><td>TTL — dynamisch, basierend auf √n × 3</td></tr>
+  <tr><td>16</td><td>Priorität</td><td>1 Byte</td><td>QoS-Priorität (0 = SOS, 7 = niedrigste)</td></tr>
+  <tr><td>17</td><td>Flags</td><td>1 Byte</td><td>Fallback-Bit, Route-Request-Bit, etc.</td></tr>
+  <tr><td>18</td><td>Nutzlastlänge</td><td>2 Bytes</td><td>Nutzlastgröße in Bytes</td></tr>
+  <tr><td>20</td><td>Prüfsumme</td><td>2 Bytes</td><td>CRC-16 von Header + Nutzlast</td></tr>
+  <tr><td>22+</td><td>Nutzlast</td><td>variabel</td><td>Anwendungsdaten (max. ~230 Bytes für LoRa)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="comparison">System 5 vs. alles andere</h2>
+
+<table class="compare-table">
+  <tr><th>Eigenschaft</th><th>Naives Flooding</th><th>Managed Flooding</th><th>Next-Hop</th><th class="highlight">System 5</th></tr>
+  <tr><td>TX-Kosten pro Nachricht</td><td class="bad">O(n)</td><td class="bad">O(n) × 0,5</td><td>O(Hops)*</td><td class="highlight">O(Hops)</td></tr>
+  <tr><td>Funktioniert für Broadcasts</td><td>Ja</td><td>Ja</td><td class="bad">Nein</td><td class="highlight">Ja</td></tr>
+  <tr><td>Hop-Limit nötig</td><td>Ja (3–7)</td><td>Ja (3–7)</td><td>Teilweise</td><td class="highlight">Nein (dynamisch)</td></tr>
+  <tr><td>Multi-Pfad-Failover</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="highlight">5 Routen</td></tr>
+  <tr><td>Lastverteilung</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="highlight">Gewichtet</td></tr>
+  <tr><td>Stau-Vermeidung</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="highlight">Backpressure</td></tr>
+  <tr><td>QoS-Priorität</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="bad">Nein</td><td class="highlight">8 Stufen + NHS-Gate</td></tr>
+  <tr><td>Half-Duplex-resistent</td><td class="bad">Nein</td><td class="bad">Nein</td><td>Teilweise</td><td class="highlight">Ja</td></tr>
+  <tr><td>GPS erforderlich</td><td>Nein</td><td>Nein</td><td>Nein</td><td class="bad">Ja**</td></tr>
+  <tr><td>Speicher-Overhead</td><td>Minimal</td><td>Minimal</td><td>Gering</td><td>Moderat (~8–30KB)</td></tr>
+</table>
+
+<p><em>* Next-Hop funktioniert nur für Direktnachrichten nach einem lernenden Flood. Die erste Nachricht flutet trotzdem.</em><br>
+<em>** GPS erforderlich für Clustering, aber RSSI-Triangulation und Cluster-Übernahme bieten Fallbacks.</em></p>
+
+<!-- ============================================================ -->
+
+<div style="text-align:center; margin: 4rem 0 2rem;">
+  <a href="../simulator.html" class="back-link">Zum Live-Simulator →</a>
+  <a href="index.html" class="back-link" style="margin-left:1rem">← Zurück zur Präsentation</a>
+</div>
+
+</div>
+
+<script src="../js/ui.js"></script>
+</body>
+</html>

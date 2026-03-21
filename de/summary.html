@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshRoute v2.0 — Zusammenfassung</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  /* Summary page specific styles */
+  .summary-hero {
+    min-height: 50vh; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 6rem 2rem 3rem; position: relative;
+  }
+  .summary-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .summary-hero .hero-tag { opacity: 1; animation: none; }
+  .summary-hero .hero-title { opacity: 1; animation: none; font-size: clamp(2.2rem, 5vw, 4rem); }
+  .summary-hero .hero-sub { opacity: 1; animation: none; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono); font-size: 0.8rem;
+    color: var(--cyan); text-decoration: none;
+    padding: 0.4rem 1rem; border: 1px solid var(--cyan-dim);
+    border-radius: 6px; transition: all 0.2s; margin-top: 1.5rem;
+  }
+  .back-link:hover { background: var(--cyan-glow); }
+  .summary-section { max-width: 1000px; margin: 0 auto; padding: 3rem 2rem; }
+  .summary-section h2 {
+    font-family: var(--font-display); font-size: 1.8rem; font-weight: 700;
+    margin-bottom: 1.5rem; padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary-section p, .summary-section li {
+    color: var(--text-dim); font-size: 1rem; line-height: 1.8;
+  }
+  .summary-section ul { padding-left: 1.5rem; margin: 1rem 0; }
+  .summary-section li { margin-bottom: 0.5rem; }
+  .summary-section strong { color: var(--text); }
+  .highlight-box {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem 2rem; margin: 1.5rem 0;
+  }
+  .highlight-box.cyan { border-color: var(--cyan-dim); background: rgba(34,211,238,0.03); }
+  .highlight-box h4 {
+    font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan);
+    margin-bottom: 0.5rem;
+  }
+  .formula-inline {
+    font-family: var(--font-display); font-size: 1.2rem;
+    color: var(--cyan); display: block; text-align: center;
+    padding: 0.75rem 0; letter-spacing: 0.02em;
+  }
+  .comparison-mini {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0;
+  }
+  .comparison-mini > div { padding: 1.5rem; border-radius: 10px; }
+  .comparison-mini .before {
+    background: rgba(248,113,113,0.04); border: 1px solid var(--red-dim);
+  }
+  .comparison-mini .after {
+    background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim);
+  }
+  .comparison-mini h4 { font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 0.5rem; }
+  .comparison-mini .before h4 { color: var(--red); }
+  .comparison-mini .after h4 { color: var(--cyan); }
+  @media (max-width: 768px) {
+    .comparison-mini { grid-template-columns: 1fr; }
+  }
+  .toc {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem 2rem; margin: 2rem 0;
+  }
+  .toc h4 { font-family: var(--font-mono); font-size: 0.8rem; color: var(--cyan); margin-bottom: 0.75rem; }
+  .toc ol { padding-left: 1.5rem; }
+  .toc li { margin-bottom: 0.3rem; }
+  .toc a { color: var(--text-dim); text-decoration: none; font-size: 0.9rem; }
+  .toc a:hover { color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar" class="scrolled">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul id="nav-menu">
+      <li><a href="index.html">Praesentation</a></li>
+      <li class="nav-sep"></li>
+      <li><a href="../simulator.html" style="color:var(--cyan)">Live-Simulator</a></li>
+      <li><a href="how-it-works.html">So funktioniert es</a></li>
+      <li><a href="../docs/esp-test-results.html" style="color:var(--green)">ESP32-Test</a></li>
+      <li><a href="summary.html" class="active">Zusammenfassung</a></li>
+      <li><a href="../summary.html" style="font-family:var(--font-mono);font-size:0.8rem;opacity:0.7">EN</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- NAV -->
+<nav id="navbar" class="scrolled">
+  <div class="nav-inner">
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <ul>
+      <li><a href="index.html">Vollstaendige Dokumentation</a></li>
+      <li><a href="#abstract" class="active">Zusammenfassung</a></li>
+      <li><a href="../summary.html" style="font-family:var(--font-mono);font-size:0.8rem;opacity:0.7">EN</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="summary-hero">
+  <div>
+    <div class="hero-tag">Zusammenfassung</div>
+    <h1 class="hero-title">Mesh<span class="accent">Route</span></h1>
+    <p class="hero-sub">Optimales Multi-Path-Routing fuer LoRa-Mesh-Netzwerke — naives Flooding durch intelligente, selbstheilende Kommunikation ersetzen.</p>
+    <p style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem">von Clemens Simon &middot; 2026</p>
+    <a href="index.html" class="back-link">&#x2190; Vollstaendige interaktive Dokumentation</a>
+  </div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="summary-section">
+  <div class="toc">
+    <h4>Inhalt</h4>
+    <ol>
+      <li><a href="#abstract">Kurzfassung</a></li>
+      <li><a href="#problem">Das Problem</a></li>
+      <li><a href="#approaches">Evaluierte Ansaetze</a></li>
+      <li><a href="#system5">System 5 — Die Loesung</a></li>
+      <li><a href="#math">Mathematische Bewertung</a></li>
+      <li><a href="#resilience">Resilienz &amp; Adaptive QoS</a></li>
+      <li><a href="#results">Ergebnisse</a></li>
+      <li><a href="#roadmap">Roadmap &amp; Naechste Schritte</a></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ABSTRACT -->
+<div class="summary-section" id="abstract">
+  <h2>1. Kurzfassung</h2>
+  <p>Meshtastic (v2.6/2.7) verwendet <strong>Managed Flooding</strong> mit SNR-basierter Unterdrueckung fuer Broadcasts und <strong>Next-Hop-Routing</strong> fuer Direktnachrichten. Das sind clevere Optimierungen gegenueber naivem Flooding — aber beide skalieren weiterhin mit <strong>O(n)</strong> pro Nachricht und erfordern ein Hop-Limit (Standard 3–7), das die Netzwerkreichweite begrenzt.</p>
+  <p>Diese Arbeit stellt <strong>System 5</strong> vor, ein Routing-Protokoll, das <strong>O(hops)</strong>-Kosten fuer alle Nachrichtentypen erreicht. Im Vergleich mit Meshtastics aktuellem Managed Flooding bei <strong>realistischen Hop-Limits (3, 5, 7)</strong> ueber 21 Szenarien (20–1500 Knoten, je 6 Router) liefert System 5 <strong>92–100% weniger Uebertragungen</strong> in kleinen bis mittleren Netzwerken bei <strong>gleicher oder hoeherer Zustellrate</strong>.</p>
+  <p>Die wichtigste Erkenntnis: <strong>Das Hop-Limit von Meshtastic begrenzt nicht nur die Reichweite — es verhindert die Zustellung.</strong> Bei 500 Knoten liefert Managed Flooding mit Hop-Limit 7 nur <strong>51%</strong> der Nachrichten aus. Bei 1000 Knoten nur <strong>6%</strong>. System 5 liefert in denselben Szenarien <strong>43–76%</strong>. Bei 1000+ Knoten verbraucht System 5 mehr TX insgesamt als Managed Flooding — liefert aber <strong>7-mal mehr Nachrichten</strong>, wodurch die Kosten pro zugestellter Nachricht weiterhin niedriger sind. Das Hop-Limit ist kein Sicherheitsnetz; es ist die primaere Skalierungsbarriere.</p>
+</div>
+
+<!-- PROBLEM -->
+<div class="summary-section" id="problem">
+  <h2>2. Was Meshtastic heute macht</h2>
+  <p>Das Routing von Meshtastic (v2.6/2.7) ist bereits deutlich besser als naives Flooding:</p>
+  <ul>
+    <li><strong>Managed Flooding</strong> — Vor dem Weiterleiten hoeren Knoten kurz zu. Wenn sie eine andere Weiterleitung hoeren, unterdruecken sie ihre eigene. SNR-basierte Prioritaet gibt entfernten Knoten kuerzere Wettbewerbsfenster. ROUTER/ROUTER_LATE-Rollen leiten immer weiter. Dies spart ~40–50% der Uebertragungen gegenueber naivem Flooding.</li>
+    <li><strong>Next-Hop-Routing (v2.6+)</strong> — Nur fuer Direktnachrichten. Die erste DM flutet; das System lernt, welches Relay erfolgreich war. Folge-DMs nutzen nur dieses eine gecachte Relay. Faellt bei Ausfall des Next-Hops auf Flooding zurueck.</li>
+    <li><strong>Congestion Scaling (v2.6+)</strong> — Netzwerke mit 40+ Knoten strecken Broadcast-Intervalle: <code>Intervall &times; (1 + (Knoten-40) &times; 0,075)</code>.</li>
+  </ul>
+  <p><strong>Die verbleibende Einschraenkung:</strong> Sowohl Managed Flooding als auch Next-Hop skalieren weiterhin mit O(n) pro Nachricht. Das Hop-Limit (3–7) ist notwendig, weil jeder Hop die Uebertragungen proportional zur Netzwerkgroesse vervielfacht. Das erzeugt jedoch eine <strong>doppelte Strafe</strong>: Nicht nur verschwendet jede Nachricht Bandbreite — Nachrichten, die mehr Hops als das Limit benoetigen, kommen schlicht <strong>nie an</strong>. Bei 100 Knoten mit Hop-Limit 3 sinkt die Zustellrate auf 92%. Bei 500 Knoten auf 14%. Das Hop-Limit begrenzt nicht nur die Reichweite — es macht grosse Netzwerke grundlegend unzuverlaessig.</p>
+</div>
+
+<!-- APPROACHES -->
+<div class="summary-section" id="approaches">
+  <h2>3. Vergleich der Ansaetze</h2>
+  <p>Vier Routing-Strategien werden auf identischen Netzwerktopologien simuliert und verglichen:</p>
+
+  <div class="highlight-box">
+    <h4>Naives Flooding (Referenz-Baseline)</h4>
+    <p>Jeder Knoten leitet einmal weiter. TX = n pro Nachricht. Wird von Meshtastic nicht verwendet — nur als theoretischer Worst Case zum Vergleich enthalten.</p>
+  </div>
+
+  <div class="highlight-box" style="border-color:rgba(251,191,36,0.3)">
+    <h4>Managed Flooding (Meshtastic aktuell — Alle Nachrichten)</h4>
+    <p>SNR-basierte Unterdrueckung + ROUTER-Prioritaet. TX &asymp; 0,5n pro Nachricht. Weiterhin O(n), aber ~50% guenstiger als naiv. Bewaehrt bis ~100 Knoten. Hop-Limit erforderlich.</p>
+  </div>
+
+  <div class="highlight-box" style="border-color:rgba(251,146,60,0.3)">
+    <h4>Next-Hop-Routing (Meshtastic v2.6 — nur DMs)</h4>
+    <p>Lernt ein Relay pro Ziel. TX = Hops nach dem Lernen, aber die erste Nachricht flutet noch. Funktioniert nur fuer Direktnachrichten — Broadcasts bleiben unveraendert. Ein einzelnes gecachtes Relay, kein Load Balancing, kein Multi-Path.</p>
+  </div>
+
+  <div class="highlight-box cyan">
+    <h4>System 5 — Adaptives lastverteiltes Mesh (Vorschlag)</h4>
+    <p>Geo-Clustering + Multi-Path + gewichtetes Load Balancing + adaptive QoS + Fallback. TX = Hops fuer <strong>alle Nachrichtentypen</strong>. Bewertung: <strong>9,2/10</strong> vs. 5,5 fuer Managed Flooding. Details in Abschnitt 4.</p>
+  </div>
+</div>
+
+<!-- SYSTEM 5 -->
+<div class="summary-section" id="system5">
+  <h2>4. System 5 — Die Loesung</h2>
+  <p>System 5 kombiniert sechs bewaehrte Konzepte, jeweils aus einer anderen Domaene entlehnt:</p>
+
+  <ul>
+    <li><strong>OSPF Areas → Geo-Cluster</strong> — Knoten organisieren sich selbst nach Geohash-Praefix. Vollstaendige Topologie innerhalb der Cluster, nur zusammengefasste Routen dazwischen. Skaliert von 10 bis 50.000+ Knoten.</li>
+    <li><strong>B.A.T.M.A.N. OGMs → Qualitaetsmetrik</strong> — Periodische Originator-Nachrichten messen die Linkqualitaet durch Zaehlen der Empfangsraten. Keine komplexe Berechnung — nur Ankuenfte zaehlen.</li>
+    <li><strong>Gewichtetes ECMP → Load Balancing</strong> — Verkehr wird proportional auf 2–3 Routen verteilt. Gute Pfade bekommen mehr Verkehr, aber nie allen. Kein einzelner Engpass.</li>
+    <li><strong>Back-Pressure → Staukontrolle</strong> — Ueberlastete Knoten melden Warteschlangendruck per Piggyback (2 Bytes, 0,8% Overhead). Verkehr meidet automatisch ueberlastete Pfade.</li>
+    <li><strong>Ameisenkolonie-Optimierung → Selbstoptimierung</strong> — Erfolgreiche Zustellungen staerken Routen, Timeouts schwaecken sie. Unbenutzte Pfade verblassen. Das Netzwerk lernt durch Erfahrung.</li>
+    <li><strong>DNS → Knotenentdeckung</strong> — Hierarchischer Standort-Cache. Zuerst lokal fragen, dann Cluster, dann Region. Begrenztes Flooding nur als letzter Ausweg. Antworten werden gecacht.</li>
+  </ul>
+
+  <div class="highlight-box cyan">
+    <h4>Routengewichtungsfunktion</h4>
+    <span class="formula-inline">W(r) = &alpha; &middot; Q(r) &times; &beta; &middot; (1 − Load(r)) &times; &gamma; &middot; Batt(r)</span>
+    <p>Wobei Q = Linkqualitaet (OGM-Empfangsrate), Load = Warteschlangendruck des Engpassknotens, Batt = minimaler Akkustand entlang der Route. Verkehrsanteil: Anteil(r) = W(r) / &Sigma; W(alle Routen).</p>
+  </div>
+
+  <p>Die proportionale Verteilung erzeugt eine <strong>negative Rueckkopplungsschleife</strong>: Ueberlastete Pfade verlieren Gewicht → Verkehr verschiebt sich → Pfad erholt sich → Gewicht steigt. Das Netzwerk balanciert sich selbst ohne zentrale Steuerung.</p>
+</div>
+
+<!-- MATH -->
+<div class="summary-section" id="math">
+  <h2>5. Mathematische Bewertung</h2>
+  <p>Jedes System wurde anhand von sieben gewichteten Kriterien mit 0–10 bewertet:</p>
+
+  <div class="highlight-box">
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.85rem">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border)">
+          <th style="text-align:left;padding:0.5rem;color:var(--text-dim)">Kriterium (Gewicht)</th>
+          <th style="padding:0.5rem;color:var(--red)">Naiv</th>
+          <th style="padding:0.5rem;color:var(--yellow)">Managed</th>
+          <th style="padding:0.5rem;color:var(--orange)">Next-Hop</th>
+          <th style="padding:0.5rem;color:var(--cyan)">System 5</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.4rem">TX-Kosten pro Nachricht (20%)</td><td style="text-align:center">1</td><td style="text-align:center">4</td><td style="text-align:center">5</td><td style="text-align:center;color:var(--cyan);font-weight:600">10</td></tr>
+        <tr><td style="padding:0.4rem">Zustellzuverlaessigkeit (20%)</td><td style="text-align:center">9</td><td style="text-align:center">9</td><td style="text-align:center">8</td><td style="text-align:center;color:var(--cyan);font-weight:600">9</td></tr>
+        <tr><td style="padding:0.4rem">Skalierbarkeit (15%)</td><td style="text-align:center">1</td><td style="text-align:center">3</td><td style="text-align:center">4</td><td style="text-align:center;color:var(--cyan);font-weight:600">9</td></tr>
+        <tr><td style="padding:0.4rem">Fehlertoleranz (15%)</td><td style="text-align:center">8</td><td style="text-align:center">8</td><td style="text-align:center">7</td><td style="text-align:center;color:var(--cyan);font-weight:600">9</td></tr>
+        <tr><td style="padding:0.4rem">Hop-Limit-Freiheit (10%)</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center">3</td><td style="text-align:center;color:var(--cyan);font-weight:600">10</td></tr>
+        <tr><td style="padding:0.4rem">Energieeffizienz (10%)</td><td style="text-align:center">1</td><td style="text-align:center">3</td><td style="text-align:center">5</td><td style="text-align:center;color:var(--cyan);font-weight:600">8</td></tr>
+        <tr><td style="padding:0.4rem">Broadcast-Unterstuetzung (10%)</td><td style="text-align:center">10</td><td style="text-align:center">10</td><td style="text-align:center">3</td><td style="text-align:center;color:var(--cyan);font-weight:600">9</td></tr>
+        <tr style="border-top:2px solid var(--cyan-dim)">
+          <td style="padding:0.5rem;font-weight:700;color:var(--text)">GEWICHTETE SUMME</td>
+          <td style="text-align:center;font-weight:600;color:var(--red)">4,3</td>
+          <td style="text-align:center;font-weight:600;color:var(--yellow)">5,5</td>
+          <td style="text-align:center;font-weight:600;color:var(--orange)">5,1</td>
+          <td style="text-align:center;font-weight:700;color:var(--cyan);font-size:1.1rem">9,2</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RESILIENCE -->
+<div class="summary-section" id="resilience">
+  <h2>6. Resilienz &amp; Adaptive QoS</h2>
+  <p>System 5 bewaeltigt jeden kritischen Ausfallmodus mit graceful Degradation:</p>
+
+  <ul>
+    <li><strong>Knotenausfall</strong> — Sofortiger Failover auf gecachte Backup-Route (0ms). Wenn ein Border-Knoten ausfaellt, uebernimmt ein zweiter. Wenn alle Border-Knoten ausfallen, faellt der Cluster auf lokales Flooding zurueck.</li>
+    <li><strong>GPS-Ausfall</strong> — Nachbar-Konsens: Wenn 4 von 5 Nachbarn Geohash „u0x8" melden, uebernimmt der GPS-lose Knoten diesen Cluster. Wenn keine Nachbarn GPS haben: „Homeless"-Modus mit lokalem Flooding-Fallback.</li>
+    <li><strong>MQTT-Bridge-Ausfall</strong> — LoRa-Relay-Subnetze werden aktiviert. Kleine Relay-Knoten zwischen Staedten bilden eine physische Funkbruecke. Langsamer (mehr Hops), aber funktional ohne Internet.</li>
+    <li><strong>Vollstaendiger Internetausfall</strong> — Lokales Mesh arbeitet weiter. Cluster kommunizieren ueber LoRa-Relay-Ketten. Interkontinentaler Verkehr nutzt DTN (Store-and-Forward).</li>
+  </ul>
+
+  <div class="highlight-box cyan">
+    <h4>Lokaler Network Health Score (NHS)</h4>
+    <span class="formula-inline">NHS<sub>local</sub>(node) = 0,25·Konnektivitaet + 0,20·Redundanz + 0,20·Linkqualitaet + 0,20·BorderHealth + 0,15·Gateway</span>
+    <p><strong>Entscheidend: NHS wird lokal pro Cluster berechnet, nicht global.</strong> Ein Knotenausfall in Asien beeinflusst nicht die QoS in Muenchen. Jeder Knoten bewertet seine eigene Nachbarschaft: seine direkten Links, die Border-Knoten seines Clusters, seine Routenredundanz zu lokalen Zielen und ob er ein Internet-Gateway erreichen kann. Das bedeutet, Cluster A kann GREEN sein, waehrend Cluster C RED ist — jeder Cluster verwaltet seinen Verkehr unabhaengig.</p>
+    <p style="margin-top:0.75rem">NHS steuert adaptive QoS — acht Prioritaetsklassen von P0 (SOS, kommt immer durch) bis P7 (Firmware-Updates, nur bei NHS &gt; 0,9). Wenn der lokale NHS sinkt, drosselt der Cluster automatisch niedrig priorisierte Nachrichten. Selbstheilungsschleife: weniger Verkehr → weniger Kollisionen → Links erholen sich → NHS steigt.</p>
+  </div>
+
+  <div style="font-family:var(--font-mono);font-size:0.85rem;margin-top:1.5rem">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">NHS-Bereich</th>
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Stufe</th>
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Erlaubter Verkehr</th>
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Max. Rate</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.3rem">0,9 – 1,0</td><td style="color:#4ade80">GREEN</td><td>Alles: Text, Dateien, Firmware, Bulk</td><td>100%</td></tr>
+        <tr><td style="padding:0.3rem">0,7 – 0,9</td><td style="color:#fbbf24">YELLOW</td><td>Nachrichten + Telemetrie, kein Bulk</td><td>60%</td></tr>
+        <tr><td style="padding:0.3rem">0,4 – 0,7</td><td style="color:#fb923c">ORANGE</td><td>Nur priorisierte Nachrichten</td><td>30%</td></tr>
+        <tr><td style="padding:0.3rem">0,2 – 0,4</td><td style="color:#f87171">RED</td><td>Nur Notfall + Position</td><td>10%</td></tr>
+        <tr><td style="padding:0.3rem">0,0 – 0,2</td><td style="color:#f87171;font-weight:700">CRITICAL</td><td>Nur SOS-Beacon</td><td>3%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div class="summary-section" id="results">
+  <h2>7. Ergebnisse</h2>
+
+  <div class="comparison-mini">
+    <div class="before">
+      <h4>Vorher (Managed Flooding)</h4>
+      <ul>
+        <li>Bewertung: 5,5 / 10</li>
+        <li>TX &asymp; 0,5n pro Nachricht</li>
+        <li>~50% Unterdrueckung via SNR</li>
+        <li>Weiterhin O(n)-Skalierung</li>
+        <li>Hop-Limit 3–7 erforderlich</li>
+        <li><strong>Zustellung bricht bei 500+ Knoten ein</strong></li>
+        <li>Keine Lastwahrnehmung</li>
+      </ul>
+    </div>
+    <div class="after">
+      <h4>System 5 (Vorschlag)</h4>
+      <ul>
+        <li>Bewertung: <strong>9,2 / 10</strong></li>
+        <li><strong>TX = Hops</strong> (nicht proportional zu n)</li>
+        <li><strong>92–100%</strong> weniger TX (&le;200 Knoten)</li>
+        <li><strong>~1 TX pro Hop</strong> (Hop-Limit irrelevant)</li>
+        <li>7-mal mehr Zustellung bei 1000+ Knoten</li>
+        <li>Akkubewusstes Load Balancing</li>
+        <li>Ehrlich: mehr TX gesamt bei 1000+ Knoten</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="border-color:var(--red-dim);background:rgba(248,113,113,0.03)">
+    <h4 style="color:var(--red)">Kritische Erkenntnis: Einbruch der Zustellrate bei realistischen Hop-Limits</h4>
+    <p>Fruehere Simulationen verwendeten ein unrealistisches TTL von 30 Hops — weit ueber dem tatsaechlichen Meshtastic-Standard von 3–7. Mit realistischen Hop-Limits <strong>bricht</strong> die Zustellrate von Managed Flooding in groesseren Netzwerken <strong>ein</strong>:</p>
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.82rem;margin-top:0.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Szenario</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--text-dim)">Knoten</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--red)">3-Hop Zust.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--orange)">5-Hop Zust.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--yellow)">7-Hop Zust.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">Sys5 Zust.</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.3rem">Klein Lokal (1km)</td><td style="text-align:right">20</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Mittelgrosse Stadt (5km)</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--red)">92%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Gross Regional (20km)</td><td style="text-align:right">500</td><td style="text-align:right;color:var(--red);font-weight:700">14%</td><td style="text-align:right;color:var(--red)">31%</td><td style="text-align:right;color:var(--orange)">51%</td><td style="text-align:right;color:var(--yellow)">76%</td></tr>
+        <tr><td style="padding:0.3rem">Dicht Urban (3km)</td><td style="text-align:right">200</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">1000 Knoten (40km)</td><td style="text-align:right">1000</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">6%</td><td style="text-align:right;color:var(--red);font-weight:700">6%</td><td style="text-align:right;color:var(--orange)">43%</td></tr>
+        <tr><td style="padding:0.3rem">1500 Knoten (50km)</td><td style="text-align:right">1500</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">5%</td><td style="text-align:right;color:var(--orange)">42%</td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:0.3rem">Laendlich Langstrecke</td><td style="text-align:right">50</td><td style="text-align:right;color:var(--yellow)">77%</td><td style="text-align:right;color:var(--yellow)">91%</td><td style="text-align:right;color:var(--yellow)">88%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Maritim / Kuestennah</td><td style="text-align:right">30</td><td style="text-align:right;color:var(--orange)">69%</td><td style="text-align:right;color:var(--yellow)">82%</td><td style="text-align:right;color:var(--yellow)">84%</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Katastrophenhilfe</td><td style="text-align:right">80</td><td style="text-align:right;color:var(--orange)">62%</td><td style="text-align:right;color:var(--yellow)">87%</td><td style="text-align:right;color:var(--yellow)">84%</td><td style="text-align:right;color:var(--yellow)">78%</td></tr>
+        <tr><td style="padding:0.3rem">Bergtal</td><td style="text-align:right">60</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:0.75rem;color:var(--red)"><strong>Das Hop-Limit erzeugt eine Zustellobergrenze.</strong> Bei 1000+ Knoten liefert Managed Flooding weniger als 1 von 10 Nachrichten aus, unabhaengig vom Hop-Limit. System 5 liefert 7-mal mehr Nachrichten. Hinweis: Bergtal (schlechte Ausbreitung, wenige Knoten) ist fuer beide gleich schlecht — gerichtetes Routing kann nicht helfen, wenn das physische Netzwerk zu duenn besetzt ist.</p>
+  </div>
+
+  <div class="highlight-box cyan" style="margin-top:1.5rem">
+    <h4>TX-Kostenvergleich (Realistische Hop-Limits)</h4>
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.82rem;margin-top:0.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Szenario</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--text-dim)">Knoten</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--yellow)">Managed 7h TX</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">Sys5 TX</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--green)">TX-Einsparung</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.3rem">Klein Lokal (1km)</td><td style="text-align:right">20</td><td style="text-align:right;color:var(--yellow)">16.459</td><td style="text-align:right;color:var(--cyan)">115</td><td style="text-align:right;color:var(--green)">99,3%</td></tr>
+        <tr><td style="padding:0.3rem">Mittelgrosse Stadt (5km)</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">201.920</td><td style="text-align:right;color:var(--cyan)">402</td><td style="text-align:right;color:var(--green)">99,8%</td></tr>
+        <tr><td style="padding:0.3rem">Dicht Urban (3km)</td><td style="text-align:right">200</td><td style="text-align:right;color:var(--yellow)">1.490.555</td><td style="text-align:right;color:var(--cyan)">105.320</td><td style="text-align:right;color:var(--green)">92,9%</td></tr>
+        <tr><td style="padding:0.3rem">Festival (2km)</td><td style="text-align:right">150</td><td style="text-align:right;color:var(--yellow)">912.953</td><td style="text-align:right;color:var(--cyan)">107</td><td style="text-align:right;color:var(--green)">100%</td></tr>
+        <tr><td style="padding:0.3rem">Wanderweg (8km)</td><td style="text-align:right">40</td><td style="text-align:right;color:var(--yellow)">28.894</td><td style="text-align:right;color:var(--cyan)">215</td><td style="text-align:right;color:var(--green)">99,3%</td></tr>
+        <tr><td style="padding:0.3rem">Duty Cycle</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">404.779</td><td style="text-align:right;color:var(--cyan)">918</td><td style="text-align:right;color:var(--green)">99,8%</td></tr>
+        <tr style="border-top:1px solid var(--border)"><td style="padding:0.3rem">30% degradierte Links</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">208.164</td><td style="text-align:right;color:var(--cyan)">11.866</td><td style="text-align:right;color:var(--green)">94,3%</td></tr>
+        <tr><td style="padding:0.3rem">20% Knoten ausgefallen</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">132.780</td><td style="text-align:right;color:var(--cyan)">4.072</td><td style="text-align:right;color:var(--green)">96,9%</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:0.75rem">System 5 spart <strong>92–100% der Uebertragungen</strong> in kleinen bis mittleren Netzwerken gegenueber Managed Flooding — bei <strong>gleicher oder hoeherer</strong> Zustellrate. Bei 1000+ Knoten ist die TX-Gesamtzahl fuer System 5 hoeher, aber die <strong>TX pro zugestellter Nachricht</strong> sind weiterhin 3-mal niedriger (4.229 vs. 13.065).</p>
+  </div>
+
+  <div class="highlight-box" style="margin-top:1.5rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.03)">
+    <h4 style="color:var(--cyan)">Schlussfolgerungen</h4>
+    <ul>
+      <li><strong>Das Hop-Limit ist kein Stellrad — es ist eine fundamentale Barriere.</strong> Die Erhoehung von 3 auf 7 hilft kaum: Bei 500 Knoten steigt die Zustellung von 14% auf 51%. Die Kosten pro Hop sind O(n), sodass mehr Hops proportional mehr Uebertragungen bei abnehmenden Ertraegen erzeugen.</li>
+      <li><strong>Flooding kann bei keinem Hop-Limit auf grosse Netzwerke skalieren.</strong> Bei 1000+ Knoten liefert selbst Hop-Limit 7 nur 6% der Nachrichten aus. Das Netzwerk verbraucht enorme Bandbreite (78.387+ TX), um 6 von 100 Nachrichten zuzustellen.</li>
+      <li><strong>System 5 durchbricht diesen Zielkonflikt — mit Einschraenkungen.</strong> Bei 1000 Knoten liefert System 5 43% der Nachrichten — 7-mal mehr als Managed Flooding. Es verbraucht jedoch <strong>mehr TX insgesamt</strong> (181.855 vs. 78.387), um das zu erreichen. Die TX <em>pro zugestellter Nachricht</em> sind bei System 5 weiterhin besser (4.229 vs. 13.065). Bei 1500 Knoten zeigt sich dasselbe Muster: 42% vs. 5% Zustellung, aber hoehere TX-Gesamtzahl.</li>
+      <li><strong>Kleine bis mittlere Netzwerke sind der Sweet Spot.</strong> Bei 20–200 Knoten liefert System 5 100% bei 92–100% weniger Bandbreite. Das deckt die grosse Mehrheit realer Meshtastic-Deployments ab.</li>
+      <li><strong>Duenn besetzte Netzwerke bleiben herausfordernd.</strong> Bergtal (60 Knoten, schlechte Ausbreitung) zeigt 2% Zustellung fuer <em>beide</em> Protokolle — wenn das physische Netzwerk zu duenn besetzt ist, kann kein Routing-Algorithmus helfen. System 5 ist keine Magie.</li>
+      <li><strong>Stressszenarien zeigen einen Zustellungs-Kompromiss.</strong> Bei 30–50% Link-Degradierung liefert Managed Flooding 73%, waehrend System 5 100% liefert. Die Routendiversitaet von System 5 <em>hilft</em> tatsaechlich unter Stress — aber die TX-Kosten sind hoeher (11.866–15.772 vs. 208.164–215.372 fuer Managed Flooding). System 5 verbraucht weniger Bandbreite fuer bessere Ergebnisse.</li>
+      <li><strong>Weitlaeufige und grosse Netzwerke brauchen gerichtetes Routing.</strong> Laendliche, maritime, Katastrophen- und 500+-Knoten-Szenarien zeigen den Zustellungseinbruch von Flooding am deutlichsten. Das sind genau die Szenarien, in denen Meshtastic am dringendsten gebraucht wird.</li>
+    </ul>
+  </div>
+
+  <p style="margin-top:1.5rem">Hauptvorteile gegenueber Meshtastics aktuellem Routing:</p>
+  <ul>
+    <li><strong>O(hops) vs. O(n)</strong> — Kosten haengen von der Pfadlaenge ab, nicht von der Netzwerkgroesse. Die fundamentale Skalierungsverbesserung.</li>
+    <li><strong>Zustellrate</strong> — System 5 liefert in den meisten Szenarien gleich viele oder mehr Nachrichten. Bei 1000+ Knoten 7-mal mehr als Managed Flooding.</li>
+    <li><strong>Hop-Limit eliminiert</strong> — 20 Hops kosten weniger als Managed Flooding fuer 1 kostet. Ermoeglicht Reichweite und Preset-Freiheit.</li>
+    <li><strong>Alle Verkehrstypen</strong> — Anders als Next-Hop (nur DMs), routet System 5 alle Nachrichten inklusive Broadcasts.</li>
+    <li><strong>Multi-Path-Resilienz</strong> — 5 gecachte Pfade mit sofortigem Failover + BFS-Notfall-Reroute.</li>
+    <li><strong>Load Balancing</strong> — Proportionale Verteilung verhindert Engpaesse. Meshtastic hat keinerlei Lastwahrnehmung.</li>
+    <li><strong>Adaptive QoS</strong> — NHS pro Cluster mit Prioritaets-Gate. SOS kommt immer durch.</li>
+  </ul>
+
+  <div class="highlight-box cyan" style="margin-top:1.5rem">
+    <h4 style="color:var(--cyan)">v2.0 — Praxisverbesserungen (Bay Area Mesh Feedback)</h4>
+    <p style="margin-bottom:0.8rem">Feedback von Bay Area Mesh-Betreibern zeigte, dass <strong>Halbduplex-Funkphysik</strong> — nicht Routing-Algorithmen — der eigentliche Skalierungsengpass bei erhoehten Knoten ist. Fuenf Features wurden als Reaktion entwickelt:</p>
+    <ul>
+      <li><strong>Halbduplex-Funkmodell</strong> — Der Simulator modelliert nun TX/RX-Ausschluss. Flooding bricht von 87,5% → 6% Zustellung an Berggipfeln ein. System 5 haelt bei 77,5%.</li>
+      <li><strong>Node Silencing</strong> — Redundante Knoten werden stummgeschaltet (hoeren zu, leiten aber nicht weiter). Akkufaire Rotation alle 10 Min. In der Bay Area: 128 von 193 Talknoten stummgeschaltet, <strong>TX halbiert</strong> bei nur 3% weniger Zustellung. Alle Bergknoten bleiben aktiv.</li>
+      <li><strong>Sequenznummern</strong> — 2-Byte pro-(Quelle,Ziel)-Zaehler im Paket-Header fuer Reihenfolge- und Lueckenerkennung. Null zusaetzliche TX-Kosten.</li>
+      <li><strong>Notfall-Reroute</strong> — Frischer BFS unter Ausschluss ausgefallener Knoten vor Korridor-Flooding. Reduziert teure Fallback-Floods.</li>
+      <li><strong>Bay Area 3-Stufen-Topologie</strong> — 7 Berg- (45km Reichweite) + 35 Huegel- (10km) + 193 Talknoten (2,5km) mit asymmetrischen Links und Halbduplex.</li>
+    </ul>
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.82rem;margin-top:0.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:0.4rem;color:var(--text-dim)">Bay Area Szenario</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--yellow)">Flood Zust.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">S5 Zust.</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--cyan)">S5 TX</th>
+          <th style="text-align:right;padding:0.4rem;color:var(--text-dim)">Stummgesch.</th>
+        </tr>
+      </thead>
+      <tbody style="color:var(--text-dim)">
+        <tr><td style="padding:0.3rem">Bay Area (Halbduplex)</td><td style="text-align:right;color:var(--red);font-weight:700">6,0%</td><td style="text-align:right;color:var(--green)">77,5%</td><td style="text-align:right">540K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem;font-weight:600">Bay Area + Silencing</td><td style="text-align:right;color:var(--red);font-weight:700">6,0%</td><td style="text-align:right;color:var(--green)">74,5%</td><td style="text-align:right;color:var(--cyan);font-weight:600">268K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4,0%</td><td style="text-align:right;color:var(--yellow)">52,0%</td><td style="text-align:right">302K</td><td style="text-align:right">—</td></tr>
+        <tr><td style="padding:0.3rem">Bay Area + Silencing + Stress</td><td style="text-align:right;color:var(--red);font-weight:700">4,0%</td><td style="text-align:right;color:var(--yellow)">51,0%</td><td style="text-align:right;color:var(--cyan)">155K</td><td style="text-align:right;color:var(--cyan)">57%</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:0.6rem"><a href="how-it-works.html#silencing" style="color:var(--cyan)">Technischer Deep-Dive zu allen v2.0-Features →</a></p>
+  </div>
+</div>
+
+<!-- ROADMAP -->
+<div class="summary-section" id="roadmap">
+  <h2>8. Roadmap &amp; Naechste Schritte</h2>
+
+  <div class="concl-roadmap">
+    <div class="concl-timeline">
+      <div class="concl-phase done">
+        <div class="concl-phase-marker"></div>
+        <div class="concl-phase-content">
+          <h4>Phase 1 — Forschung &amp; Design</h4>
+          <p>Algorithmenvergleich, mathematische Analyse, interaktive Dokumentation mit Live-Simulationen. <strong>Abgeschlossen.</strong></p>
+        </div>
+      </div>
+      <div class="concl-phase done">
+        <div class="concl-phase-marker"></div>
+        <div class="concl-phase-content">
+          <h4>Phase 2 — Python-Simulator</h4>
+          <p>26 Szenarien (20–1500 Knoten), 6 Router, realistisches EU868 LoRa-Modell mit Halbduplex-Funk, Kollisionserfassung, Duty Cycle. Bay Area 3-Stufen-Topologie mit Node Silencing. Bestaetigt 92–100% TX-Einsparung fuer kleine bis mittlere Netzwerke. <strong>Abgeschlossen.</strong></p>
+        </div>
+      </div>
+      <div class="concl-phase done">
+        <div class="concl-phase-marker"></div>
+        <div class="concl-phase-content">
+          <h4>Phase 3 — ESP32-Firmware-Prototyp</h4>
+          <p>Eigenstaendige Firmware fuer Heltec V3, T-Beam, RAK4631. System 5 Routing-Kern (14 Funktionen), OGM-Discovery, OLED-Display, serielle CLI. Wire-Protokoll v2.0 mit Sequenznummern und Node Silencing-Steuerung. <strong>Abgeschlossen — <a href="../firmware/README.md" style="color:var(--cyan)">Installationsanleitung</a>.</strong></p>
+        </div>
+      </div>
+      <div class="concl-phase">
+        <div class="concl-phase-marker"></div>
+        <div class="concl-phase-content">
+          <h4>Phase 4 — Community &amp; Upstream</h4>
+          <p>Open-Source-Veroeffentlichung auf GitHub. Pull Request an das Meshtastic-Projekt. Community-Tests im grossen Massstab. Dokumentation und Konferenzvortraege.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call to Action -->
+  <div class="concl-cta" style="margin-top:3rem">
+    <h3>Mitmachen?</h3>
+    <p>Dies ist ein offenes Forschungsprojekt. Ob Firmware-Entwickler, Netzwerktheoretiker, LoRa-Enthusiast oder einfach neugierig — jede Perspektive macht das Protokoll besser.</p>
+    <div class="concl-cta-links">
+      <a href="how-it-works.html" class="concl-cta-item" style="text-decoration:none">&#x1F527; So funktioniert es (Technischer Deep-Dive)</a>
+      <a href="../simulator.html" class="concl-cta-item" style="text-decoration:none">&#x1F3AE; Live-Simulator</a>
+      <a href="../docs/bay-area-feedback-response.md" class="concl-cta-item" style="text-decoration:none">&#x1F30A; Bay Area Feedback &amp; Antwort</a>
+      <a href="https://github.com/ClemensSimon/MeshRoute" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4BB; GitHub</a>
+      <a href="https://discord.com/invite/meshtastic" class="concl-cta-item" style="text-decoration:none" target="_blank" rel="noopener">&#x1F4E1; Meshtastic Discord</a>
+    </div>
+    <a href="index.html" class="back-link" style="margin-top:2rem">&#x2190; Vollstaendige interaktive Dokumentation erkunden</a>
+  </div>
+</div>
+
+<footer>
+  <p>MeshRoute — Algorithmus-Forschung fuer Meshtastic / LoRa-Mesh-Netzwerke</p>
+  <p style="margin-top:0.5rem">Von <strong style="color:var(--cyan)">Clemens Simon</strong> — 2026</p>
+  <p style="margin-top:0.3rem;font-size:0.75rem">Gebaut mit purem HTML, CSS &amp; Canvas. Keine Abhaengigkeiten. &middot; MIT-Lizenz</p>
+</footer>
+
+</body>
+</html>
