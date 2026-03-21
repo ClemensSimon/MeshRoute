@@ -744,6 +744,8 @@ def run_scenario(config, scenario_num, verbose=True, parallel_routers=True):
             "enable_duty_cycle": getattr(config, 'enable_duty_cycle', False),
             "enable_half_duplex": getattr(config, 'enable_half_duplex', False),
             "enable_collisions": getattr(config, 'enable_collisions', False),
+            "enable_silencing": getattr(config, 'enable_silencing', False),
+            "silence_fraction": getattr(config, 'silence_fraction', 0.0),
         },
         "network": net_stats,
     }

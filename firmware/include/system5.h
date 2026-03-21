@@ -96,7 +96,14 @@ typedef struct {
     bool silent;                 // if true: listen only, no TX (except direct replies)
     uint32_t silence_until_ms;   // millis() when silence expires (0 = permanent until unsilenced)
     float redundancy_score;      // 0=critical, 1=fully redundant
-    uint16_t seq_counters[S5_MAX_NODES]; // per-destination sequence numbers
+
+    // Per-destination sequence numbers for gap detection.
+    // Indexed by neighbor table slot (0..S5_MAX_NEIGHBORS-1), NOT by raw node ID.
+    // Use s5_get_seq() to look up/increment. Destinations beyond neighbor table
+    // use a small LRU cache (seq_lru_*). Total: 16*2 + 16*6 = 128 bytes.
+    uint16_t seq_neighbor[S5_MAX_NEIGHBORS]; // seq for known neighbors
+    struct { s5_node_id_t id; uint16_t seq; } seq_lru[S5_MAX_NEIGHBORS]; // LRU for others
+    uint8_t seq_lru_count;
 
     // Neighbor table
     s5_neighbor_t neighbors[S5_MAX_NEIGHBORS];

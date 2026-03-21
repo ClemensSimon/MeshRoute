@@ -27,7 +27,7 @@ extern "C" {
 #define PKT_TYPE_ROUTE_REQ 0x04 // Route request (on-demand)
 #define PKT_TYPE_SILENCE  0x05  // Node silencing control (mute/unmute)
 
-// ── Header (20 bytes, unencrypted) ─────────────────────────────
+// ── Header (24 bytes, unencrypted) ─────────────────────────────
 
 typedef struct __attribute__((packed)) {
     uint8_t  magic;          // 0x55 = System 5 packet

@@ -953,6 +953,10 @@ class MeshNetwork:
             silence_fraction: target fraction of redundant nodes to silence (0-1)
             rotation_interval: seconds between rotation cycles
         """
+        # Reset all silence states before recomputing (prevents zombie-silenced nodes)
+        for node in self.nodes.values():
+            node.silent = False
+
         for node in self.nodes.values():
             if node.battery <= 0:
                 continue
@@ -1026,8 +1030,9 @@ class MeshNetwork:
 
             candidates.sort(key=lambda n: n.silence_priority, reverse=True)
 
-            # Silence the top fraction
+            # Silence the top fraction, but always keep at least 2 active per cluster
             n_to_silence = int(len(candidates) * silence_fraction)
+            n_to_silence = max(0, min(n_to_silence, len(candidates) - 2))
             for i, n in enumerate(candidates):
                 if i < n_to_silence:
                     n.silent = True
