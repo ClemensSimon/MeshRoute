@@ -200,8 +200,8 @@
 
   <div class="highlight-box cyan">
     <h4>Route Weight Function</h4>
-    <span class="formula-inline">W(r) = &alpha; &middot; Q(r) &times; &beta; &middot; (1 − Load(r)) &times; &gamma; &middot; Batt(r)</span>
-    <p>Where Q = link quality (OGM reception rate), Load = queue pressure of bottleneck node, Batt = minimum battery along route. Traffic share: Share(r) = W(r) / &Sigma; W(all routes).</p>
+    <span class="formula-inline">W(r) = &alpha; &middot; Q(r) + &beta; &middot; (1 &minus; Load) + &gamma; &middot; Batt</span>
+    <p>Where Q = accumulated route quality from distance-vector, Load = queue pressure of the <strong>next-hop</strong> node (from its last OGM), Batt = battery level of the <strong>next-hop</strong> node. All metrics are locally observable — no path-wide data collection needed. Traffic share: Share(r) = W(r) / &Sigma; W(all routes).</p>
   </div>
 
   <p>The proportional distribution creates a <strong>negative feedback loop</strong>: overloaded paths lose weight → traffic shifts → path recovers → weight increases. The network self-balances without central control.</p>
@@ -389,7 +389,7 @@
     <li><strong>Delivery rate</strong> — System 5 delivers dramatically more messages in all scenarios. At 1000 nodes: 46% vs 0%. At 100 nodes: 100% vs 27%.</li>
     <li><strong>Hop limit eliminated</strong> — 20 hops cost less than managed flooding costs for 1. Unlocks range and preset freedom.</li>
     <li><strong>All traffic types</strong> — unlike next-hop (DMs only), System 5 routes all messages including broadcasts.</li>
-    <li><strong>Multi-path resilience</strong> — 5 cached paths with instant failover + emergency BFS re-route.</li>
+    <li><strong>Multi-path resilience</strong> — 2 cached routes per destination (distance-vector) with instant failover + scoped corridor flooding as last resort.</li>
     <li><strong>Load balancing</strong> — proportional distribution prevents bottlenecks. Meshtastic has no load awareness.</li>
     <li><strong>Adaptive QoS</strong> — NHS per cluster with priority gate. SOS always gets through.</li>
   </ul>
@@ -401,7 +401,8 @@
       <li><strong>Half-Duplex Radio Model</strong> — Simulator now models TX/RX exclusion on ALL scenarios. Flooding collapses from ~87% → ~6% delivery in Bay Area, and to 0–60% across all scenarios. System 5 holds at ~74% in Bay Area.</li>
       <li><strong>Node Silencing</strong> — Redundant nodes are muted (listen but don't rebroadcast). Battery-fair rotation every 10 min. In Bay Area: 128 of 193 valley nodes silenced, <strong>TX halved</strong> with only ~4% less delivery. All mountain nodes stay active.</li>
       <li><strong>Sequence Numbers</strong> — 2-byte per-(src,dst) counter in packet header for out-of-order and gap detection. Zero extra TX cost.</li>
-      <li><strong>Emergency Re-Route</strong> — Fresh BFS excluding failed nodes before corridor flooding. Reduces expensive fallback floods.</li>
+      <li><strong>Emergency Re-Route</strong> — Failover to backup route (from distance-vector table), then corridor flooding as last resort.</li>
+      <li><strong>Cluster-Distributor Broadcast</strong> — Broadcasts propagate via elected distributors + mini-floods per cluster, not network-wide flooding. 88-99% TX savings on the 98% of Meshtastic traffic that is broadcast.</li>
       <li><strong>Bay Area 3-Tier Topology</strong> — 7 mountain (45km range) + 35 hill (10km) + 193 valley (2.5km) nodes with asymmetric links and half-duplex.</li>
     </ul>
     <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:0.82rem;margin-top:0.75rem">

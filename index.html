@@ -204,7 +204,7 @@
       <span class="algo-number proposal-badge">PROPOSED</span>
       <h3 class="algo-name">System 5 — Adaptive Load-Balanced Mesh</h3>
     </div>
-    <p class="algo-subtitle">Our proposal: a fundamentally different approach that combines six proven networking concepts into one protocol. Nodes self-organize into geographic clusters using GPS geohashes. Within a cluster, every node knows the full topology. Between clusters, border nodes act as bridges. For every destination, up to 5 independent routes are pre-computed and cached. Traffic is distributed across these routes proportional to a weight function that considers link quality, node load, and battery level. When the network is under stress, an adaptive QoS gate throttles low-priority traffic to protect emergency messages. The result: <strong>~1 TX per hop</strong> for all message types — unicast and broadcast.</p>
+    <p class="algo-subtitle">Our proposal: a fundamentally different approach that combines proven networking concepts into one protocol. Nodes self-organize into geographic clusters using GPS geohashes. Within a cluster, every node knows its neighbors via OGMs. Between clusters, border nodes act as bridges. Routes are built incrementally via distance-vector (like B.A.T.M.A.N.), not by running graph algorithms on-device. For unicast: 2 cached routes per destination with weighted selection. For broadcast (~98% of Meshtastic traffic): elected cluster-distributors propagate messages via local mini-floods, not network-wide flooding. All metrics (load, battery) are next-hop only, locally observable from OGMs. OGM intervals adapt to network density (30-180s) for EU868 duty-cycle compliance. The result: <strong>~1 TX per hop</strong> for unicast, <strong>88-99% fewer TX</strong> for broadcast.</p>
     <div class="algo-body">
       <div class="algo-canvas-wrap">
         <canvas class="algo-canvas" id="canvas-system5"></canvas>
@@ -212,7 +212,8 @@
       </div>
       <div class="algo-details">
         <h4>Weight Function</h4>
-        <p style="font-family:var(--font-display);font-size:1.2rem;color:var(--cyan);">W(r) = &alpha;·Q(r) &times; &beta;·(1−Load(r)) &times; &gamma;·Batt(r)</p>
+        <p style="font-family:var(--font-display);font-size:1.2rem;color:var(--cyan);">W(r) = &alpha;&middot;Q(r) + &beta;&middot;(1&minus;Load) + &gamma;&middot;Batt</p>
+        <p style="font-size:0.8rem;color:var(--text-muted);">Load and Batt = next-hop node only (from OGM)</p>
         <h4>Traffic Distribution</h4>
         <p style="font-family:var(--font-display);font-size:1.2rem;color:var(--teal);">Share(r) = W(r) / &Sigma; W(all)</p>
         <h4>Key Properties</h4>
@@ -233,8 +234,8 @@
           <p style="font-size:0.9rem;line-height:1.6">Next-hop learns a single relay node for direct messages. System 5 maintains <strong>2-3 full paths</strong> with weighted load distribution for <strong>all traffic types</strong>. When a path fails, the next cached path activates instantly — no flooding fallback needed.</p>
         </div>
         <div class="pro-con">
-          <div class="pro"><h5>+ Strengths</h5><ul><li>~1 TX/hop (not ~n)</li><li>No hop limit needed</li><li>Self-optimizing load balance</li><li>Works for all traffic types</li></ul></div>
-          <div class="con"><h5>− Complexity</h5><ul><li>Most complex to implement</li><li>Requires GPS for geo-clustering</li><li>Tuning parameters (&alpha;,&beta;,&gamma;)</li></ul></div>
+          <div class="pro"><h5>+ Strengths</h5><ul><li>~1 TX/hop unicast (not ~n)</li><li>88-99% broadcast TX savings</li><li>No hop limit needed</li><li>~1.5 KB RAM for routing table</li><li>Adaptive OGM (EU868 compliant)</li></ul></div>
+          <div class="con"><h5>- Complexity</h5><ul><li>Most complex to implement</li><li>Requires GPS for geo-clustering</li><li>Tuning parameters (&alpha;,&beta;,&gamma;)</li></ul></div>
         </div>
       </div>
     </div>
@@ -427,7 +428,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
       <h4>Emergency Re-Route <span class="arrow">&rarr;</span> Fewer Fallback Floods</h4>
-      <p>When all 5 cached routes fail, System 5 now computes a <strong>fresh BFS path excluding failed nodes</strong> before triggering corridor flooding. This gives the protocol one more directed attempt — significantly reducing the expensive fallback floods that dominated the Bay Area scenario.</p>
+      <p>When both cached routes fail, System 5 falls back to <strong>scoped corridor flooding</strong> (source + destination clusters + border nodes only). Routes are built via distance-vector from OGM data — no BFS computation on-device needed.</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
@@ -926,7 +927,7 @@
     <div class="glossary-card reveal"><dt>QoS</dt><dd>Quality of Service — traffic prioritization ensuring critical messages (SOS) always get through.</dd></div>
     <div class="glossary-card reveal"><dt>MQTT</dt><dd>Message queue protocol used as an internet bridge between geographically separated mesh clusters.</dd></div>
     <div class="glossary-card reveal"><dt>DTN</dt><dd>Delay Tolerant Networking — store-and-forward approach for networks with intermittent connectivity.</dd></div>
-    <div class="glossary-card reveal"><dt>BFS</dt><dd>Breadth-First Search — graph traversal algorithm used for shortest-path discovery in mesh networks.</dd></div>
+    <div class="glossary-card reveal"><dt>Distance-Vector</dt><dd>Routing protocol where nodes learn routes from neighbor advertisements (OGMs) rather than computing full graph traversals. Used in RIP, B.A.T.M.A.N., and System 5.</dd></div>
     <div class="glossary-card reveal"><dt>RSSI</dt><dd>Received Signal Strength Indicator — measures how strongly a radio signal is received (in dBm).</dd></div>
     <div class="glossary-card reveal"><dt>SNR</dt><dd>Signal-to-Noise Ratio — measures signal quality relative to background noise (in dB).</dd></div>
     <div class="glossary-card reveal"><dt>Half-Duplex</dt><dd>A radio that cannot transmit and receive at the same time. All LoRa radios are half-duplex — a node hearing a transmission is blocked from sending until the packet ends.</dd></div>

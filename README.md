@@ -36,11 +36,15 @@ A routing protocol that achieves **O(hops) cost** instead of O(n) — for all me
 
 **Geo-Clustering** — Nodes self-organize by GPS geohash. Full topology within clusters, border nodes between.
 
-**Multi-Path Routing** — Up to 5 cached paths per destination. Instant failover with 3 retries per hop.
+**Distance-Vector Routing** — Routes built incrementally from OGM data (like RIP/B.A.T.M.A.N.), not by running BFS on-device. 2 routes per destination at 12 bytes each — total routing table ~1.5 KB.
 
-**Weighted Load Balancing** — `W(r) = α·Q(r) + β·(1-Load(r)) + γ·Batt(r)`. Traffic distributed proportionally across paths.
+**Weighted Load Balancing** — `W(r) = α·Q(r) + β·(1-Load) + γ·Batt`. Load and Battery refer to the **next-hop node** only (locally observable via OGM), not path-wide metrics.
 
-**Adaptive QoS** — Network Health Score per cluster throttles low-priority traffic under stress. SOS always gets through.
+**Cluster-Distributor Broadcast** — Broadcasts propagate via elected cluster distributors + local mini-floods, not network-wide flooding. 88-99% TX savings on the ~98% of Meshtastic traffic that is broadcast.
+
+**Adaptive QoS** — Network Health Score per cluster (locally computed) throttles low-priority traffic under stress. SOS always gets through.
+
+**Adaptive OGM Interval** — OGM frequency scales with network density (30s sparse, 120s dense) to respect EU868 1% duty cycle.
 
 **Scoped Fallback** — When all routes fail: flood only SRC + DST clusters + border neighbors (not full network).
 
