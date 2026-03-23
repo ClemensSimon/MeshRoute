@@ -26,6 +26,7 @@ extern "C" {
 #define PKT_TYPE_ACK      0x03  // Acknowledgement
 #define PKT_TYPE_ROUTE_REQ 0x04 // Route request (on-demand)
 #define PKT_TYPE_SILENCE  0x05  // Node silencing control (mute/unmute)
+#define PKT_TYPE_PROBE    0x06  // Route probe (keepalive for secondary routes)
 
 // ── Header (24 bytes, unencrypted) ─────────────────────────────
 
@@ -69,6 +70,20 @@ typedef struct __attribute__((packed)) {
     uint8_t  reason;         // 0=redundancy, 1=battery_save, 2=manual
 } s5_silence_payload_t;
 
+// ── Probe Payload ─────────────────────────────────────────────
+// Minimal keepalive sent along secondary routes to verify liveness.
+// 10 bytes total: target destination + route index + timestamp.
+
+typedef struct __attribute__((packed)) {
+    uint32_t probe_dst;      // final destination of the route being probed
+    uint8_t  route_index;    // which cached route (0-4)
+    uint8_t  probe_flags;    // 0x01 = request echo, 0x02 = echo reply
+    uint32_t sent_ms;        // sender's timestamp (for RTT measurement)
+} s5_probe_payload_t;
+
+#define S5_PROBE_FLAG_REQUEST  0x01
+#define S5_PROBE_FLAG_REPLY    0x02
+
 // ── Helper Functions ───────────────────────────────────────────
 
 /**
@@ -103,6 +118,15 @@ uint8_t s5_create_data(const s5_node_state_t *state, s5_node_id_t dst,
                         uint32_t next_hop, uint8_t priority,
                         const uint8_t *payload, uint8_t payload_len,
                         uint8_t *out_buf, uint8_t max_len);
+
+/**
+ * Create a route probe packet along a secondary route.
+ * Minimal payload (10 bytes) to verify route liveness.
+ */
+uint8_t s5_create_probe(const s5_node_state_t *state, s5_node_id_t probe_dst,
+                          uint32_t next_hop, uint8_t route_index,
+                          uint32_t now_ms, uint8_t flags,
+                          uint8_t *out_buf, uint8_t max_len);
 
 #ifdef __cplusplus
 }

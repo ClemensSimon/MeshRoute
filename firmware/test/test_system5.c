@@ -272,6 +272,36 @@ void test_flood_corridor_same_cluster() {
     PASS();
 }
 
+// ── Probe Tests ──────────────────────────────────────────────
+
+void test_probe_no_secondary_routes() {
+    TEST(probe_no_secondary_routes);
+    s5_node_state_t state;
+    s5_init(&state);
+    state.my_id = 1;
+
+    s5_node_id_t dest; s5_node_id_t next; uint8_t ridx;
+    // No routes at all — should return false
+    bool should_probe = s5_pick_probe_target(&state, 60000, &dest, &next, &ridx);
+    assert(!should_probe);
+    PASS();
+}
+
+void test_probe_reply_success() {
+    TEST(probe_reply_success);
+    s5_node_state_t state;
+    s5_init(&state);
+    state.my_id = 1;
+
+    // Simulate a successful probe reply — quality should improve
+    // We need a route entry in the table for this to work
+    // Since _route_table is static, we test via the public API indirectly
+    // by calling s5_handle_probe_reply (it should not crash with no entry)
+    s5_handle_probe_reply(&state, 99, 0, 500, true);
+    s5_handle_probe_reply(&state, 99, 0, 500, false);
+    PASS();
+}
+
 // ── Main ───────────────────────────────────────────────────────
 
 int main() {
@@ -291,6 +321,8 @@ int main() {
     test_adaptive_retries();
     test_dynamic_max_hops();
     test_flood_corridor_same_cluster();
+    test_probe_no_secondary_routes();
+    test_probe_reply_success();
 
     printf("\n=== ALL TESTS PASSED ===\n\n");
     return 0;

@@ -18,14 +18,31 @@ extern "C" {
 
 // ── Configuration ──────────────────────────────────────────────
 
+// Allow compile-time override via -D flags (e.g., for reduced memory builds)
+#ifndef S5_MAX_NODES
 #define S5_MAX_NODES         100   // max tracked nodes in network
+#endif
+#ifndef S5_MAX_NEIGHBORS
 #define S5_MAX_NEIGHBORS      16   // max neighbors per node
+#endif
+#ifndef S5_MAX_ROUTES
 #define S5_MAX_ROUTES          5   // max cached routes per destination
+#endif
+#ifndef S5_MAX_HOPS
 #define S5_MAX_HOPS           20   // default hop cap (dynamic via s5_dynamic_max_hops)
+#endif
+#ifndef S5_MIN_HOPS
 #define S5_MIN_HOPS           15   // floor for dynamic hop limit
+#endif
+#ifndef S5_MAX_HOPS_CAP
 #define S5_MAX_HOPS_CAP       40   // ceiling for dynamic hop limit
+#endif
+#ifndef S5_MAX_PATH_LEN
 #define S5_MAX_PATH_LEN       15   // max hops in a single route
+#endif
+#ifndef S5_MAX_CLUSTERS
 #define S5_MAX_CLUSTERS        8   // max geo-clusters
+#endif
 #define S5_GEOHASH_PRECISION   4   // characters for cluster grouping
 #define S5_BRIDGE_LINKS_PER_PAIR 2 // bridge links between cluster pairs
 
@@ -45,6 +62,11 @@ extern "C" {
 #define S5_MAX_RETRIES     3    // retries per hop for good links (quality > 0.5)
 #define S5_MAX_RETRIES_POOR 5   // retries per hop for poor links (quality <= 0.5)
 #define S5_MAX_ROUTE_ATTEMPTS 5 // try up to N different routes before fallback
+
+// Proactive path probing
+#define S5_PROBE_INTERVAL_MS  60000  // probe one secondary route every 60s
+#define S5_PROBE_STALE_MS    120000  // probe routes not used in 2 minutes
+#define S5_PROBE_TIMEOUT_MS   10000  // probe reply timeout
 
 // ── Geohash ────────────────────────────────────────────────────
 
@@ -121,6 +143,8 @@ typedef struct {
     float weight;                // computed W(r)
     uint32_t last_used_ms;       // millis() of last successful use
     uint8_t fail_count;          // consecutive failures on this route
+    uint32_t last_probed_ms;     // millis() of last probe sent on this route
+    bool probe_pending;          // true if awaiting probe reply
 } s5_route_t;
 
 typedef struct {
@@ -260,6 +284,33 @@ uint8_t s5_dynamic_max_hops(uint8_t estimated_nodes);
 uint8_t s5_get_flood_corridor(const s5_node_state_t *state,
                                uint8_t src_cluster, uint8_t dst_cluster,
                                uint8_t *out_corridor, uint8_t max_len);
+
+/**
+ * Proactive path probing: pick one stale secondary route and return
+ * probe info. Called during maintenance (~every 60s).
+ *
+ * @param state      Node state
+ * @param now_ms     Current millis()
+ * @param out_dest   Output: destination node of route to probe
+ * @param out_next   Output: next hop to send probe to
+ * @param out_ridx   Output: route index being probed
+ * @return true if a probe should be sent
+ */
+bool s5_pick_probe_target(s5_node_state_t *state, uint32_t now_ms,
+                           s5_node_id_t *out_dest, s5_node_id_t *out_next,
+                           uint8_t *out_ridx);
+
+/**
+ * Handle a received probe reply. Updates route quality with real measurement.
+ *
+ * @param state      Node state
+ * @param dest_id    Destination that was probed
+ * @param route_idx  Route index that was probed
+ * @param rtt_ms     Round-trip time of the probe
+ * @param success    true if probe reached destination and returned
+ */
+void s5_handle_probe_reply(s5_node_state_t *state, s5_node_id_t dest_id,
+                            uint8_t route_idx, uint32_t rtt_ms, bool success);
 
 #ifdef __cplusplus
 }

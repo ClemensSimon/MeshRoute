@@ -145,6 +145,10 @@ class Route:
         self.load = load
         self.battery = battery
         self.weight = 0.0
+        self.last_used = 0      # sim tick of last successful use
+        self.last_probed = 0    # sim tick of last probe
+        self.probe_pending = False
+        self.fail_count = 0
         self.compute_weight()
 
     def compute_weight(self, alpha=0.4, beta=0.35, gamma=0.25):

@@ -410,11 +410,18 @@ class System5Router:
     BACKPRESSURE_THRESHOLD = 0.8
     MAX_RETRIES = 3  # 3 attempts per hop (was 2)
 
+    PROBE_STALE_TICKS = 3      # probe routes not used in 3+ ticks
+    PROBE_TIMEOUT_TICKS = 2    # probe considered failed after 2 ticks
+
     def __init__(self, seed=42):
         self.rng = random.Random(seed)
         self.qos_stats = defaultdict(lambda: {"sent": 0, "delivered": 0})
         self.fallback_used = 0
         self.route_switches = 0
+        self.probes_sent = 0
+        self.probes_succeeded = 0
+        self.probes_failed = 0
+        self.routes_killed_by_probe = 0
 
     def _qos_gate(self, node, packet):
         nhs = node.nhs
@@ -667,6 +674,90 @@ class System5Router:
             return True
         return False
 
+    def probe_secondary_routes(self, network, src_node, stats):
+        """Send lightweight probes along stale secondary routes.
+
+        Called once per message cycle from route(). Picks one random stale
+        secondary route and tests if the path is still alive. Dead routes
+        are marked immediately (fail_count set high) so failover is instant.
+
+        Cost: 1 probe per message cycle = negligible airtime.
+        """
+        tick = network.tick
+
+        # Collect all stale secondary routes for this node
+        candidates = []
+        for dst_id, routes in src_node.routing_table.items():
+            for i, route in enumerate(routes):
+                if i == 0:
+                    continue  # skip primary route
+                if route.probe_pending:
+                    # Check for timeout
+                    if tick - route.last_probed > self.PROBE_TIMEOUT_TICKS:
+                        route.probe_pending = False
+                        route.fail_count = 6  # mark dead
+                        route.quality = 0.0
+                        self.probes_failed += 1
+                        self.routes_killed_by_probe += 1
+                    continue
+                if route.fail_count >= 6:
+                    continue  # already dead
+                if route.path_len() < 2 if hasattr(route, 'path_len') else len(route.path) < 2:
+                    continue
+
+                # Is it stale? (not used or probed recently)
+                last_activity = max(route.last_used, route.last_probed)
+                if tick - last_activity >= self.PROBE_STALE_TICKS:
+                    candidates.append((dst_id, i, route))
+
+        if not candidates:
+            return
+
+        # Pick one random stale route to probe
+        dst_id, route_idx, route = self.rng.choice(candidates)
+
+        # Simulate the probe: walk the path, 1 TX per hop (10 byte payload)
+        probe_alive = True
+        for i in range(len(route.path) - 1):
+            a, b = route.path[i], route.path[i + 1]
+            node_a = network.nodes.get(a)
+            node_b = network.nodes.get(b)
+            if not node_a or not node_b:
+                probe_alive = False
+                break
+            if node_b.battery <= 0:
+                probe_alive = False
+                break
+            link = network.get_link(a, b)
+            if not link or not link.alive:
+                probe_alive = False
+                break
+
+            stats.total_tx += 1  # probe TX
+            stats.node_tx_counts[a] += 1
+
+            # Probe delivery uses link quality
+            if self.rng.random() > link.quality:
+                probe_alive = False
+                break
+
+        self.probes_sent += 1
+        route.last_probed = tick
+
+        if probe_alive:
+            # Probe reached destination — route is alive
+            route.probe_pending = False
+            route.fail_count = 0
+            route.quality = min(1.0, route.quality * 1.05)
+            self.probes_succeeded += 1
+        else:
+            # Probe failed — mark route dead immediately
+            route.probe_pending = False
+            route.fail_count = 6
+            route.quality = 0.0
+            self.probes_failed += 1
+            self.routes_killed_by_probe += 1
+
     def route(self, network, packet):
         stats = RoutingStats()
 
@@ -683,11 +774,16 @@ class System5Router:
         if not self._qos_gate(src_node, packet):
             return stats
 
+        # Proactive probing: test one stale secondary route per message cycle
+        self.probe_secondary_routes(network, src_node, stats)
+
         routes = network.get_routes(src_node.id, dst_id)
 
         if routes:
             valid_routes = []
             for route in routes:
+                if route.fail_count >= 6:
+                    continue  # killed by probe or repeated failures
                 alive = all(
                     network.nodes[nid].battery > 0 for nid in route.path
                 )
@@ -708,6 +804,8 @@ class System5Router:
                 if self._try_route(network, packet, selected.path, stats):
                     if attempt > 0:
                         self.route_switches += 1
+                    selected.last_used = network.tick
+                    selected.fail_count = 0
                     self.qos_stats[packet.priority]["delivered"] += 1
                     stats.energy = stats.total_tx
                     return stats
@@ -730,6 +828,458 @@ class System5Router:
         self.fallback_used += 1
         if self._fallback_cluster_flood(network, packet, stats):
             self.qos_stats[packet.priority]["delivered"] += 1
+
+        stats.energy = stats.total_tx
+        return stats
+
+
+# ============================================================================
+# 5. BROADCAST STATS (for broadcast benchmarking)
+# ============================================================================
+
+class BroadcastStats:
+    """Statistics from broadcasting a single message to all nodes."""
+
+    def __init__(self, total_nodes):
+        self.total_nodes = total_nodes
+        self.nodes_reached = set()
+        self.total_tx = 0
+        self.node_tx_counts = defaultdict(int)
+        self.half_duplex_blocked = 0
+        self.energy = 0
+
+    @property
+    def reach_pct(self):
+        return 100.0 * len(self.nodes_reached) / self.total_nodes if self.total_nodes > 0 else 0
+
+    def __repr__(self):
+        return f"BcastStats(reach={self.reach_pct:.1f}%, tx={self.total_tx})"
+
+
+# ============================================================================
+# 6. MANAGED FLOODING BROADCAST (baseline for broadcast comparison)
+# ============================================================================
+
+class ManagedFloodBroadcast:
+    """Managed flooding for broadcast: measures how many nodes receive
+    the message (not just one destination)."""
+
+    ROUTER_FRACTION = 0.05
+    SUPPRESSION_BASE = 0.6
+    MESHTASTIC_HOP_LIMIT = 7
+
+    def __init__(self, seed=42, hop_limit=None):
+        self.rng = random.Random(seed)
+        self.hop_limit = hop_limit or self.MESHTASTIC_HOP_LIMIT
+        self._router_nodes = set()
+
+    def _assign_router_roles(self, network):
+        if self._router_nodes:
+            return
+        nodes_sorted = sorted(
+            network.nodes.values(),
+            key=lambda n: len(n.neighbors),
+            reverse=True,
+        )
+        n_routers = max(1, int(len(nodes_sorted) * self.ROUTER_FRACTION))
+        self._router_nodes = {n.id for n in nodes_sorted[:n_routers]}
+
+    def broadcast(self, network, src_id):
+        """Broadcast from src_id using managed flooding. Returns BroadcastStats."""
+        alive_nodes = sum(1 for n in network.nodes.values() if n.battery > 0)
+        stats = BroadcastStats(alive_nodes)
+
+        src_node = network.nodes.get(src_id)
+        if not src_node or src_node.battery <= 0:
+            return stats
+
+        self._assign_router_roles(network)
+
+        seen = {src_id}
+        stats.nodes_reached.add(src_id)
+        rebroadcasted = {src_id}
+        queue = [(src_id, 0, 1.0)]
+        sim_time = network.sim_time
+
+        while queue:
+            current_id, hop_count, recv_quality = queue.pop(0)
+            if hop_count >= self.hop_limit:
+                continue
+
+            current_node = network.nodes[current_id]
+            if current_node.silent and current_id != src_id:
+                continue
+
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue
+
+            is_router = current_id in self._router_nodes
+            if not is_router and current_id != src_id:
+                neighbor_rebroadcasted = any(
+                    nid in rebroadcasted for nid in current_node.neighbors
+                    if nid != src_id and nid in seen
+                )
+                if neighbor_rebroadcasted:
+                    suppress_prob = self.SUPPRESSION_BASE * recv_quality
+                    if self.rng.random() < suppress_prob:
+                        continue
+
+            rebroadcasted.add(current_id)
+
+            for neighbor_id, quality in current_node.neighbors.items():
+                stats.total_tx += 1
+                stats.node_tx_counts[current_id] += 1
+
+                if self.rng.random() > quality:
+                    continue
+                if neighbor_id in seen:
+                    continue
+
+                neighbor_node = network.nodes.get(neighbor_id)
+                if not neighbor_node or neighbor_node.battery <= 0:
+                    continue
+
+                seen.add(neighbor_id)
+                stats.nodes_reached.add(neighbor_id)
+
+                if neighbor_node.neighbors:
+                    queue.append((neighbor_id, hop_count + 1, quality))
+
+            if network.enable_half_duplex:
+                toa = time_on_air(50, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, sim_time, toa)
+                sim_time += toa * 0.3
+
+        stats.energy = stats.total_tx
+        return stats
+
+
+# ============================================================================
+# 7. CLUSTER-DISTRIBUTOR BROADCAST (System 5 approach)
+# ============================================================================
+
+class ClusterDistributorBroadcast:
+    """Broadcast via cluster distributors: unicast to each cluster's
+    best distributor node, which then does a single local broadcast.
+
+    Distributor selection: maximize intra-cluster coverage while
+    minimizing inter-cluster leakage (signal spillover).
+
+    Flow:
+    1. Elect one distributor per cluster (low-leakage, high-coverage node)
+    2. Source unicasts to each cluster's distributor via System 5 routes
+    3. Each distributor does a single local broadcast within its cluster
+    4. Unreached members get one relay round from reached neighbors
+
+    Cost: O(clusters x avg_hops) for unicast + O(cluster_size) per local flood
+    """
+
+    def __init__(self, seed=42):
+        self.rng = random.Random(seed)
+        self._distributors = {}      # cluster_id -> node_id
+        self._distributor_scores = {}  # node_id -> score
+
+    def _elect_distributors(self, network):
+        """Elect the best distributor for each cluster.
+
+        Score = coverage * containment * elevation_bonus
+
+        - coverage: fraction of cluster members this node can reach directly
+        - containment: 1 - (neighbors_outside / total_neighbors)
+          Low-range nodes (valley) naturally have high containment.
+        - elevation_bonus: prefer low-elevation nodes (their signal stays local)
+          Valley nodes get bonus, mountain nodes get penalty.
+
+        The ideal distributor is a valley node that reaches many cluster
+        members but whose signal doesn't leak to other clusters.
+        """
+        self._distributors = {}
+        self._distributor_scores = {}
+
+        for cluster_id, cluster in network.clusters.items():
+            alive_members = [
+                nid for nid in cluster.members
+                if network.nodes[nid].battery > 0
+            ]
+            if not alive_members:
+                continue
+
+            cluster_set = set(alive_members)
+            best_node = None
+            best_score = -1.0
+
+            # Find elevation range for normalization
+            elevations = [network.nodes[nid].elevation for nid in alive_members]
+            max_elev = max(elevations) if elevations else 1.0
+            min_elev = min(elevations) if elevations else 0.0
+            elev_range = max(max_elev - min_elev, 1.0)
+
+            for nid in alive_members:
+                node = network.nodes[nid]
+                if not node.neighbors:
+                    continue
+
+                neighbors_in = sum(1 for nb in node.neighbors if nb in cluster_set)
+                coverage = neighbors_in / len(alive_members)
+
+                total_nb = len(node.neighbors)
+                containment = 1.0 - ((total_nb - neighbors_in) / total_nb) if total_nb > 0 else 0
+
+                # Elevation factor: 1.0 for lowest node, 0.2 for highest
+                # Valley nodes naturally contain their signal
+                elev_norm = (node.elevation - min_elev) / elev_range
+                elevation_bonus = 1.0 - 0.8 * elev_norm
+
+                # Tier bonus: explicitly prefer valley > hill > mountain
+                tier_bonus = {'valley': 1.0, 'hill': 0.5, 'mountain': 0.1}.get(
+                    getattr(node, 'node_tier', 'valley'), 0.7
+                )
+
+                score = coverage * (0.3 * containment + 0.4 * elevation_bonus + 0.3 * tier_bonus)
+                score += node.battery / 100000.0  # tiny tiebreaker
+
+                if score > best_score:
+                    best_score = score
+                    best_node = nid
+
+            if best_node is not None:
+                self._distributors[cluster_id] = best_node
+                self._distributor_scores[best_node] = best_score
+
+    def _unicast_along_route(self, network, src_id, dst_id, stats):
+        """Send via pre-computed routes. Returns True if dst reached."""
+        if src_id == dst_id:
+            return True
+
+        routes = network.get_routes(src_id, dst_id)
+        if not routes:
+            return False
+
+        for route in routes[:3]:
+            if not all(network.nodes[nid].battery > 0 for nid in route.path):
+                continue
+
+            success = True
+            for i in range(len(route.path) - 1):
+                a, b = route.path[i], route.path[i + 1]
+                link = network.get_link(a, b)
+                if not link or not link.alive:
+                    success = False
+                    break
+
+                stats.total_tx += 1
+                stats.node_tx_counts[a] += 1
+
+                if network.enable_half_duplex:
+                    if not network.half_duplex.can_transmit(a, network.sim_time):
+                        stats.half_duplex_blocked += 1
+                        success = False
+                        break
+                    toa = time_on_air(50, sf=network.nodes[a].sf)
+                    network.half_duplex.start_tx(a, network.sim_time, toa)
+                    for nid in network.nodes[a].neighbors:
+                        network.half_duplex.start_rx(nid, network.sim_time, toa)
+                    network.sim_time += toa
+
+                quality = link.quality_from(a) if hasattr(link, 'quality_from') else link.quality
+                if self.rng.random() > quality:
+                    success = False
+                    break
+
+            if success:
+                return True
+
+        return False
+
+    def _local_broadcast(self, network, distributor_id, cluster_members, stats):
+        """Scoped mini-flood within cluster starting from distributor.
+
+        BFS flood but ONLY to nodes within the cluster. Each node
+        rebroadcasts once. High-elevation nodes (mountain/hill) that
+        hear the flood are marked as reached but DON'T rebroadcast
+        (their TX would leak to other clusters and cause collisions).
+        Only valley/low-elevation nodes relay within the cluster.
+        """
+        cluster_set = set(cluster_members)
+        seen = {distributor_id}
+        queue = [distributor_id]
+
+        while queue:
+            current_id = queue.pop(0)
+            current_node = network.nodes[current_id]
+
+            # High-elevation nodes receive but don't rebroadcast within cluster
+            # Their TX range is too large — would leak to other clusters
+            tier = getattr(current_node, 'node_tier', 'valley')
+            if tier == 'mountain' and current_id != distributor_id:
+                continue  # received, but don't relay
+
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, network.sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue
+                toa = time_on_air(50, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, network.sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, network.sim_time, toa)
+                network.sim_time += toa
+
+            stats.total_tx += 1
+            stats.node_tx_counts[current_id] += 1
+
+            for neighbor_id, quality in current_node.neighbors.items():
+                if neighbor_id in seen:
+                    continue
+
+                if self.rng.random() > quality:
+                    continue
+
+                neighbor_node = network.nodes.get(neighbor_id)
+                if not neighbor_node or neighbor_node.battery <= 0:
+                    continue
+
+                seen.add(neighbor_id)
+
+                # Mark reached even if outside cluster (natural signal reach)
+                stats.nodes_reached.add(neighbor_id)
+
+                # Only queue cluster members for further relaying
+                if neighbor_id in cluster_set and neighbor_node.neighbors:
+                    queue.append(neighbor_id)
+
+    def broadcast(self, network, src_id):
+        """Broadcast from src_id using wave propagation through clusters.
+
+        Instead of source unicasting to every distributor (fails for distant
+        clusters), the broadcast propagates cluster-by-cluster:
+
+        1. Source's cluster: mini-flood from distributor
+        2. Border nodes of flooded cluster relay to adjacent cluster distributors
+        3. Those distributors mini-flood their cluster
+        4. Repeat until all reachable clusters covered
+
+        This is fifieldt's "interior/exterior" routing:
+        - Interior = mini-flood within cluster
+        - Exterior = border-node relay between clusters
+        """
+        alive_nodes = sum(1 for n in network.nodes.values() if n.battery > 0)
+        stats = BroadcastStats(alive_nodes)
+
+        src_node = network.nodes.get(src_id)
+        if not src_node or src_node.battery <= 0:
+            return stats
+
+        if not self._distributors:
+            self._elect_distributors(network)
+
+        stats.nodes_reached.add(src_id)
+
+        # Build cluster adjacency from border nodes
+        cluster_adj = defaultdict(set)  # cluster_id -> set of adjacent cluster_ids
+        border_bridges = defaultdict(list)  # (from_cluster, to_cluster) -> [border_node_ids]
+        for cluster_id, cluster in network.clusters.items():
+            for border_nid in cluster.border_nodes:
+                border_node = network.nodes[border_nid]
+                if border_node.battery <= 0:
+                    continue
+                for nb_id in border_node.neighbors:
+                    nb_node = network.nodes.get(nb_id)
+                    if nb_node and nb_node.cluster_id != cluster_id and nb_node.battery > 0:
+                        cluster_adj[cluster_id].add(nb_node.cluster_id)
+                        key = (cluster_id, nb_node.cluster_id)
+                        if border_nid not in border_bridges[key]:
+                            border_bridges[key].append(border_nid)
+
+        # BFS over clusters: propagate wave
+        src_cluster = src_node.cluster_id
+        flooded_clusters = set()
+        cluster_queue = [src_cluster]
+
+        while cluster_queue:
+            cid = cluster_queue.pop(0)
+            if cid in flooded_clusters:
+                continue
+            flooded_clusters.add(cid)
+
+            cluster = network.clusters.get(cid)
+            if not cluster:
+                continue
+
+            alive_members = [
+                nid for nid in cluster.members
+                if network.nodes[nid].battery > 0
+            ]
+            if not alive_members:
+                continue
+
+            dist_id = self._distributors.get(cid)
+            if dist_id is None:
+                continue
+
+            # Ensure distributor has the message
+            if dist_id not in stats.nodes_reached:
+                # For source cluster: unicast from src to distributor
+                if cid == src_cluster:
+                    if dist_id != src_id:
+                        if not self._unicast_along_route(network, src_id, dist_id, stats):
+                            # Fallback: src does the local flood itself
+                            dist_id = src_id
+                else:
+                    # For adjacent clusters: try all reached border nodes as bridges
+                    bridge_reached = False
+                    for prev_cid in flooded_clusters:
+                        if bridge_reached:
+                            break
+                        bridge_key = (prev_cid, cid)
+                        bridge_candidates = border_bridges.get(bridge_key, [])
+                        # Try reached bridges (shuffle for variety)
+                        reached_bridges = [b for b in bridge_candidates if b in stats.nodes_reached]
+                        self.rng.shuffle(reached_bridges)
+
+                        for bridge_nid in reached_bridges[:3]:  # try up to 3 bridges
+                            # Border node sends 1 TX to cross cluster boundary
+                            stats.total_tx += 1
+                            stats.node_tx_counts[bridge_nid] += 1
+
+                            if network.enable_half_duplex:
+                                bn = network.nodes[bridge_nid]
+                                if not network.half_duplex.can_transmit(bridge_nid, network.sim_time):
+                                    stats.half_duplex_blocked += 1
+                                    continue
+                                toa = time_on_air(50, sf=bn.sf)
+                                network.half_duplex.start_tx(bridge_nid, network.sim_time, toa)
+                                for nid in bn.neighbors:
+                                    network.half_duplex.start_rx(nid, network.sim_time, toa)
+                                network.sim_time += toa
+
+                            # Try direct neighbor link first (cheapest)
+                            if dist_id in network.nodes[bridge_nid].neighbors:
+                                q = network.nodes[bridge_nid].neighbors[dist_id]
+                                if self.rng.random() <= q:
+                                    bridge_reached = True
+                                    break
+
+                            # Else unicast via route
+                            if self._unicast_along_route(network, bridge_nid, dist_id, stats):
+                                bridge_reached = True
+                                break
+
+                    if not bridge_reached:
+                        continue
+
+            stats.nodes_reached.add(dist_id)
+
+            # Mini-flood within this cluster
+            self._local_broadcast(network, dist_id, alive_members, stats)
+
+            # Queue adjacent unflooded clusters
+            for adj_cid in cluster_adj.get(cid, set()):
+                if adj_cid not in flooded_clusters:
+                    cluster_queue.append(adj_cid)
 
         stats.energy = stats.total_tx
         return stats

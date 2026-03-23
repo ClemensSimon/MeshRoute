@@ -337,6 +337,87 @@ void s5_route_feedback(s5_node_state_t *state, s5_node_id_t dest_id,
     route->weight = _compute_weight(route->quality, route->load, route->battery);
 }
 
+// ── Proactive Path Probing ─────────────────────────────────────
+
+bool s5_pick_probe_target(s5_node_state_t *state, uint32_t now_ms,
+                           s5_node_id_t *out_dest, s5_node_id_t *out_next,
+                           uint8_t *out_ridx) {
+    // Find the stalest secondary route (index > 0) that hasn't been probed recently
+    uint32_t oldest_activity = now_ms;  // most recent activity
+    s5_route_entry_t *best_entry = NULL;
+    uint8_t best_ridx = 0;
+
+    for (uint8_t i = 0; i < _route_table_size; i++) {
+        s5_route_entry_t *entry = &_route_table[i];
+        // Only probe destinations with multiple routes (secondary routes exist)
+        if (entry->route_count < 2) continue;
+
+        for (uint8_t j = 1; j < entry->route_count; j++) {  // skip index 0 (primary)
+            s5_route_t *r = &entry->routes[j];
+            if (r->path_len < 2) continue;
+            if (r->fail_count >= S5_MAX_RETRIES * 2) continue;  // already dead
+            if (r->probe_pending) continue;  // already waiting for reply
+
+            // Pick route with oldest activity (last_used or last_probed)
+            uint32_t last_activity = r->last_used_ms;
+            if (r->last_probed_ms > last_activity) last_activity = r->last_probed_ms;
+
+            // Only probe if stale (not used/probed recently)
+            if (last_activity > 0 && (now_ms - last_activity) < S5_PROBE_STALE_MS) continue;
+
+            if (last_activity < oldest_activity) {
+                oldest_activity = last_activity;
+                best_entry = entry;
+                best_ridx = j;
+            }
+        }
+    }
+
+    if (!best_entry) return false;
+
+    s5_route_t *route = &best_entry->routes[best_ridx];
+
+    // Find ourselves in the path and get next hop
+    for (uint8_t k = 0; k < route->path_len - 1; k++) {
+        if (route->path[k] == state->my_id) {
+            *out_dest = best_entry->dest_id;
+            *out_next = route->path[k + 1];
+            *out_ridx = best_ridx;
+            route->probe_pending = true;
+            route->last_probed_ms = now_ms;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void s5_handle_probe_reply(s5_node_state_t *state, s5_node_id_t dest_id,
+                            uint8_t route_idx, uint32_t rtt_ms, bool success) {
+    s5_route_entry_t *entry = _find_route_entry(dest_id);
+    if (!entry || route_idx >= entry->route_count) return;
+
+    s5_route_t *route = &entry->routes[route_idx];
+    route->probe_pending = false;
+
+    if (success) {
+        route->fail_count = 0;
+        // Update quality based on RTT: shorter RTT = higher quality boost
+        // Normalize: <1s = good, 1-5s = ok, >5s = poor
+        float rtt_factor = 1.0f;
+        if (rtt_ms < 1000) rtt_factor = 1.1f;
+        else if (rtt_ms < 5000) rtt_factor = 1.0f;
+        else rtt_factor = 0.9f;
+
+        route->quality = fminf(1.0f, route->quality * rtt_factor);
+    } else {
+        // Probe failed — route is dead, mark immediately
+        route->fail_count = S5_MAX_RETRIES * 2;  // instant death
+        route->quality = 0.0f;
+    }
+    route->weight = _compute_weight(route->quality, route->load, route->battery);
+}
+
 // ── Maintenance ────────────────────────────────────────────────
 
 void s5_maintenance(s5_node_state_t *state, uint32_t now_ms) {
@@ -350,10 +431,20 @@ void s5_maintenance(s5_node_state_t *state, uint32_t now_ms) {
         }
     }
 
-    // Decay route qualities (pheromone evaporation)
+    // Decay route qualities (pheromone evaporation) + check probe timeouts
     for (uint8_t i = 0; i < _route_table_size; i++) {
         for (uint8_t j = 0; j < _route_table[i].route_count; j++) {
             s5_route_t *r = &_route_table[i].routes[j];
+
+            // Check for timed-out probes
+            if (r->probe_pending && r->last_probed_ms > 0 &&
+                (now_ms - r->last_probed_ms) > S5_PROBE_TIMEOUT_MS) {
+                // Probe timed out — treat as failure
+                r->probe_pending = false;
+                r->fail_count = S5_MAX_RETRIES * 2;  // mark dead
+                r->quality = 0.0f;
+            }
+
             r->quality *= 0.95f; // 5% decay per maintenance cycle
             r->weight = _compute_weight(r->quality, r->load, r->battery);
 
