@@ -194,6 +194,12 @@
             <option value="bayarea_silent">Bay Area + Silencing (57% nodes muted)</option>
             <option value="bayarea_silent_s">Bay Area + Silencing + Stress</option>
           </optgroup>
+          <optgroup label="Broadcast Comparison">
+            <option value="bc_medium">Broadcast: Medium (50 nodes)</option>
+            <option value="bc_large">Broadcast: Large (100 nodes)</option>
+            <option value="bc_dense">Broadcast: Dense (200 nodes)</option>
+            <option value="bc_bayarea">Broadcast: Bay Area (235 nodes)</option>
+          </optgroup>
           <optgroup label="Mixed Mode (Backward Compat.)">
             <option value="mixed10">10% S5 + 90% Legacy</option>
             <option value="mixed30">30% S5 + 70% Legacy</option>
@@ -354,6 +360,11 @@ const SCENARIOS = {
   bayarea_silent:   { nodes: 235, area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0,   kills:0,    degrade:0,   silencing:0.6 },
   bayarea_silent_s: { nodes: 235, area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0,   kills:0.15, degrade:0.2, silencing:0.6 },
   // Mixed-mode: S5 nodes coexist with legacy flooding nodes
+  // Broadcast comparison: Managed Flood vs Cluster-Distributor
+  bc_medium: { nodes: 50,  area: 3000,  range: 1200, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, broadcastMode:true },
+  bc_large:  { nodes: 100, area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, broadcastMode:true },
+  bc_dense:  { nodes: 200, area: 3000,  range: 1200, terrain:'dense_urban', placement:'random',    mobile:0,   kills:0,   degrade:0, broadcastMode:true },
+  bc_bayarea:{ nodes: 235, area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0,   kills:0,   degrade:0, broadcastMode:true },
   mixed10:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.1 },
   mixed30:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.3 },
   mixed50:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, s5ratio:0.5 },
@@ -808,6 +819,241 @@ function fallbackClusterFlood(net, src, dst, rng) {
   return {
     txEvents, delivered, totalTx: txEvents.length,
     path: null, retries: 0, failHop: -1,
+  };
+}
+
+// ---- Broadcast Simulation Functions ----
+
+function simulateManagedBroadcast(net, src, rng, hopLimit = 7) {
+  // Managed flooding broadcast: measure how many nodes receive the message
+  const txEvents = [];
+  const seen = new Set([src]);
+  const rebroadcast = new Set([src]);
+  const queue = [[src, 0]];
+  let tick = 0;
+  const nodesReached = new Set([src]);
+  const totalAlive = net.nodes.filter(n => n.battery > 0).length;
+
+  while (queue.length) {
+    const [cur, hop] = queue.shift();
+    if (hop >= hopLimit) continue;
+    const node = net.nodes[cur];
+
+    if (cur !== src) {
+      const neighborRebroadcasted = Object.keys(node.neighbors).some(
+        nid => rebroadcast.has(+nid) && +nid !== src && seen.has(+nid)
+      );
+      if (neighborRebroadcasted && rng.next() < 0.4) continue;
+    }
+    rebroadcast.add(cur);
+
+    for (const [nidStr, quality] of Object.entries(node.neighbors)) {
+      const nid = +nidStr;
+      const link = net.links.find(l => l.alive &&
+        ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+      if (!link) continue;
+      txEvents.push({ from: cur, to: nid, time: tick++, hop });
+      if (rng.next() > quality) continue;
+      if (seen.has(nid)) continue;
+      seen.add(nid);
+      nodesReached.add(nid);
+      if (net.nodes[nid].battery <= 0) continue;
+      queue.push([nid, hop + 1]);
+    }
+  }
+
+  const hopGroups = {};
+  let maxHop = 0;
+  for (const ev of txEvents) {
+    if (!hopGroups[ev.hop]) hopGroups[ev.hop] = [];
+    hopGroups[ev.hop].push(ev);
+    if (ev.hop > maxHop) maxHop = ev.hop;
+  }
+
+  return {
+    txEvents, totalTx: txEvents.length, hopGroups, maxHop,
+    nodesReached, totalAlive, reachPct: (nodesReached.size / totalAlive * 100),
+  };
+}
+
+function electDistributors(net) {
+  // Elect one distributor per cluster: valley node with high local reach, low leakage
+  const clusters = {};
+  for (const n of net.nodes) {
+    if (n.battery <= 0) continue;
+    if (!clusters[n.cluster]) clusters[n.cluster] = [];
+    clusters[n.cluster].push(n.id);
+  }
+
+  const distributors = {};
+  for (const [cid, members] of Object.entries(clusters)) {
+    const memberSet = new Set(members);
+    let bestNode = members[0], bestScore = -1;
+
+    const elevations = members.map(nid => net.nodes[nid].elevation || 0);
+    const minElev = Math.min(...elevations);
+    const maxElev = Math.max(...elevations);
+    const elevRange = Math.max(maxElev - minElev, 1);
+
+    for (const nid of members) {
+      const node = net.nodes[nid];
+      const nbKeys = Object.keys(node.neighbors);
+      if (nbKeys.length === 0) continue;
+
+      const nbIn = nbKeys.filter(nb => memberSet.has(+nb)).length;
+      const coverage = nbIn / members.length;
+      const containment = 1 - ((nbKeys.length - nbIn) / nbKeys.length);
+
+      const elev = node.elevation || 0;
+      const elevNorm = (elev - minElev) / elevRange;
+      const elevBonus = 1.0 - 0.8 * elevNorm;
+
+      const tier = node.tier || 'valley';
+      const tierBonus = tier === 'mountain' ? 0.1 : tier === 'hill' ? 0.5 : 1.0;
+
+      const score = coverage * (0.3 * containment + 0.4 * elevBonus + 0.3 * tierBonus);
+      if (score > bestScore) { bestScore = score; bestNode = nid; }
+    }
+    distributors[cid] = bestNode;
+  }
+  return distributors;
+}
+
+function simulateClusterDistributorBroadcast(net, src, rng) {
+  // Wave propagation: unicast to cluster distributors, local mini-flood per cluster
+  const txEvents = [];
+  const nodesReached = new Set([src]);
+  const totalAlive = net.nodes.filter(n => n.battery > 0).length;
+  let tick = 0;
+  let hopLevel = 0;
+
+  const distributors = electDistributors(net);
+
+  // Build cluster adjacency
+  const clusters = {};
+  for (const n of net.nodes) {
+    if (n.battery <= 0) continue;
+    if (!clusters[n.cluster]) clusters[n.cluster] = [];
+    clusters[n.cluster].push(n.id);
+  }
+
+  const clusterAdj = {};
+  const borderBridges = {};
+  for (const [cid, members] of Object.entries(clusters)) {
+    clusterAdj[cid] = new Set();
+    for (const nid of members) {
+      if (!net.nodes[nid].border) continue;
+      for (const nbStr of Object.keys(net.nodes[nid].neighbors)) {
+        const nb = +nbStr;
+        const nbCluster = String(net.nodes[nb].cluster);
+        if (nbCluster !== cid && net.nodes[nb].battery > 0) {
+          clusterAdj[cid].add(nbCluster);
+          const key = cid + '->' + nbCluster;
+          if (!borderBridges[key]) borderBridges[key] = [];
+          if (!borderBridges[key].includes(nid)) borderBridges[key].push(nid);
+        }
+      }
+    }
+  }
+
+  // BFS over clusters (wave propagation)
+  const srcCluster = String(net.nodes[src].cluster);
+  const floodedClusters = new Set();
+  const clusterQueue = [srcCluster];
+
+  while (clusterQueue.length) {
+    const cid = clusterQueue.shift();
+    if (floodedClusters.has(cid)) continue;
+    floodedClusters.add(cid);
+
+    const members = clusters[cid];
+    if (!members) continue;
+    const distId = distributors[cid];
+    if (distId === undefined) continue;
+
+    // Ensure distributor has the message
+    if (!nodesReached.has(distId)) {
+      if (cid === srcCluster && distId !== src) {
+        // Unicast from src to distributor within own cluster
+        const path = bfsPath(net.nodes, net.links, src, distId);
+        if (path) {
+          for (let i = 0; i < path.length - 1; i++) {
+            txEvents.push({ from: path[i], to: path[i+1], time: tick++, hop: hopLevel, mode: 'unicast' });
+            nodesReached.add(path[i+1]);
+          }
+        }
+      } else if (cid !== srcCluster) {
+        // Find a reached border bridge to relay
+        let bridged = false;
+        for (const prevCid of floodedClusters) {
+          const key = prevCid + '->' + cid;
+          const bridges = borderBridges[key] || [];
+          const reached = bridges.filter(b => nodesReached.has(b));
+          for (const bridgeId of reached.slice(0, 3)) {
+            txEvents.push({ from: bridgeId, to: distId, time: tick++, hop: hopLevel, mode: 'bridge' });
+            // Try to reach distributor
+            const path = bfsPath(net.nodes, net.links, bridgeId, distId);
+            if (path) {
+              for (let i = 0; i < path.length - 1; i++) {
+                txEvents.push({ from: path[i], to: path[i+1], time: tick++, hop: hopLevel, mode: 'unicast' });
+                nodesReached.add(path[i+1]);
+              }
+              bridged = true;
+              break;
+            }
+          }
+          if (bridged) break;
+        }
+        if (!bridged) continue;
+      }
+    }
+    nodesReached.add(distId);
+
+    // Mini-flood within cluster from distributor
+    const memberSet = new Set(members);
+    const seen = new Set([distId]);
+    const floodQ = [distId];
+    hopLevel++;
+
+    while (floodQ.length) {
+      const cur = floodQ.shift();
+      const curNode = net.nodes[cur];
+      const tier = curNode.tier || 'valley';
+      if (tier === 'mountain' && cur !== distId) continue; // don't relay from mountain
+
+      for (const [nidStr, quality] of Object.entries(curNode.neighbors)) {
+        const nid = +nidStr;
+        if (seen.has(nid)) continue;
+        seen.add(nid);
+        txEvents.push({ from: cur, to: nid, time: tick++, hop: hopLevel, mode: 'flood' });
+        if (rng.next() > quality) continue;
+        nodesReached.add(nid);
+        if (memberSet.has(nid) && net.nodes[nid].battery > 0) {
+          floodQ.push(nid);
+        }
+      }
+    }
+
+    // Queue adjacent clusters
+    for (const adjCid of (clusterAdj[cid] || [])) {
+      if (!floodedClusters.has(adjCid)) clusterQueue.push(adjCid);
+    }
+    hopLevel++;
+  }
+
+  // Group by hop
+  const hopGroups = {};
+  let maxHop = 0;
+  for (const ev of txEvents) {
+    if (!hopGroups[ev.hop]) hopGroups[ev.hop] = [];
+    hopGroups[ev.hop].push(ev);
+    if (ev.hop > maxHop) maxHop = ev.hop;
+  }
+
+  return {
+    txEvents, totalTx: txEvents.length, hopGroups, maxHop,
+    nodesReached, totalAlive, reachPct: (nodesReached.size / totalAlive * 100),
+    distributors,
   };
 }
 
@@ -1615,15 +1861,20 @@ function handleNodeClick(e, renderer) {
   }
   if (bestId < 0) return;
 
-  // First click = SRC, second click = DST, third click = reset both
-  if (simState.pickedSrc < 0) {
+  const cfg = SCENARIOS[simState.scenario];
+  const isBroadcast = cfg.broadcastMode || false;
+
+  if (isBroadcast) {
+    // Broadcast mode: only SRC needed
+    simState.pickedSrc = bestId;
+    simState.pickedDst = -1; // no destination
+  } else if (simState.pickedSrc < 0) {
     simState.pickedSrc = bestId;
   } else if (simState.pickedDst < 0) {
-    if (bestId === simState.pickedSrc) return; // can't pick same node
+    if (bestId === simState.pickedSrc) return;
     simState.pickedDst = bestId;
-    generateMessages(); // generate all messages with this pair
+    generateMessages();
   } else {
-    // Already both set — clicking resets to pick new
     simState.pickedSrc = bestId;
     simState.pickedDst = -1;
     simState.messages = [];
@@ -1635,7 +1886,16 @@ function handleNodeClick(e, renderer) {
 
 function updateEndpointDisplay() {
   const el = document.getElementById('endpoint-display');
-  if (simState.pickedSrc < 0) {
+  const cfg = SCENARIOS[simState.scenario];
+  const isBroadcast = cfg.broadcastMode || false;
+
+  if (isBroadcast) {
+    if (simState.pickedSrc < 0) {
+      el.innerHTML = 'Click a node to set <span style="color:#4ade80">broadcast SRC</span>';
+    } else {
+      el.innerHTML = `<span style="color:#4ade80">SRC: Node ${simState.pickedSrc}</span> <span style="color:var(--text-dim)">→ ALL nodes</span>`;
+    }
+  } else if (simState.pickedSrc < 0) {
     el.innerHTML = 'Click a node to set <span style="color:#4ade80">SRC</span>';
   } else if (simState.pickedDst < 0) {
     el.innerHTML = `<span style="color:#4ade80">SRC: Node ${simState.pickedSrc}</span> — now click <span style="color:#f87171">DST</span>`;
@@ -1829,15 +2089,31 @@ function buildNetworkAnimated() {
 }
 
 function ensureStartable() {
-  if (simState.pickedSrc < 0 || simState.pickedDst < 0) {
-    document.getElementById('endpoint-display').innerHTML =
-      '<span style="color:#f87171">Select SRC and DST nodes first!</span>';
-    return false;
+  const cfg = SCENARIOS[simState.scenario];
+  const isBroadcast = cfg.broadcastMode || false;
+
+  if (isBroadcast) {
+    // Broadcast mode: only SRC needed, no DST
+    if (simState.pickedSrc < 0) {
+      document.getElementById('endpoint-display').innerHTML =
+        '<span style="color:#f87171">Click a node to set broadcast SRC!</span>';
+      return false;
+    }
+  } else {
+    if (simState.pickedSrc < 0 || simState.pickedDst < 0) {
+      document.getElementById('endpoint-display').innerHTML =
+        '<span style="color:#f87171">Select SRC and DST nodes first!</span>';
+      return false;
+    }
   }
   if (!simState.started) {
     simState.started = true;
     updateEndpointDisplay();
-    prepareHopByHop();
+    if (isBroadcast) {
+      prepareHopByHopBroadcast();
+    } else {
+      prepareHopByHop();
+    }
   }
   return true;
 }
@@ -1983,6 +2259,189 @@ function prepareHopByHop() {
   log.scrollTop = log.scrollHeight;
 }
 
+// ---- Broadcast Mode: prepare + advance ----
+
+function prepareHopByHopBroadcast() {
+  const src = simState.pickedSrc;
+
+  const mResult = simulateManagedBroadcast(rendererManaged.net, src, new RNG(42));
+  const cdResult = simulateClusterDistributorBroadcast(rendererSystem5.net, src, new RNG(42));
+
+  const totalHops = Math.max(mResult.maxHop + 1, cdResult.maxHop + 1);
+
+  simState.hopPlan = {
+    isBroadcast: true,
+    mResult, mHopGroups: mResult.hopGroups, mMaxHop: mResult.maxHop,
+    cdResult, cdHopGroups: cdResult.hopGroups, cdMaxHop: cdResult.maxHop,
+    totalHops,
+    currentHop: -1,
+    mTotalTxSoFar: 0, s5TotalTxSoFar: 0,
+    mReached: new Set([src]), cdReached: new Set([src]),
+    s5Hops: cdResult.maxHop + 1,
+  };
+
+  // Update panel titles
+  const titleL = document.querySelector('.sim-panel-title.managed');
+  const titleR = document.querySelector('.sim-panel-title.system5');
+  if (titleL) titleL.textContent = 'Managed Flooding (Broadcast)';
+  if (titleR) titleR.textContent = 'Cluster-Distributor (Broadcast)';
+
+  // Update stat labels
+  const limL = document.getElementById('limit-managed');
+  const limR = document.getElementById('limit-system5');
+  if (limL) limL.textContent = '7 hops';
+  if (limR) limR.textContent = 'wave';
+
+  rendererManaged.clearReached();
+  rendererSystem5.clearReached();
+  rendererManaged.markReached(src);
+  rendererSystem5.markReached(src);
+
+  const srcNode = rendererManaged.net.nodes[src];
+  const log = document.getElementById('sim-log');
+  log.innerHTML = '';
+
+  const introDiv = document.createElement('div');
+  introDiv.className = 'log-step';
+  introDiv.innerHTML = `<div class="log-header">Broadcast from Node ${src} (C${srcNode.cluster}) to ALL nodes</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>
+        Node ${src} broadcasts to ALL neighbors. Each neighbor rebroadcasts to all of theirs.<br>
+        <span class="log-dim">Every node that hears rebroadcasts -- O(n) transmissions per message.</span>
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">Cluster-Distributor</div>
+        Node ${src} sends to cluster distributor (valley node). Distributor floods locally, border nodes relay to next cluster.<br>
+        <span class="log-dim">Wave propagation: flood small clusters, relay between them. ${Object.keys(cdResult.distributors).length} distributors elected.</span>
+      </div>
+    </div>
+    <div class="log-dim" style="margin-top:0.3rem;">Goal: reach ALL ${mResult.totalAlive} alive nodes with minimum TX. Press <b>Step</b> or <b>Run</b>.</div>`;
+  log.appendChild(introDiv);
+  log.scrollTop = log.scrollHeight;
+}
+
+function advanceOneHopBroadcast() {
+  const hp = simState.hopPlan;
+  if (!hp) return;
+
+  hp.currentHop++;
+  const hop = hp.currentHop;
+  const gen = simState.generation;
+  const log = document.getElementById('sim-log');
+
+  const mDone = hop > hp.mMaxHop;
+  const cdDone = hop > hp.cdMaxHop;
+  if (mDone && cdDone) { markFinishedBroadcast(); return; }
+
+  rendererManaged.fadeReached();
+  rendererSystem5.fadeReached();
+
+  // --- Left: Managed Flooding ---
+  const mEvents = (hp.mHopGroups[hop] || []);
+  hp.mTotalTxSoFar += mEvents.length;
+
+  for (const ev of mEvents) {
+    rendererManaged.markReached(ev.from);
+    rendererManaged.addPacket(ev.from, ev.to, '#fb923c', () => {
+      if (simState.generation !== gen) return;
+      rendererManaged.markReached(ev.to);
+      rendererManaged.markEdgeReached(ev.from, ev.to);
+      hp.mReached.add(ev.to);
+    });
+  }
+
+  // --- Right: Cluster-Distributor ---
+  const cdEvents = (hp.cdHopGroups[hop] || []);
+  hp.s5TotalTxSoFar += cdEvents.length;
+
+  for (const ev of cdEvents) {
+    rendererSystem5.markReached(ev.from);
+    const color = ev.mode === 'unicast' || ev.mode === 'bridge' ? '#22d3ee' : '#4ade80';
+    rendererSystem5.addPacket(ev.from, ev.to, color, () => {
+      if (simState.generation !== gen) return;
+      rendererSystem5.markReached(ev.to);
+      rendererSystem5.markEdgeReached(ev.from, ev.to);
+      hp.cdReached.add(ev.to);
+    });
+  }
+
+  // Log
+  const mReachPct = (hp.mResult.nodesReached.size / hp.mResult.totalAlive * 100).toFixed(1);
+  const cdReachPct = (hp.cdResult.nodesReached.size / hp.cdResult.totalAlive * 100).toFixed(1);
+
+  let mHtml = mEvents.length > 0
+    ? `<span class="log-flood">${mEvents.length} TX</span> this wave.<br><span class="log-dim">Total: ${hp.mTotalTxSoFar} TX. Reach: ${mReachPct}%</span>`
+    : `<span class="log-dim">No transmissions.</span>`;
+
+  const cdUnicast = cdEvents.filter(e => e.mode === 'unicast' || e.mode === 'bridge').length;
+  const cdFlood = cdEvents.filter(e => e.mode === 'flood').length;
+  let cdHtml = cdEvents.length > 0
+    ? `<span class="log-path">${cdEvents.length} TX</span>`
+      + (cdUnicast > 0 ? ` (${cdUnicast} relay + ${cdFlood} local flood)` : ` (local flood)`)
+      + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. Reach: ${cdReachPct}%</span>`
+    : `<span class="log-dim">No transmissions.</span>`;
+
+  const stepDiv = document.createElement('div');
+  stepDiv.className = 'log-step';
+  stepDiv.innerHTML = `<div class="log-header">Wave ${hop + 1}</div>
+    <div class="log-columns">
+      <div class="log-col left"><div class="log-col-title log-managed">Managed Flood</div>${mHtml}</div>
+      <div class="log-col right"><div class="log-col-title log-system5">Cluster-Dist</div>${cdHtml}</div>
+    </div>
+    ${(hp.mTotalTxSoFar > 0 && hp.s5TotalTxSoFar > 0) ?
+      `<div class="log-comparison">TX: Managed <span class="log-flood">${hp.mTotalTxSoFar}</span> vs Cluster-Dist <span class="log-path">${hp.s5TotalTxSoFar}</span> -- <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
+  log.appendChild(stepDiv);
+  log.scrollTop = log.scrollHeight;
+
+  // Stats
+  rendererManaged.stats.tx = hp.mTotalTxSoFar;
+  rendererManaged.stats.lastHops = hop + 1;
+  rendererManaged.stats.sent = 1;
+  rendererSystem5.stats.tx = hp.s5TotalTxSoFar;
+  rendererSystem5.stats.lastHops = Math.min(hop + 1, hp.cdMaxHop + 1);
+  rendererSystem5.stats.sent = 1;
+
+  if ((hop + 1) > hp.mMaxHop && (hop + 1) > hp.cdMaxHop) {
+    setTimeout(() => {
+      if (simState.generation !== gen) return;
+      markFinishedBroadcast();
+    }, 500);
+  }
+}
+
+function markFinishedBroadcast() {
+  const hp = simState.hopPlan;
+  const log = document.getElementById('sim-log');
+  const mReach = hp.mResult.reachPct.toFixed(1);
+  const cdReach = hp.cdResult.reachPct.toFixed(1);
+  const savings = ((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0);
+
+  const sumDiv = document.createElement('div');
+  sumDiv.className = 'log-step';
+  sumDiv.innerHTML = `<div class="log-header">Broadcast Summary</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>
+        Reach: <b>${mReach}%</b> (${hp.mResult.nodesReached.size}/${hp.mResult.totalAlive} nodes)<br>
+        Total: <b>${hp.mTotalTxSoFar} TX</b>
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">Cluster-Distributor</div>
+        Reach: <b>${cdReach}%</b> (${hp.cdResult.nodesReached.size}/${hp.cdResult.totalAlive} nodes)<br>
+        Total: <b>${hp.s5TotalTxSoFar} TX</b>
+      </div>
+    </div>
+    <div class="log-comparison">
+      <b>Cluster-Distributor used ${savings}% fewer TX</b>
+      (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)
+      while reaching ${cdReach}% of the network.
+    </div>`;
+  log.appendChild(sumDiv);
+  log.scrollTop = log.scrollHeight;
+  markFinished();
+}
+
 function toggleRun() {
   if (simState.finished) { resetSim(); return; }
   if (!ensureStartable()) return;
@@ -1995,7 +2454,12 @@ function toggleRun() {
 function stepOne() {
   if (simState.finished) return;
   if (!ensureStartable()) return;
-  advanceOneHop();
+  const hp = simState.hopPlan;
+  if (hp && hp.isBroadcast) {
+    advanceOneHopBroadcast();
+  } else {
+    advanceOneHop();
+  }
 }
 
 function advanceOneHop() {
@@ -2228,7 +2692,9 @@ function loop(timestamp) {
     autoDispatchTimer += dt * simState.speed;
     const interval = 1.5; // seconds between hops — wait for wave to arrive before next hop
     if (autoDispatchTimer >= interval) {
-      advanceOneHop();
+      const hp = simState.hopPlan;
+      if (hp && hp.isBroadcast) advanceOneHopBroadcast();
+      else advanceOneHop();
       autoDispatchTimer -= interval;
     }
   }
