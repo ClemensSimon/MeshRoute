@@ -1,11 +1,5 @@
 // MeshRoute Simulator - Scenario Definitions
 
-    this.lineTo(x, y + tl);
-    this.quadraticCurveTo(x, y, x + tl, y);
-    this.closePath();
-  };
-}
-
 // ---- Scenario Definitions ----
 const SCENARIOS = {
   small:     { nodes: 20,  area: 1000,  range: 800,  terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0 },

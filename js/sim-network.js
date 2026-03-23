@@ -1,16 +1,5 @@
 // MeshRoute Simulator - Network Builder
 
-  choice(arr) { return arr[Math.floor(this.next() * arr.length)]; }
-  sample(arr, n) {
-    const copy = [...arr]; const result = [];
-    for (let i = 0; i < Math.min(n, copy.length); i++) {
-      const j = Math.floor(this.next() * copy.length);
-      result.push(copy.splice(j, 1)[0]);
-    }
-    return result;
-  }
-}
-
 // ---- Network Builder ----
 function buildNetwork(scenarioKey, rng) {
   const cfg = SCENARIOS[scenarioKey];
