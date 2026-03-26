@@ -234,19 +234,8 @@ class SimRenderer {
     for (let li = 0; li < this.net.links.length; li++) {
       const l = this.net.links[li];
 
-      // Dead links — skip entirely on large networks, dim on small
-      if (!l.alive) {
-        if (isLargeNet) continue; // hide dead links on large networks
-        const [ax, ay] = this.toScreen(this.net.nodes[l.a].x, this.net.nodes[l.a].y);
-        const [bx, by] = this.toScreen(this.net.nodes[l.b].x, this.net.nodes[l.b].y);
-        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-        ctx.setLineDash([4, 6]);
-        ctx.strokeStyle = 'rgba(153,27,27,0.4)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        continue;
-      }
+      // Dead links — never draw (visual clutter, no useful info)
+      if (!l.alive) continue;
 
       // On large networks: skip very low quality links (visual clutter)
       if (isLargeNet && l.quality < 0.15) continue;
