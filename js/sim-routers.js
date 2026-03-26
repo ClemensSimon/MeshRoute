@@ -505,12 +505,18 @@ function simulateWalkFlood(net, src, dst, rng) {
   if (!hasRoute && _wfMessageCount <= 10) {
     const floodResult = simulateManagedFlood(net, src, dst, rng, 7);
     // Learn from flood delivery — use BFS path as proxy for actual delivery path
-    if (floodResult.delivered) {
-      const learnPath = bfsPath(net.nodes, net.links, src, dst);
-      if (learnPath) _echoLearnFromPath(net, learnPath, _wfMessageCount);
+    const learnPath = bfsPath(net.nodes, net.links, src, dst);
+    if (floodResult.delivered && learnPath) {
+      _echoLearnFromPath(net, learnPath, _wfMessageCount);
       // DON'T mark as WalkFlood yet — this was a flood
     }
-    return { ...floodResult, walkFlood: true, phase: 'flood (learning)' };
+    // Return with path so the engine can display it
+    return {
+      ...floodResult,
+      path: floodResult.delivered ? learnPath : null,
+      walkFlood: true,
+      phase: 'flood (learning)',
+    };
   }
 
   const txEvents = [];
