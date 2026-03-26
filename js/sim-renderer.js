@@ -230,12 +230,13 @@ class SimRenderer {
 
     // Draw links
     const bridges = this.net.bridgeLinks || new Set();
+    const isLargeNet = this.net.nodes.length > 200;
     for (let li = 0; li < this.net.links.length; li++) {
       const l = this.net.links[li];
-      // Dead links drawn separately above
 
-      // Dead links — dashed red
+      // Dead links — skip entirely on large networks, dim on small
       if (!l.alive) {
+        if (isLargeNet) continue; // hide dead links on large networks
         const [ax, ay] = this.toScreen(this.net.nodes[l.a].x, this.net.nodes[l.a].y);
         const [bx, by] = this.toScreen(this.net.nodes[l.b].x, this.net.nodes[l.b].y);
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
@@ -246,6 +247,9 @@ class SimRenderer {
         ctx.setLineDash([]);
         continue;
       }
+
+      // On large networks: skip very low quality links (visual clutter)
+      if (isLargeNet && l.quality < 0.15) continue;
       const [ax, ay] = this.toScreen(this.net.nodes[l.a].x, this.net.nodes[l.a].y);
       const [bx, by] = this.toScreen(this.net.nodes[l.b].x, this.net.nodes[l.b].y);
       const edgeKey = Math.min(l.a, l.b) + '-' + Math.max(l.a, l.b);

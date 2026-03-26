@@ -200,6 +200,9 @@ function resetSim() {
   // Re-read message count from input
   simState.msgCount = Math.max(1, Math.min(200, +document.getElementById('msg-count').value || 20));
 
+  // Invalidate route cache when scenario changes
+  if (typeof echoRouteReset === 'function') echoRouteReset();
+
   // Build full network immediately (visible from start)
   const netManaged = buildNetwork(simState.scenario, new RNG(42));
   const netSystem5 = buildNetwork(simState.scenario, new RNG(42));

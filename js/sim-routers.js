@@ -217,9 +217,11 @@ function fallbackClusterFlood(net, src, dst, rng) {
 // 3 rules: Listen → Learn → Forward directly (or drop if no route known).
 
 const _echoRouteTables = new Map(); // nodeId -> Map(destId -> {nextHop, hops, quality, tick})
+let _echoBootstrappedNetId = null;  // cache: only bootstrap once per network
 
 function echoRouteReset() {
   _echoRouteTables.clear();
+  _echoBootstrappedNetId = null;
 }
 
 function _echoLearnRoute(nodeId, destId, nextHop, hops, quality, tick) {
@@ -239,50 +241,64 @@ function _echoLearnRoute(nodeId, destId, nextHop, hops, quality, tick) {
 }
 
 function _echoBootstrap(net) {
+  // Cache: only bootstrap once per network (expensive for large networks)
+  const netId = net.nodes.length + '_' + (net.nodes[0] ? net.nodes[0].x : 0);
+  if (_echoBootstrappedNetId === netId && _echoRouteTables.size > 0) return;
+  _echoRouteTables.clear();
+  _echoBootstrappedNetId = netId;
+
+  const N = net.nodes.length;
+  const QUALITY_MIN = N > 500 ? 0.08 : 0.01; // stricter filter for large networks
+  const MAX_BOOT_HOPS = N > 500 ? 3 : 4;     // fewer hops for large networks
+  const MAX_ROUTES_PER_SRC = N > 500 ? 40 : 60;
+
   // Phase 1: direct neighbors (from NodeInfo — free)
   for (const node of net.nodes) {
     if (node.battery <= 0) continue;
     for (const [nidStr, q] of Object.entries(node.neighbors)) {
-      const nid = +nidStr;
-      if (q >= 0.01) _echoLearnRoute(node.id, nid, nid, 1, q, 0);
+      if (q >= QUALITY_MIN) _echoLearnRoute(node.id, +nidStr, +nidStr, 1, q, 0);
     }
   }
-  // Phase 2: 2-hop (from overhearing neighbors' forwarded traffic)
-  for (const node of net.nodes) {
-    if (node.battery <= 0) continue;
-    for (const [nbStr, nbQ] of Object.entries(node.neighbors)) {
-      const nb = +nbStr;
-      if (nbQ < 0.01) continue;
-      const nbNode = net.nodes[nb];
-      if (!nbNode || nbNode.battery <= 0) continue;
-      for (const [nb2Str, nb2Q] of Object.entries(nbNode.neighbors)) {
-        const nb2 = +nb2Str;
-        if (nb2 === node.id || nb2Q < 0.01) continue;
-        _echoLearnRoute(node.id, nb2, nb, 2, Math.min(nbQ, nb2Q), 0);
+
+  // Phase 2: 2-hop (skip for very large networks — Phase 3 covers it)
+  if (N <= 500) {
+    for (const node of net.nodes) {
+      if (node.battery <= 0) continue;
+      for (const [nbStr, nbQ] of Object.entries(node.neighbors)) {
+        const nb = +nbStr;
+        if (nbQ < QUALITY_MIN) continue;
+        const nbNode = net.nodes[nb];
+        if (!nbNode || nbNode.battery <= 0) continue;
+        for (const [nb2Str, nb2Q] of Object.entries(nbNode.neighbors)) {
+          const nb2 = +nb2Str;
+          if (nb2 === node.id || nb2Q < QUALITY_MIN) continue;
+          _echoLearnRoute(node.id, nb2, nb, 2, Math.min(nbQ, nb2Q), 0);
+        }
       }
     }
   }
-  // Phase 3: 3-4 hop via quality-BFS
+
+  // Phase 3: multi-hop via quality-BFS (limited for performance)
   for (const srcNode of net.nodes) {
     if (srcNode.battery <= 0) continue;
     const visited = new Set([srcNode.id]);
-    const queue = [[srcNode.id, srcNode.id, 1, 1.0]]; // [cur, firstHop, hops, minQ]
+    const queue = [[srcNode.id, srcNode.id, 1, 1.0]];
     let count = 0;
-    while (queue.length && count < 60) {
+    while (queue.length && count < MAX_ROUTES_PER_SRC) {
       const [cur, firstHop, hops, pathQ] = queue.shift();
-      if (hops > 4) continue;
+      if (hops > MAX_BOOT_HOPS) continue;
       const curNode = net.nodes[cur];
       if (!curNode) continue;
       const sorted = Object.entries(curNode.neighbors).sort((a,b) => b[1] - a[1]);
       for (const [nbStr, q] of sorted) {
         const nb = +nbStr;
-        if (visited.has(nb) || q < 0.01) continue;
+        if (visited.has(nb) || q < QUALITY_MIN) continue;
         visited.add(nb);
         const newQ = Math.min(pathQ, q);
         const fh = hops > 1 ? firstHop : nb;
         _echoLearnRoute(srcNode.id, nb, fh, hops, newQ, 0);
         count++;
-        if (hops < 4) queue.push([nb, fh, hops + 1, newQ]);
+        if (hops < MAX_BOOT_HOPS) queue.push([nb, fh, hops + 1, newQ]);
       }
     }
   }
@@ -328,8 +344,7 @@ function _echoLearnFromPath(net, path, tick) {
 }
 
 function simulateEchoRoute(net, src, dst, rng) {
-  echoRouteReset();
-  _echoBootstrap(net);
+  _echoBootstrap(net); // cached — only runs once per network
 
   const txEvents = [];
   let tick = 0;
@@ -416,8 +431,7 @@ function simulateEchoRoute(net, src, dst, rng) {
 
 // ---- WalkFlood: Passive Learning + Walk + Mini-Flood ----
 function simulateWalkFlood(net, src, dst, rng) {
-  echoRouteReset();
-  _echoBootstrap(net);
+  _echoBootstrap(net); // cached — only runs once per network
 
   const txEvents = [];
   let tick = 0;
