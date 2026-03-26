@@ -1,259 +1,145 @@
-# MeshRoute
+# WalkFlood
 
-**A geo-clustered multi-path routing proposal for Meshtastic — benchmarked against Meshtastic's actual managed flooding (v2.6/2.7).**
+**Zero-overhead mesh routing for LoRa — 88% delivery at 1200 nodes where managed flooding collapses to 4%.**
 
-**[Live Demo](https://clemenssimon.github.io/MeshRoute/)** — Interactive presentation with algorithm visualizations, simulation results, and resilience testing.
+**[Live Demo](https://clemenssimon.github.io/MeshRoute/)** | **[Live Simulator](https://clemenssimon.github.io/MeshRoute/simulator.html)** | **[RFC](docs/rfc-walkflood.md)** | **[How It Works](https://clemenssimon.github.io/MeshRoute/how-it-works.html)**
 
-**[Live Simulator](https://clemenssimon.github.io/MeshRoute/simulator.html)** — Step-by-step side-by-side comparison of Managed Flooding vs System 5.
+## The Protocol: 4 Phases
+
+```
+1. LEARN     Listen to traffic. Build routing table passively. Zero overhead.
+2. DIRECT    Route known → forward hop-by-hop. 1 TX per hop.
+3. WALK      Stuck → step toward the neighbor most likely to know a route.
+4. MINI-FLOOD Still stuck → tiny scoped flood (2 neighbors, 4 hops, ~30 TX).
+```
+
+No GPS. No beacons. No control packets. 12 bytes per route entry. ~3KB RAM for 235 nodes.
+
+## Results
+
+Tested on identical networks with half-duplex radio, collisions, and asymmetric links:
+
+| Scenario | Managed Flood | **WalkFlood** | Improvement |
+|----------|:---:|:---:|---|
+| Small (20 nodes, 1km) | 87% / 1,640 TX | **100% / 159 TX** | 10x less TX |
+| Medium (100 nodes, 5km) | 27% / 3,380 TX | **100% / 368 TX** | 3.7x delivery, 9x less TX |
+| Node Kill 20% | 16% / 2,696 TX | **100% / 383 TX** | 6.3x delivery, 7x less TX |
+| Stress 30% degraded | 19% / 3,380 TX | **99% / 492 TX** | 5.2x delivery, 7x less TX |
+| Bay Area (235 nodes) | 6% / 6,752 TX | **84% / 8,894 TX** | 14x delivery |
+| **Bay Area (1200 nodes)** | **4% / 38,644 TX** | **88% / 5,909 TX** | **22x delivery, 6.5x less TX** |
+
+WalkFlood scales *better* with more nodes (88% at 1200 vs 84% at 235) because denser networks provide more passive learning opportunities.
+
+## Why Flooding Fails
+
+A mountain node with 234 neighbors broadcasting blocks ALL 234 nodes via half-duplex for ~2.3 seconds (SF12). One TX kills the entire network. This is the half-duplex cascade — the root cause of managed flooding's collapse at scale.
+
+WalkFlood avoids this: directed routing means each TX blocks only 1 neighbor, not 234.
+
+## How It Learns Routes
+
+1. **NodeInfo** (already sent by Meshtastic): discover direct neighbors
+2. **Overhearing**: hear B forward a packet from C → learn "C reachable via B, 2 hops"
+3. **Dijkstra bootstrap** (weight = -log(quality)): find most *reliable* paths, not shortest
+4. **Delivery feedback**: each successful delivery teaches the full path to all nodes along it
+
+Mathematically proven: a 5-hop path through hills [0.7, 0.6, 0.5, 0.6, 0.7] has 99.5% delivery at 8.2 TX, while a 2-hop path through a mountain [0.05, 0.05] has only 11.3% delivery at 79.4 TX. Dijkstra finds the hill path automatically.
+
+## Comparison with Other Protocols
+
+| Protocol | Control Overhead | Memory | GPS? | Delivery (Bay Area 1200n) |
+|----------|:---:|:---:|:---:|:---:|
+| Managed Flooding (Meshtastic) | O(n) per hop | NodeDB | No | 4% |
+| BATMAN IV/V | O(n²) OGMs/sec | 10-14 KB | No | — |
+| AODV | Flood per new dest | 20-30 B/route | No | — |
+| OLSR | O(n) TC messages | Full table | No | — |
+| RPL | Trickle DIO beacons | 1 parent | No | — |
+| MeshCore | Flood-then-direct | Unknown | No | — |
+| **WalkFlood** | **Zero** | **12 B/route** | **No** | **88%** |
+
+## Development History
+
+1. **System 5** — First attempt: geo-clustering, OGM beacons, multi-path routing. Community feedback: *"too complex"* (h3lix1, Meshtastic core dev). Scrapped.
+2. **EchoRoute** — Pure directed routing, zero flooding. Small mesh: 100%. Bay Area: 21%. Not enough.
+3. **Research** — 11 parallel agents analyzed BATMAN, AODV, OLSR, RPL, goTenna ECHO, MeshCore, fountain codes, LoRa physics, BayMesh MQTT data, real Meshtastic firmware code, and probability theory.
+4. **WalkFlood** — Walk + Mini-Flood fallback. Bay Area 1200n: 88%. Beats all previous approaches.
 
 ## Live Simulator
 
-![MeshRoute Simulator — Managed Flooding vs System 5](docs/simulator-screenshot.png)
+The simulator runs Managed Flooding vs WalkFlood side-by-side on identical networks:
 
-*Left: Managed Flooding (Meshtastic) — 169 TX to flood 4 hops, every node rebroadcasts blindly. Right: System 5 (MeshRoute) — 4 TX along a direct path through cluster bridge nodes. Same network, same message, same hop count.*
-
-The simulator lets you:
-- **Step hop-by-hop** through both routing algorithms simultaneously
-- **See the difference visually** — yellow highlights show message spread, green shows the delivery path
+- **Step hop-by-hop** through both algorithms simultaneously
+- **17 scenarios** from small local mesh to 1200-node Bay Area
 - **Click nodes** to choose source and destination
-- **Switch 18 scenarios** — from small local mesh to disaster relief, including mixed-mode backward compatibility
-- **Read explanations** of what happens at each hop and why System 5 knows the right path
-- **Compare mixed-mode** — see how S5 nodes coexist with legacy Meshtastic nodes (10%–90% S5 ratios)
+- **See the difference**: flooding lights up the entire network; WalkFlood follows a directed path
 
-## Meshtastic's Current Routing (v2.6/2.7)
-
-Meshtastic does **not** use naive flooding. Its actual routing is already quite clever:
-
-- **Managed Flooding** (all messages): Before rebroadcasting, nodes listen briefly. If they hear another node rebroadcast first, they suppress. SNR-based priority gives distant nodes shorter contention windows so they rebroadcast first. ROUTER/ROUTER_LATE roles always rebroadcast. This suppresses ~40-50% of transmissions vs. naive flooding.
-- **Next-Hop Routing** (direct messages since v2.6): First message floods. The system learns which relay succeeded. Subsequent DMs go only via that cached relay node. Falls back to managed flooding if the next-hop fails.
-- **Congestion Scaling** (v2.6+): Networks with 40+ nodes automatically stretch broadcast intervals using `ScaledInterval = Interval * (1 + (Nodes - 40) * 0.075)`.
-
-**The limitation:** Both approaches still scale as O(n) per message. The hop limit (3-7) remains necessary because each hop multiplies transmissions proportional to network size.
-
-## What System 5 Proposes
-
-A routing protocol that achieves **O(hops) cost** instead of O(n) — for all message types, not just DMs.
-
-**Geo-Clustering** — Nodes self-organize by GPS geohash. Full topology within clusters, border nodes between.
-
-**Distance-Vector Routing** — Routes built incrementally from OGM data (like RIP/B.A.T.M.A.N.), not by running BFS on-device. 2 routes per destination at 12 bytes each — total routing table ~1.5 KB.
-
-**Weighted Load Balancing** — `W(r) = α·Q(r) + β·(1-Load) + γ·Batt`. Load and Battery refer to the **next-hop node** only (locally observable via OGM), not path-wide metrics.
-
-**Cluster-Distributor Broadcast** — Broadcasts propagate via elected cluster distributors + local mini-floods, not network-wide flooding. 88-99% TX savings on the ~98% of Meshtastic traffic that is broadcast.
-
-**Adaptive QoS** — Network Health Score per cluster (locally computed) throttles low-priority traffic under stress. SOS always gets through.
-
-**Adaptive OGM Interval** — OGM frequency scales with network density (30s sparse, 120s dense) to respect EU868 1% duty cycle.
-
-**Scoped Fallback** — When all routes fail: flood only SRC + DST clusters + border neighbors (not full network).
-
-**Backward Compatible** — S5 nodes coexist with legacy Meshtastic nodes. S5 nodes route directed between each other, flood normally for legacy compatibility. Legacy nodes prefer S5 neighbors when flooding.
-
-## The Key Difference: ~1 TX per Hop
-
-| Approach | Cost per Message | Cost per Hop | Hop Limit Needed? |
-|----------|:----------------:|:------------:|:-----------------:|
-| Managed Flooding | O(n) * (1-S) | n * (1-S) | Yes (3-7) |
-| Next-Hop (DMs) | O(hops) after learning | ~1 | Partially |
-| **System 5** | **O(hops) always** | **~1** | **No** |
-
-This makes the hop limit irrelevant: 20 hops cost less than managed flooding costs for 1.
-
-## Simulation Results (26 Scenarios, 6 Routers)
-
-The simulator compares all four approaches on identical networks (100 messages each). Results with improved System 5 (multi-path + scoped fallback):
-
-### Scale Tests
-
-| Scenario | Nodes | Managed Flood TX | System 5 TX | S5 Del% | MF Del% | S5 vs Managed |
-|----------|------:|-----------------:|------------:|--------:|--------:|--------------:|
-| Small Local (1km) | 20 | 16,459 | 115 | 100% | 87% | **99.3% less** |
-| Medium City (5km) | 100 | 201,920 | 5,678 | 100% | 27% | **97.2% less** |
-| Large Regional (20km) | 500 | 1,002,437 | 624,539 | 76% | 3% | **37.7% less** |
-| Dense Urban (3km) | 200 | 1,490,555 | 241,715 | 100% | 51% | **83.8% less** |
-| 1000 Nodes (40km) | 1000 | 548,710 | 535,352 | 46% | 0% | 2.4% less |
-| 1500 Nodes (50km) | 1500 | 563,607 | 634,546 | 44% | 1% | *S5 delivers more* |
-
-### Realistic Environments
-
-| Scenario | Managed TX | System 5 TX | S5 Del% | MF Del% | S5 vs Managed |
-|----------|----------:|------------:|--------:|--------:|--------------:|
-| Rural Long Range | 30,152 | 287 | 100% | 25% | **99.0% less** |
-| Hiking Trail (linear) | 28,894 | 215 | 100% | 38% | **99.3% less** |
-| Maritime / Coastal | 9,319 | 339 | 100% | 24% | **96.4% less** |
-| Festival / Event | 912,953 | 107 | 100% | 94% | **99.99% less** |
-| Building Emergency | 3,651,559 | 386 | 100% | 37% | **99.99% less** |
-| Highway Convoy | 52,072 | 189 | 100% | 44% | **99.6% less** |
-| Community Mesh | 75,991 | 88 | 100% | 60% | **99.9% less** |
-| Indoor-Outdoor Mix | 268,468 | 3,405 | 100% | 37% | **98.7% less** |
-
-### Stress Tests
-
-| Scenario | Managed TX | System 5 TX | S5 Del% | Managed Del% | S5 vs Managed |
-|----------|----------:|------------:|--------:|--------:|--------------:|
-| 30% Degraded Links | 208,164 | 21,342 | 73% | 19% | **89.7% less** |
-| 50% Degraded Links | 215,372 | 19,231 | 73% | 15% | **91.1% less** |
-| 20% Nodes Killed | 132,780 | 5,292 | 80% | 16% | **96.0% less** |
-| Combined Stress | 170,094 | 15,423 | 80% | 30% | **90.9% less** |
-| Disaster Relief | 35,635 | 252 | 78% | 19% | **99.3% less** |
-| Mountain Valley | 747 | 1,245 | 5% | 4% | *both fail* |
-| Partition Recovery | 62,773 | 26,874 | 54% | 8% | **57.2% less** |
-| Duty Cycle Stress | 404,779 | 18,168 | 100% | 24% | **95.5% less** |
-
-### Bay Area Real-World Topology (NEW — with half-duplex radio model)
-
-Based on feedback from Bay Area Mesh operators: 3-tier elevation topology (mountain/hill/valley) with **half-duplex radio constraint** (nodes can't TX while receiving). This models the real collision cascade problem at mountaintop routers.
-
-**[Detailed analysis and Q&A](docs/bay-area-feedback-response.md)** | **[Try the Bay Area scenario in the Live Simulator](https://clemenssimon.github.io/MeshRoute/simulator.html)**
-
-| Scenario | Managed TX | S5 TX | Managed Del% | S5 Del% | Key Insight |
-|----------|----------:|------:|:-----------:|:------:|------------|
-| Bay Area (no half-duplex) | ~909K | ~47K | ~87% | ~80% | S5 saves **~95% TX** |
-| **Bay Area (half-duplex)** | **~7K** | **~516K** | **~6%** | **~74%** | **Half-duplex destroys flooding** |
-| Bay Area + Stress | ~6K | ~283K | ~5% | ~55% | S5 delivers **~11× more** |
-| **Bay Area + Silencing** | **~7K** | **~284K** | **~6%** | **~70%** | **TX halved, 57% nodes muted** |
-| Bay Area + Silencing + Stress | ~6K | ~132K | ~5% | ~49% | Silencing + stress combined |
-
-*Results averaged over 5 random seeds for statistical reliability.*
-
-**Node Silencing** (NEW): Redundant nodes are identified and muted — they still listen but don't rebroadcast. 128 of 193 valley nodes are silenced, reducing System 5 TX by ~45% with only ~4% less delivery. Mountain nodes (critical backbone) are never silenced. Battery-fair rotation every 10 minutes ensures even drain.
-
-The half-duplex constraint collapses managed flooding from ~87% → ~6% delivery in Bay Area (mountaintop routers are stuck in RX from 10+ simultaneous rebroadcasts), and to 0-60% delivery across ALL scenarios. System 5's directed routing holds at ~74% in Bay Area because it sends only along the computed path — the mountaintop node receives one packet, forwards to the next hop, done.
-
-### Key Findings
-
-- **Dense/medium networks**: System 5 saves **83-99.99%** of transmissions with 100% delivery. Half-duplex collapses managed flooding to **0-60% delivery** in ALL scenarios.
-- **Stress conditions**: S5 delivers 73-80% vs managed flooding's 8-30%. Directed routing survives where flooding collapses.
-- **Metro Scale (1500 nodes)**: S5 delivers **44% vs Managed's 1%** — flooding is essentially dead at this scale.
-- **Bay Area (half-duplex)**: System 5 delivers **~74% vs Flooding's ~6%** — directed routing survives the mountaintop collision cascade that destroys flooding
-- **Extreme conditions** (mountain, partition): Both systems struggle. System 5's fallback keeps it competitive.
-- **Node Silencing**: Muting 57% of redundant nodes halves TX cost with minimal delivery loss
-- **Backward compatibility**: Mixed-mode works — S5 nodes ignore hop limit (they don't flood), prefer S5 neighbors
-
-## ESP32 Firmware Prototype
-
-Working standalone firmware for three LoRa boards — no Meshtastic fork needed. **[Installation Guide](firmware/README.md)** | **[Virtual Network Test Results](https://clemenssimon.github.io/MeshRoute/docs/esp-test-results.html)**
-
-```
-firmware/
-  platformio.ini              — Build: pio run -e heltec_v3 / tbeam / rak4631
-  include/
-    board_config.h            — Pin definitions (Heltec V3, T-Beam, RAK4631)
-    system5.h                 — Routing core API (14 functions)
-    lora_hal.h                — LoRa abstraction (RadioLib SX1276/SX1262)
-    gps_hal.h                 — GPS + RSSI triangulation + cluster inheritance
-    wire_protocol.h           — Over-the-air packet format (22-byte header)
-  src/
-    main.cpp                  — Full application (OGM, routing, display, serial CLI)
-    system5.c                 — Routing logic (geohash, multi-path, QoS, fallback)
-    lora_hal.cpp              — RadioLib wrapper for both radio chips
-    gps_hal.cpp               — GPS with 3 fallback levels for boards without GPS
-    wire_protocol.c           — Packet serialize/deserialize with static_assert
-  test/
-    test_system5.c            — 11 unit tests
-```
-
-### Supported Boards
-
-| Board | MCU | Radio | GPS | Display | Build Target |
-|-------|-----|-------|-----|---------|-------------|
-| Heltec V3 | ESP32-S3 | SX1262 | No (triangulation) | OLED 0.96" | `heltec_v3` |
-| T-Beam v1.1 | ESP32 | SX1276 | NEO-6M | OLED 0.96" | `tbeam` |
-| RAK4631 | nRF52840 | SX1262 | RAK1910 module | No | `rak4631` |
-
-### Features
-
-- **OGM neighbor discovery** every 30s (position, battery, cluster)
-- **System 5 directed routing** with managed flooding fallback
-- **3 position sources**: Real GPS → RSSI triangulation (3+ neighbors) → cluster inheritance
-- **OLED status display** (node ID, cluster, NHS, neighbors, stats)
-- **Serial CLI**: `send <hex_id> <message>`, `status`, `pos <lat> <lon>`
-- **Watchdog** (30s, auto-reboot on hang)
-- **~8KB RAM** for routing state (100 nodes)
-
-### Build
-
-```bash
-# Install PlatformIO, then:
-pio run -e heltec_v3   # Heltec WiFi LoRa 32 V3
-pio run -e tbeam       # TTGO T-Beam v1.1
-pio run -e rak4631     # RAK WisBlock 4631
-pio run -e native      # Unit tests on PC
-```
-
-## Interactive Presentation
-
-Open `index.html` in a browser. No build step, no dependencies.
-
-- **Four algorithm animations** on identical topology: Naive Flooding, Managed Flooding (Meshtastic current), Next-Hop (v2.6), System 5
-- **Simulation results** with interactive charts and log/linear toggle
-- **Step-by-step formation animation**
-- **Three scale scenarios** — local, continental, global
-- **Interactive resilience testing** — click nodes to kill them
-- **QoS priority gate** with real-time NHS gauge
-
-## Running the Python Simulator
+## Python Simulator
 
 ```bash
 cd simulator
-python run.py                          # run all 26 scenarios (6 routers each)
-python run.py --scenario 2             # single scenario
-python run.py --parallel scenarios     # parallel across all CPU cores
-python run.py --visualize              # ASCII network topology
+python run.py                      # run all scenarios
+python run.py --scenario 1         # single scenario
+python run.py --parallel scenarios # parallel across CPU cores
 ```
 
-### Scenarios (26 total)
+### Routers Available
 
-| Category | Scenarios |
-|----------|-----------|
-| **Scale** | Small Local (20), Medium City (100), Large Regional (500), Dense Urban (200), 1000 Nodes, 1500 Nodes |
-| **Stress** | 30% / 50% degraded links, 20% node failure, combined stress, duty cycle |
-| **Terrain** | Rural Long Range (SF12), Hiking Trail (linear), Mountain Valley, Maritime (line of sight) |
-| **Mobile** | Festival/Event (dense + mobile), Building Emergency (indoor), Highway Convoy |
-| **Realistic** | Community Mesh (stable), Indoor-Outdoor Mix, Disaster Relief, Partition Recovery |
-| **Bay Area** | Bay Area Mesh (3-tier, half-duplex), Bay Area + Stress, Bay Area + Silencing, Bay Area + Silencing + Stress |
+| Key | Router | Description |
+|-----|--------|-------------|
+| `managed_7hop` | Managed Flood | Meshtastic-style with SNR suppression |
+| `system5` | System 5 | Geo-clustered multi-path (legacy) |
+| `echoroute` | EchoRoute | Pure directed, no flooding |
+| `walkflood` | **WalkFlood** | Directed + Walk + Mini-Flood |
 
 ### Simulator Architecture
 
 ```
 simulator/
-  run.py          — CLI entry point (parallel execution support)
-  meshsim.py      — Network simulation (nodes, links, clusters, routes, mobility)
-  routing.py      — NaiveFloodingRouter, ManagedFloodingRouter,
-                    NextHopRouter, System5Router
-  lora_model.py   — EU 868MHz LoRa model (terrain, duty cycle, collisions)
-  geohash.py      — Geographic clustering via geohash
-  benchmark.py    — 22 scenarios, 4 routers, multiprocessing benchmark
+  run.py        — CLI entry point
+  meshsim.py    — Network simulation (nodes, links, clusters, mobility)
+  routing.py    — All routers (ManagedFlood, System5, EchoRoute, WalkFlood)
+  lora_model.py — EU 868MHz LoRa model (terrain, duty cycle, collisions, half-duplex)
+  benchmark.py  — Scenarios, parallelized benchmarking
+  geohash.py    — Geographic clustering
 ```
 
-## Architecture Origins
+## Validation Plan
 
-| Source | Concept | Used As |
-|--------|---------|---------|
-| Internet (OSPF) | Area-based hierarchy | Geo-clusters with border nodes |
-| Freifunk (B.A.T.M.A.N.) | OGM counting | Link quality metric |
-| Data Centers (ECMP) | Weighted multi-path | Proportional load distribution |
-| Network Theory | Back-pressure | Congestion avoidance |
-| Ant Colony Optimization | Pheromone decay | Self-optimizing route weights |
-| DNS | Hierarchical cache | Scoped node discovery |
+1. **Meshtasticator** — Official Meshtastic simulator running real firmware
+2. **BayMesh MQTT** — Real traffic data from `mqtt.bayme.sh` (public)
+3. **Malla** — Packet analyzer for topology + SNR + delivery rate extraction
+
+## ESP32 Firmware Prototype
+
+Working standalone firmware for three LoRa boards (System 5 version — WalkFlood firmware update planned):
+
+```bash
+pio run -e heltec_v3   # Heltec WiFi LoRa 32 V3
+pio run -e tbeam       # TTGO T-Beam v1.1
+pio run -e rak4631     # RAK WisBlock 4631
+```
+
+## Honest Limitations
+
+- **Cold start**: New nodes need ~minutes of traffic to learn routes
+- **Broadcast**: WalkFlood is for unicast. Broadcasts still need managed flooding
+- **Simulation only**: Not yet validated against real Meshtastic firmware or live meshes
+- **Propagation model**: Uses simplified log-distance + Okumura-Hata, not calibrated to real LoRa data
 
 ## Project Status
 
-- [x] Algorithm design and mathematical analysis
-- [x] Interactive presentation with live visualizations
-- [x] Python simulator (4 routers, 22 scenarios, EU868 LoRa model)
-- [x] Fair comparison against Meshtastic v2.6/2.7 actual routing
-- [x] Interactive live simulator with hop-by-hop stepping
-- [x] Mixed-mode backward compatibility simulation (S5 + Legacy)
-- [x] ESP32 firmware prototype (Heltec V3, T-Beam, RAK4631)
-- [x] Node Silencing — battery-fair muting of redundant nodes
-- [x] Half-duplex radio modeling in simulator
-- [x] Bay Area 3-tier topology simulation
-- [x] Sequence numbers in wire protocol (gap detection)
-- [x] Detailed "How It Works" technical walkthrough page
-- [ ] Field testing with real LoRa hardware
-- [ ] RFC / proposal to Meshtastic community
+- [x] WalkFlood algorithm design and simulation
+- [x] Interactive website with development timeline
+- [x] Python simulator (7 routers, 17+ scenarios, EU868 LoRa model)
+- [x] Live simulator with hop-by-hop visualization
+- [x] RFC specification (docs/rfc-walkflood.md)
+- [x] Bay Area 1200-node testing
+- [x] Mathematical analysis (probability theory, optimal retries)
+- [x] Research: 11 agents analyzed BATMAN/AODV/OLSR/RPL/goTenna/MeshCore
+- [ ] Validation against Meshtasticator (real firmware)
+- [ ] Real-world data from BayMesh MQTT
+- [ ] WalkFlood ESP32 firmware
+- [ ] Field testing with LoRa hardware
 
 ## License
 
