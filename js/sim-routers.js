@@ -248,57 +248,61 @@ function _echoBootstrap(net) {
   _echoBootstrappedNetId = netId;
 
   const N = net.nodes.length;
-  const QUALITY_MIN = N > 500 ? 0.08 : 0.01; // stricter filter for large networks
-  const MAX_BOOT_HOPS = N > 500 ? 3 : 4;     // fewer hops for large networks
-  const MAX_ROUTES_PER_SRC = N > 500 ? 40 : 60;
+  const QUALITY_MIN = 0.05;
+  const MAX_HOPS = N > 500 ? 6 : 10;
+  const MAX_ROUTES = N > 500 ? 60 : 80;
 
-  // Phase 1: direct neighbors (from NodeInfo — free)
-  for (const node of net.nodes) {
-    if (node.battery <= 0) continue;
-    for (const [nidStr, q] of Object.entries(node.neighbors)) {
-      if (q >= QUALITY_MIN) _echoLearnRoute(node.id, +nidStr, +nidStr, 1, q, 0);
-    }
-  }
-
-  // Phase 2: 2-hop (skip for very large networks — Phase 3 covers it)
-  if (N <= 500) {
-    for (const node of net.nodes) {
-      if (node.battery <= 0) continue;
-      for (const [nbStr, nbQ] of Object.entries(node.neighbors)) {
-        const nb = +nbStr;
-        if (nbQ < QUALITY_MIN) continue;
-        const nbNode = net.nodes[nb];
-        if (!nbNode || nbNode.battery <= 0) continue;
-        for (const [nb2Str, nb2Q] of Object.entries(nbNode.neighbors)) {
-          const nb2 = +nb2Str;
-          if (nb2 === node.id || nb2Q < QUALITY_MIN) continue;
-          _echoLearnRoute(node.id, nb2, nb, 2, Math.min(nbQ, nb2Q), 0);
-        }
-      }
-    }
-  }
-
-  // Phase 3: multi-hop via quality-BFS (limited for performance)
+  // Dijkstra bootstrap: find most RELIABLE paths (not shortest)
+  // Edge weight = -log(quality), so Dijkstra minimizes = maximizes reliability
   for (const srcNode of net.nodes) {
     if (srcNode.battery <= 0) continue;
-    const visited = new Set([srcNode.id]);
-    const queue = [[srcNode.id, srcNode.id, 1, 1.0]];
+
+    // Mini-Dijkstra per source node
+    const dist = new Map();    // nodeId -> best distance
+    const firstHop = new Map(); // nodeId -> first hop from src
+    const hops = new Map();     // nodeId -> hop count
+    dist.set(srcNode.id, 0);
+    hops.set(srcNode.id, 0);
+
+    // Simple priority queue via sorted array (good enough for limited exploration)
+    const open = [[0, srcNode.id]]; // [dist, nodeId]
     let count = 0;
-    while (queue.length && count < MAX_ROUTES_PER_SRC) {
-      const [cur, firstHop, hops, pathQ] = queue.shift();
-      if (hops > MAX_BOOT_HOPS) continue;
+
+    while (open.length && count < MAX_ROUTES) {
+      // Pop minimum distance
+      let minIdx = 0;
+      for (let i = 1; i < open.length; i++) {
+        if (open[i][0] < open[minIdx][0]) minIdx = i;
+      }
+      const [d, cur] = open.splice(minIdx, 1)[0];
+
+      if (d > dist.get(cur)) continue;
+      const curHops = hops.get(cur) || 0;
+      if (curHops >= MAX_HOPS) continue;
+
       const curNode = net.nodes[cur];
       if (!curNode) continue;
-      const sorted = Object.entries(curNode.neighbors).sort((a,b) => b[1] - a[1]);
-      for (const [nbStr, q] of sorted) {
+
+      for (const [nbStr, q] of Object.entries(curNode.neighbors)) {
         const nb = +nbStr;
-        if (visited.has(nb) || q < QUALITY_MIN) continue;
-        visited.add(nb);
-        const newQ = Math.min(pathQ, q);
-        const fh = hops > 1 ? firstHop : nb;
-        _echoLearnRoute(srcNode.id, nb, fh, hops, newQ, 0);
-        count++;
-        if (hops < MAX_BOOT_HOPS) queue.push([nb, fh, hops + 1, newQ]);
+        if (q < QUALITY_MIN) continue;
+        if (net.nodes[nb].battery <= 0) continue;
+
+        const w = -Math.log(Math.max(q, 0.001));
+        const newDist = d + w;
+
+        if (newDist < (dist.get(nb) ?? Infinity)) {
+          dist.set(nb, newDist);
+          hops.set(nb, curHops + 1);
+          const fh = cur === srcNode.id ? nb : (firstHop.get(cur) || nb);
+          firstHop.set(nb, fh);
+          open.push([newDist, nb]);
+
+          // Reliability = exp(-dist) = product of link qualities along path
+          const reliability = Math.exp(-newDist);
+          _echoLearnRoute(srcNode.id, nb, fh, curHops + 1, reliability, 0);
+          count++;
+        }
       }
     }
   }
