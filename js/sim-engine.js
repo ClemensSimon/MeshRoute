@@ -535,13 +535,27 @@ function prepareHopByHop() {
     rightTitle,
   };
 
+  // Set right panel colors based on router type and phase
+  const isWalkFloodDirected = rightTitle && rightTitle.includes('WalkFlood') && !rightTitle.includes('learning');
+  if (isWalkFloodDirected) {
+    // Purple for WalkFlood directed/walk/mini-flood phases
+    rendererSystem5.deliveryColor = 'rgba(167,139,250,0.9)';
+    rendererSystem5.deliveryNodeColor = '#a78bfa';
+    rendererSystem5.deliveryGlowColor = 'rgba(167,139,250,0.7)';
+  } else {
+    // Default green for flood-learning and System 5
+    rendererSystem5.deliveryColor = 'rgba(74,222,128,0.9)';
+    rendererSystem5.deliveryNodeColor = '#4ade80';
+    rendererSystem5.deliveryGlowColor = 'rgba(74,222,128,0.7)';
+  }
+
   // Mark SRC
   rendererManaged.clearReached();
   rendererSystem5.clearReached();
   rendererManaged.markReached(src);
   rendererSystem5.markReached(src);
 
-  // Update right panel title for mixed mode
+  // Update right panel title
   const titleEl = document.querySelector('.sim-panel-title.system5');
   if (titleEl) titleEl.textContent = rightTitle || (isMixed ? rightTitle : 'System 5 (MeshRoute)');
 
@@ -874,7 +888,9 @@ function advanceOneHop() {
     s5TxThisHop = 1;
     hp.s5TotalTxSoFar += 1;
     rendererSystem5.markReached(from);
-    rendererSystem5.addPacket(from, to, '#22d3ee', () => {
+    // Purple for WalkFlood directed, cyan for System 5
+    const directedColor = (hp.rightTitle || '').includes('WalkFlood') ? '#a78bfa' : '#22d3ee';
+    rendererSystem5.addPacket(from, to, directedColor, () => {
       if (simState.generation !== gen) return;
       rendererSystem5.markReached(to);
       rendererSystem5.markEdgeReached(from, to);

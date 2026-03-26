@@ -249,8 +249,8 @@ class SimRenderer {
 
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
       if (isDelivery) {
-        // Delivery path — bright green
-        ctx.strokeStyle = 'rgba(74,222,128,0.9)';
+        // Delivery path — green for managed, purple for walkflood
+        ctx.strokeStyle = this.deliveryColor || 'rgba(74,222,128,0.9)';
         ctx.lineWidth = 3;
       } else if (edgeIntensity > 0.01) {
         // Reached — yellow
@@ -299,7 +299,7 @@ class SimRenderer {
       const isOnDelivery = this.deliveryNodes.has(n.id);
       ctx.beginPath(); ctx.arc(sx, sy, nodeR, 0, PI2);
       if (isOnDelivery) {
-        ctx.fillStyle = '#4ade80'; // green — successful delivery path
+        ctx.fillStyle = this.deliveryNodeColor || '#4ade80'; // green or purple
       } else if (nodeIntensity > 0.3) {
         ctx.fillStyle = `rgba(251,191,36,${0.5 + nodeIntensity * 0.5})`;
       } else {
@@ -307,10 +307,10 @@ class SimRenderer {
       }
       ctx.fill();
 
-      // Delivery path node: green glow ring
+      // Delivery path node: glow ring (green or purple)
       if (isOnDelivery) {
         ctx.beginPath(); ctx.arc(sx, sy, nodeR + 4, 0, PI2);
-        ctx.strokeStyle = 'rgba(74,222,128,0.7)';
+        ctx.strokeStyle = this.deliveryGlowColor || 'rgba(74,222,128,0.7)';
         ctx.lineWidth = 2;
         ctx.stroke();
       }
