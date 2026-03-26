@@ -422,28 +422,53 @@ function prepareHopByHop() {
     if (rightRouterVal === 'walkflood') {
       // WalkFlood — Passive Learning + Walk + Mini-Flood
       const wfResult = simulateWalkFlood(rendererSystem5.net, src, dst, new RNG(42));
-      s5Path = wfResult.path;
-      s5Hops = s5Path ? s5Path.length - 1 : 0;
-      rightTitle = 'WalkFlood';
       const phase = wfResult.phase || 'unknown';
+      rightTitle = 'WalkFlood';
 
-      if (wfResult.delivered && s5Path) {
+      if (phase === 'flood (learning)') {
+        // FLOOD-LEARNING mode: animate like managed flood (hop groups)
+        // Use txEvents to build hop groups for right panel animation
+        const wfHopGroups = {};
+        let wfMaxHop = 0;
+        for (const ev of wfResult.txEvents) {
+          const h = ev.hop || 0;
+          if (!wfHopGroups[h]) wfHopGroups[h] = [];
+          wfHopGroups[h].push(ev);
+          if (h > wfMaxHop) wfMaxHop = h;
+        }
+        dualResult = { mode: 'mixed', _hopGroups: wfHopGroups, _maxHop: wfMaxHop,
+                       txEvents: wfResult.txEvents, delivered: wfResult.delivered,
+                       totalTx: wfResult.totalTx };
+        s5Path = wfResult.path;
+        s5Hops = wfMaxHop + 1;
+
+        if (wfResult.delivered) {
+          rightTitle = 'WalkFlood (learning — flooding)';
+          rightIntro = `<b>Learning phase</b>: using managed flooding (same as left panel). ${wfResult.totalTx} TX.`
+            + `<br><span class="log-dim">WalkFlood is still learning routes from traffic. After ~10 messages it switches to directed routing with dramatically fewer TX.</span>`;
+        } else {
+          rightTitle = 'WalkFlood (learning — flooding)';
+          rightIntro = `<span class="log-bad">Managed flood failed in learning phase — ${wfResult.totalTx} TX.</span><br>`
+            + `<span class="log-dim">Still learning. Both panels behave identically during this phase.</span>`;
+        }
+      } else if (wfResult.delivered && wfResult.path) {
+        // DIRECTED / WALK / MINI-FLOOD mode: animate as directed path
+        s5Path = wfResult.path;
+        s5Hops = s5Path.length - 1;
+
         const phaseLabel = phase === 'directed' ? 'Directed (learned route)'
-          : phase === 'walk' ? 'Walk (neighbor exploration)'
-          : phase === 'walk+direct' ? 'Walk → Directed'
-          : phase === 'flood (learning)' ? 'Managed Flood (still learning)'
+          : phase === 'walk' ? 'Walk (exploration)'
+          : phase === 'walk+direct' ? 'Walk then Directed'
           : 'Mini-Flood (last resort)';
-        const isLearning = phase === 'flood (learning)';
-        rightIntro = `Delivered via <b>${phaseLabel}</b>: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops, ${wfResult.totalTx} TX).`
-          + (isLearning
-            ? `<br><span class="log-dim">Early phase: using managed flooding like the left panel. Routes are being learned from this delivery. After ~10 messages, WalkFlood switches to directed routing.</span>`
-            : `<br><span class="log-dim">WalkFlood: learned route → directed forwarding. No flooding needed. <span style="color:#a78bfa">Purple nodes</span> = upgraded to WalkFlood.</span>`);
-      } else if (!wfResult.delivered && wfResult.phase === 'flood (learning)') {
-        rightIntro = `<span class="log-bad">Managed flood failed (learning phase) — ${wfResult.totalTx} TX.</span><br>`
-          + `<span class="log-dim">Still in learning phase — flooding like the left panel. Routes will improve with more messages.</span>`;
+        rightTitle = `WalkFlood (${phaseLabel})`;
+        rightIntro = `<b>${phaseLabel}</b>: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops, ${wfResult.totalTx} TX).`
+          + `<br><span class="log-dim">Routes learned passively — no flooding needed. <span style="color:#a78bfa">Purple</span> = WalkFlood node.</span>`;
       } else {
-        rightIntro = `<span class="log-bad">All 4 phases failed — packet dropped (${wfResult.totalTx} TX spent).</span><br>`
-          + `<span class="log-dim">WalkFlood tried: directed routing, walking toward destination, and mini-flood. No reachable path found.</span>`;
+        // DROPPED
+        s5Path = null;
+        s5Hops = 0;
+        rightIntro = `<span class="log-bad">Packet dropped (${wfResult.totalTx} TX spent trying).</span><br>`
+          + `<span class="log-dim">No learned route, walk failed, mini-flood failed.</span>`;
       }
     } else if (rightRouterVal === 'echoroute') {
       // EchoRoute — zero-overhead directed routing via passive learning
@@ -942,16 +967,17 @@ function advanceOneHop() {
             after ${hp.mMaxHop + 1} hop levels, <b>${hp.mTotalTxSoFar} total TX</b>.
           </div>
           <div class="log-col right">
-            <div class="log-col-title log-system5">System 5</div>
+            <div class="log-col-title log-system5">${hp.rightTitle || 'WalkFlood'}</div>
             ${hp.s5Delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">FAILED</span>'}
             in ${hp.s5Hops} hops, <b>${hp.s5TotalTxSoFar} total TX</b>.
           </div>
         </div>
-        <div class="log-comparison">
-          <b>System 5 used ${((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0)}% fewer transmissions</b>
-          (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)
-          because it knew the exact path from its routing table.
-        </div>`;
+        ${hp.s5TotalTxSoFar < hp.mTotalTxSoFar
+          ? `<div class="log-comparison"><b>${hp.rightTitle || 'WalkFlood'} used ${((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0)}% fewer transmissions</b> (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)</div>`
+          : hp.s5TotalTxSoFar === hp.mTotalTxSoFar
+          ? `<div class="log-comparison">Both panels used the same number of TX (learning phase — WalkFlood floods identically to Managed Flood)</div>`
+          : `<div class="log-comparison">Managed Flood used fewer TX this time (${hp.mTotalTxSoFar} vs ${hp.s5TotalTxSoFar})</div>`
+        }`;
       log.appendChild(sumDiv);
       log.scrollTop = log.scrollHeight;
       markFinished();
