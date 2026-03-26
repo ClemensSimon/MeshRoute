@@ -219,6 +219,7 @@
         <button id="btn-step" style="min-width:55px">Step</button>
         <button id="btn-stop" style="min-width:55px">Stop</button>
         <button class="danger" id="btn-reset" style="min-width:60px">Reset</button>
+        <button id="btn-demo" style="min-width:70px;background:var(--purple);border-color:var(--purple);color:#fff">Demo</button>
       </div>
       <div class="speed-control" style="flex-shrink:0; align-self:flex-end;">
         <label>Speed</label>
@@ -255,6 +256,20 @@
         </div>
       </div>
       <canvas id="canvas-system5"></canvas>
+    </div>
+  </div>
+
+  <!-- Demo phase banner -->
+  <div id="demo-banner" style="display:none;max-width:1600px;margin:0 auto;padding:0.8rem 2rem;">
+    <div style="background:rgba(167,139,250,0.15);border:1px solid var(--purple);border-radius:8px;padding:1rem 1.5rem;font-family:var(--font-mono);font-size:0.85rem;">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <span id="demo-phase-num" style="background:var(--purple);color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;">1</span>
+        <div>
+          <div id="demo-phase-title" style="color:var(--purple);font-weight:700;font-size:1rem;">Learning Phase</div>
+          <div id="demo-phase-desc" style="color:var(--text-dim);margin-top:0.2rem;">Both panels flood identically. WalkFlood is listening and building its routing table...</div>
+        </div>
+        <span id="demo-msg-counter" style="margin-left:auto;color:var(--text-muted);flex-shrink:0;">Msg 1/20</span>
+      </div>
     </div>
   </div>
 

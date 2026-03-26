@@ -40,6 +40,7 @@ function init() {
   document.getElementById('btn-step').addEventListener('click', stepOne);
   document.getElementById('btn-stop').addEventListener('click', stopSim);
   document.getElementById('btn-reset').addEventListener('click', resetSim);
+  document.getElementById('btn-demo').addEventListener('click', startDemo);
 
   document.getElementById('scenario-select').addEventListener('change', e => {
     simState.scenario = e.target.value;
@@ -1020,6 +1021,136 @@ function loop(timestamp) {
 
   requestAnimationFrame(loop);
 }
+
+// ============================================================================
+// DEMO MODE — Auto-play showing the WalkFlood migration in phases
+// ============================================================================
+
+const DEMO_PHASES = [
+  { from: 1, to: 4, num: '1', title: 'Learning Phase — Identical to Managed Flood',
+    desc: 'WalkFlood has no routes yet. Both panels flood identically. But WalkFlood is listening — every delivered message teaches new routes.' },
+  { from: 5, to: 7, num: '2', title: 'Route Knowledge Growing',
+    desc: 'WalkFlood now knows 2-hop routes from overheard traffic. Some messages may already use directed routing (fewer TX on the right panel).' },
+  { from: 8, to: 10, num: '3', title: 'Dijkstra Bootstrap Complete',
+    desc: 'After enough traffic, WalkFlood computes the most reliable paths using Dijkstra. Watch the TX counter — right panel starts to diverge from left.' },
+  { from: 11, to: 15, num: '4', title: 'Directed Routing Dominates',
+    desc: 'Most messages now use directed routing: 1 TX per hop instead of flooding the entire network. Purple rings show nodes that have switched to WalkFlood.' },
+  { from: 16, to: 20, num: '5', title: 'Full WalkFlood — The Sweep',
+    desc: 'The network has learned. Directed routing handles most traffic at a fraction of the TX cost. Compare the TX counters: WalkFlood uses 10-100x fewer transmissions.' },
+];
+
+let demoRunning = false;
+let demoAbort = false;
+
+function updateDemoBanner(msgNum, totalMsgs) {
+  const banner = document.getElementById('demo-banner');
+  const phase = DEMO_PHASES.find(p => msgNum >= p.from && msgNum <= p.to) || DEMO_PHASES[DEMO_PHASES.length - 1];
+  document.getElementById('demo-phase-num').textContent = phase.num;
+  document.getElementById('demo-phase-title').textContent = phase.title;
+  document.getElementById('demo-phase-desc').textContent = phase.desc;
+  document.getElementById('demo-msg-counter').textContent = `Msg ${msgNum}/${totalMsgs}`;
+  banner.style.display = 'block';
+}
+
+async function startDemo() {
+  if (demoRunning) { demoAbort = true; return; }
+  demoRunning = true;
+  demoAbort = false;
+
+  const demoBtn = document.getElementById('btn-demo');
+  demoBtn.textContent = 'Stop Demo';
+  demoBtn.style.background = 'var(--red-dim)';
+  demoBtn.style.borderColor = 'var(--red)';
+
+  // Setup: medium scenario, walkflood, 20 messages
+  document.getElementById('scenario-select').value = 'medium';
+  simState.scenario = 'medium';
+  document.getElementById('right-router').value = 'walkflood';
+  document.getElementById('msg-count').value = '20';
+  simState.msgCount = 20;
+
+  // Reset and build
+  resetSim();
+  await sleep(1000);
+
+  // Show banner
+  updateDemoBanner(1, 20);
+
+  // Build network
+  if (!simState.networkBuilt) {
+    buildNetworkAnimated();
+    await sleep(2500);
+  }
+
+  const rng = new RNG(99);
+  const net = rendererSystem5.net;
+  if (!net) { demoRunning = false; return; }
+
+  const alive = net.nodes.filter(n => n.battery > 0 && Object.keys(n.neighbors).length > 0);
+
+  // Run 20 messages
+  for (let msg = 1; msg <= 20; msg++) {
+    if (demoAbort) break;
+
+    updateDemoBanner(msg, 20);
+
+    // Pick random SRC/DST
+    const src = alive[Math.floor(rng.next() * alive.length)].id;
+    let dst = src;
+    while (dst === src) dst = alive[Math.floor(rng.next() * alive.length)].id;
+
+    // Set SRC/DST in sim state
+    simState.pickedSrc = src;
+    simState.pickedDst = dst;
+    rendererManaged.markedSrc = src;
+    rendererManaged.markedDst = dst;
+    rendererSystem5.markedSrc = src;
+    rendererSystem5.markedDst = dst;
+    updateEndpointDisplay();
+
+    // Prepare this message (creates hopPlan)
+    simState.started = false;
+    simState.finished = false;
+    simState.started = true;
+    prepareHopByHop();
+
+    await sleep(400);
+
+    // Advance all hops for this message
+    let safety = 0;
+    while (!simState.finished && safety < 40) {
+      if (demoAbort) break;
+      advanceOneHop();
+      await sleep(250 / Math.max(simState.speed, 1));
+      safety++;
+    }
+
+    // Longer pause at phase transitions
+    const isPhaseStart = DEMO_PHASES.some(p => p.from === msg + 1);
+    await sleep(isPhaseStart ? 2000 : 600);
+  }
+
+  // End demo
+  demoRunning = false;
+  demoBtn.textContent = 'Demo';
+  demoBtn.style.background = 'var(--purple)';
+  demoBtn.style.borderColor = 'var(--purple)';
+
+  // Final banner
+  if (!demoAbort) {
+    const txM = document.getElementById('tx-managed').textContent;
+    const txW = document.getElementById('tx-system5').textContent;
+    document.getElementById('demo-phase-num').textContent = '✓';
+    document.getElementById('demo-phase-title').textContent = 'Demo Complete';
+    document.getElementById('demo-phase-desc').textContent =
+      `Managed Flood: ${txM} TX total. WalkFlood: ${txW} TX total. ` +
+      (parseInt(txW) < parseInt(txM)
+        ? `WalkFlood saved ${((1 - parseInt(txW)/Math.max(parseInt(txM),1)) * 100).toFixed(0)}% of transmissions by learning to route directly.`
+        : `WalkFlood is still in learning phase — run more messages to see the difference.`);
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // Boot
 document.addEventListener('DOMContentLoaded', init);
