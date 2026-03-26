@@ -27,6 +27,7 @@ extern "C" {
 #define PKT_TYPE_ROUTE_REQ 0x04 // Route request (on-demand)
 #define PKT_TYPE_SILENCE  0x05  // Node silencing control (mute/unmute)
 #define PKT_TYPE_PROBE    0x06  // Route probe (keepalive for secondary routes)
+#define PKT_TYPE_WALKFLOOD 0x07 // WalkFlood directed packet (walk phase)
 
 // ── Header (24 bytes, unencrypted) ─────────────────────────────
 

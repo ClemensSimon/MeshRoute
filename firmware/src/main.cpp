@@ -1,16 +1,14 @@
 /**
- * MeshRoute System 5 — Main Application
+ * MeshRoute WalkFlood — Main Application
  *
- * Standalone LoRa mesh node with System 5 routing.
+ * Standalone LoRa mesh node with WalkFlood routing.
  * Supports: Heltec V3, T-Beam, RAK4631
  *
- * What it does:
- * 1. Boots, initializes LoRa + GPS (if available)
- * 2. Sends OGM every 30s to discover neighbors
- * 3. Builds routing table from received OGMs
- * 4. Routes incoming data packets via System 5 (directed) or flood (fallback)
- * 5. Displays status on OLED (if available)
- * 6. Accepts serial commands to send test messages
+ * Routing strategy:
+ * 1. On send: check route table → directed (walk) if known, else flood
+ * 2. On receive: learn routes from overheard traffic
+ * 3. If directed send fails: try 2 best-scoring neighbors (mini-flood)
+ * 4. Broadcasts use MPR to reduce redundant rebroadcasts
  */
 
 #include <Arduino.h>
@@ -19,7 +17,8 @@
 #define WDT_TIMEOUT_S 30
 #endif
 #include "board_config.h"
-#include "system5.h"
+#include "walkflood.h"
+#include "system5.h"      // still needed for s5_node_state_t (OGM, position, etc.)
 #include "lora_hal.h"
 #include "gps_hal.h"
 #include "wire_protocol.h"
@@ -41,7 +40,8 @@ static AXP20X_Class axp;
 
 // ── State ──────────────────────────────────────────────────────
 
-static s5_node_state_t nodeState;
+static s5_node_state_t nodeState;     // kept for OGM/GPS/wire_protocol compat
+static wf_state_t wfState;            // WalkFlood routing state
 static uint8_t txBuf[LORA_MAX_PACKET_SIZE];
 static uint8_t rxBuf[LORA_MAX_PACKET_SIZE];
 static uint32_t lastOGM = 0;
@@ -51,7 +51,7 @@ static uint32_t packetsRx = 0;
 static uint32_t packetsTx = 0;
 static uint32_t packetsRouted = 0;
 
-// Dedup ring buffer (last 64 packet IDs)
+// Dedup ring buffer (last 128 packet IDs)
 #define DEDUP_SIZE 128
 static uint32_t dedupRing[DEDUP_SIZE];
 static uint8_t dedupIdx = 0;
@@ -87,12 +87,11 @@ static void handleOGM(const s5_wire_header_t *hdr, const uint8_t *payload,
     const s5_ogm_payload_t *ogm = (const s5_ogm_payload_t *)payload;
 
     // Compute link quality from RSSI (0-1)
-    // RSSI -50 = excellent (1.0), RSSI -120 = unusable (0.0)
     float quality = ((float)rssi + 120.0f) / 70.0f;
     if (quality > 1.0f) quality = 1.0f;
     if (quality < 0.0f) quality = 0.0f;
 
-    // Update neighbor table
+    // Update System 5 neighbor table (for position/cluster compat)
     s5_update_neighbor(&nodeState, hdr->src, ogm->lat, ogm->lon,
                         ogm->battery_pct, snr, quality);
 
@@ -104,76 +103,156 @@ static void handleOGM(const s5_wire_header_t *hdr, const uint8_t *payload,
         }
     }
 
-    Serial.printf("[OGM] From %08X: (%.4f,%.4f) batt=%u%% cluster=%u q=%.2f snr=%d\n",
+    // WalkFlood: learn neighbor with degree info
+    wf_learn_neighbor(&wfState, hdr->src, quality, ogm->neighbor_count);
+
+    // Update neighbor last_seen for expiry
+    for (uint8_t i = 0; i < wfState.neighbor_count; i++) {
+        if (wfState.neighbors[i].node_id == hdr->src) {
+            wfState.neighbors[i].last_seen_ms = millis();
+            break;
+        }
+    }
+
+    // Learn route from OGM source (1-hop path)
+    uint32_t path[1] = { hdr->src };
+    wf_learn_from_packet(&wfState, path, 1, quality);
+
+    // Refresh route timestamp
+    for (uint16_t i = 0; i < wfState.route_count; i++) {
+        if (wfState.routes[i].dest_id == hdr->src) {
+            wfState.routes[i].last_seen = (uint16_t)(millis() / 1000);
+            break;
+        }
+    }
+
+    // Recompute MPR set after neighbor change
+    wf_compute_mpr_set(&wfState);
+
+    Serial.printf("[OGM] From %08X: (%.4f,%.4f) batt=%u%% q=%.2f snr=%d deg=%u\n",
                   hdr->src, ogm->lat, ogm->lon, ogm->battery_pct,
-                  ogm->cluster_id, quality, snr);
+                  quality, snr, ogm->neighbor_count);
 }
 
 // ── Handle received data packet ────────────────────────────────
 
 static void handleData(const s5_wire_header_t *hdr, const uint8_t *payload,
                         int16_t rssi, int8_t snr) {
-    // Build S5 packet struct for routing decision
-    s5_packet_t pkt = {
-        .src = hdr->src,
-        .dst = hdr->dst,
-        .packet_id = hdr->packet_id,
-        .priority = hdr->priority,
-        .hop_count = hdr->hop_count,
-        .ttl = hdr->ttl,
-        .next_hop = hdr->next_hop,
-        .is_system5 = (hdr->next_hop != 0),
-        .payload_len = hdr->payload_len,
-        .payload = NULL,
-    };
+    // Learn routes from this packet
+    // We know: hdr->src originated this, and it reached us (possibly via relays)
+    // The hop_count tells us how many hops it took
+    // For route learning, we build a minimal path: [src]
+    // (We don't have full path in the header, just src + hop_count)
+    float quality = ((float)rssi + 120.0f) / 70.0f;
+    if (quality > 1.0f) quality = 1.0f;
+    if (quality < 0.0f) quality = 0.0f;
 
-    s5_route_decision_t decision = s5_route(&nodeState, &pkt);
+    uint32_t path[1] = { hdr->src };
+    wf_learn_from_packet(&wfState, path, 1, quality);
 
-    switch (decision.action) {
-        case S5_ROUTE_DELIVERED:
-            Serial.printf("[DATA] Received message from %08X: %.*s\n",
-                          hdr->src, hdr->payload_len, payload);
-            break;
-
-        case S5_ROUTE_DIRECT: {
-            Serial.printf("[DATA] Routing %08X->%08X via next_hop %08X\n",
-                          hdr->src, hdr->dst, decision.next_hop);
-            // Forward with updated hop count and next_hop
-            s5_wire_header_t fwd = *hdr;
-            fwd.hop_count++;
-            fwd.ttl--;
-            fwd.next_hop = decision.next_hop;
-            uint8_t len = s5_wire_pack(&fwd, payload, txBuf, sizeof(txBuf));
-            if (len > 0 && lora_send(txBuf, len)) {
-                packetsTx++;
-                packetsRouted++;
-                s5_route_feedback(&nodeState, hdr->dst, decision.route_index, true);
-            } else {
-                s5_route_feedback(&nodeState, hdr->dst, decision.route_index, false);
-            }
+    // Refresh route timestamps
+    for (uint16_t i = 0; i < wfState.route_count; i++) {
+        if (wfState.routes[i].dest_id == hdr->src) {
+            wfState.routes[i].last_seen = (uint16_t)(millis() / 1000);
             break;
         }
+    }
 
-        case S5_ROUTE_FLOOD: {
-            Serial.printf("[DATA] Fallback flood %08X->%08X (hop %u)\n",
-                          hdr->src, hdr->dst, hdr->hop_count);
-            // Rebroadcast with incremented hop count, clear next_hop
-            s5_wire_header_t fwd = *hdr;
-            fwd.hop_count++;
-            fwd.ttl--;
-            fwd.next_hop = 0; // flood = no directed next hop
-            uint8_t len = s5_wire_pack(&fwd, payload, txBuf, sizeof(txBuf));
-            if (len > 0 && lora_send(txBuf, len)) {
-                packetsTx++;
-                packetsRouted++;
+    // Is this packet for us?
+    if (hdr->dst == nodeState.my_id) {
+        Serial.printf("[DATA] Received message from %08X: %.*s\n",
+                      hdr->src, hdr->payload_len, payload);
+        return;
+    }
+
+    // TTL check
+    if (hdr->ttl <= 1 || hdr->hop_count >= 20) {
+        Serial.printf("[DATA] Dropped %08X->%08X (TTL/hops)\n",
+                      hdr->src, hdr->dst);
+        return;
+    }
+
+    // --- WalkFlood routing decision ---
+
+    // Is this a directed packet for us to forward?
+    if (hdr->type == PKT_TYPE_WALKFLOOD && hdr->next_hop != 0 &&
+        hdr->next_hop != nodeState.my_id) {
+        // Not for us to relay
+        return;
+    }
+
+    // Try walk: do we know a route?
+    uint32_t next = wf_get_next_hop(&wfState, hdr->dst);
+
+    if (next != 0) {
+        // WALK: directed forward
+        Serial.printf("[WF] Walk %08X->%08X via %08X\n",
+                      hdr->src, hdr->dst, next);
+        s5_wire_header_t fwd = *hdr;
+        fwd.type = PKT_TYPE_WALKFLOOD;
+        fwd.hop_count++;
+        fwd.ttl--;
+        fwd.next_hop = next;
+        uint8_t len = s5_wire_pack(&fwd, payload, txBuf, sizeof(txBuf));
+        if (len > 0 && lora_send(txBuf, len)) {
+            packetsTx++;
+            packetsRouted++;
+            wfState.walks++;
+        } else {
+            // Walk failed — try mini-flood
+            goto mini_flood;
+        }
+        return;
+    }
+
+    // No route — try mini-flood with 2 best neighbors
+mini_flood:
+    {
+        wf_walk_score_t best[2];
+        uint8_t n_best = wf_get_best_walkers(&wfState, hdr->dst, best, 2);
+
+        if (n_best > 0) {
+            Serial.printf("[WF] Mini-flood %08X->%08X to %u neighbors\n",
+                          hdr->src, hdr->dst, n_best);
+            for (uint8_t i = 0; i < n_best; i++) {
+                s5_wire_header_t fwd = *hdr;
+                fwd.type = PKT_TYPE_WALKFLOOD;
+                fwd.hop_count++;
+                fwd.ttl--;
+                fwd.next_hop = best[i].neighbor_id;
+                uint8_t len = s5_wire_pack(&fwd, payload, txBuf, sizeof(txBuf));
+                if (len > 0 && lora_send(txBuf, len)) {
+                    packetsTx++;
+                    packetsRouted++;
+                }
             }
-            break;
+            wfState.mini_floods++;
+            return;
         }
 
-        case S5_ROUTE_DROP:
-            Serial.printf("[DATA] Dropped %08X->%08X (QoS/TTL)\n",
-                          hdr->src, hdr->dst);
-            break;
+        // Full flood fallback
+        Serial.printf("[WF] Flood %08X->%08X (hop %u)\n",
+                      hdr->src, hdr->dst, hdr->hop_count);
+
+        // MPR check: should we relay this broadcast?
+        // For data packets being flooded, check if we are useful as relay
+        if (hdr->hop_count > 1 && !wf_is_mpr(&wfState, hdr->src)) {
+            // We are not an MPR for this sender — skip relay to reduce floods
+            // But only apply MPR filtering after first hop (give packets a chance)
+            Serial.printf("[WF] Not MPR for %08X, skip relay\n", hdr->src);
+            return;
+        }
+
+        s5_wire_header_t fwd = *hdr;
+        fwd.hop_count++;
+        fwd.ttl--;
+        fwd.next_hop = 0; // flood = no directed next hop
+        uint8_t len = s5_wire_pack(&fwd, payload, txBuf, sizeof(txBuf));
+        if (len > 0 && lora_send(txBuf, len)) {
+            packetsTx++;
+            packetsRouted++;
+            wfState.floods++;
+        }
     }
 }
 
@@ -198,8 +277,8 @@ static void sendOGM(void) {
                                   (uint8_t)pos.source, txBuf, sizeof(txBuf));
     if (len > 0 && lora_send(txBuf, len)) {
         packetsTx++;
-        Serial.printf("[OGM] Sent (%u bytes, %u neighbors, cluster %u)\n",
-                      len, nodeState.neighbor_count, nodeState.my_cluster_id);
+        Serial.printf("[OGM] Sent (%u bytes, %u neighbors, %u routes)\n",
+                      len, wfState.neighbor_count, wfState.route_count);
     }
 }
 
@@ -213,61 +292,108 @@ static void handleSerial(void) {
 
     if (line.startsWith("send ")) {
         // "send <dst_hex> <message>"
-        // Example: "send FF001234 Hello World"
         uint32_t dst = strtoul(line.substring(5, 13).c_str(), NULL, 16);
         String msg = line.substring(14);
 
-        // Route decision
-        s5_packet_t pkt = {
-            .src = nodeState.my_id, .dst = dst, .packet_id = millis(),
-            .priority = 3, .hop_count = 0, .ttl = S5_MAX_HOPS,
-            .next_hop = 0, .is_system5 = false,
-            .payload_len = (uint16_t)msg.length(), .payload = NULL,
-        };
-        s5_route_decision_t d = s5_route(&nodeState, &pkt);
+        // WalkFlood routing decision
+        uint32_t next = wf_get_next_hop(&wfState, dst);
 
-        uint32_t next = (d.action == S5_ROUTE_DIRECT) ? d.next_hop : 0;
-        uint8_t len = s5_create_data(&nodeState, dst, next, 3,
-                                      (const uint8_t *)msg.c_str(), msg.length(),
-                                      txBuf, sizeof(txBuf));
-        if (len > 0 && lora_send(txBuf, len)) {
-            packetsTx++;
-            Serial.printf("[TX] Sent to %08X via %s (%u bytes)\n",
-                          dst, next ? "DIRECT" : "FLOOD", len);
+        if (next != 0) {
+            // Walk: directed send
+            uint8_t len = s5_create_data(&nodeState, dst, next, 3,
+                                          (const uint8_t *)msg.c_str(), msg.length(),
+                                          txBuf, sizeof(txBuf));
+            // Override packet type to WALKFLOOD
+            if (len > 0) {
+                txBuf[1] = PKT_TYPE_WALKFLOOD; // type field offset in header
+            }
+            if (len > 0 && lora_send(txBuf, len)) {
+                packetsTx++;
+                wfState.walks++;
+                Serial.printf("[TX] Sent to %08X via WALK (next=%08X, %u bytes)\n",
+                              dst, next, len);
+            } else {
+                // Walk failed — try mini-flood
+                wf_walk_score_t best[2];
+                uint8_t n_best = wf_get_best_walkers(&wfState, dst, best, 2);
+                bool sent = false;
+                for (uint8_t i = 0; i < n_best; i++) {
+                    uint8_t len2 = s5_create_data(&nodeState, dst, best[i].neighbor_id, 3,
+                                                    (const uint8_t *)msg.c_str(), msg.length(),
+                                                    txBuf, sizeof(txBuf));
+                    if (len2 > 0) txBuf[1] = PKT_TYPE_WALKFLOOD;
+                    if (len2 > 0 && lora_send(txBuf, len2)) {
+                        packetsTx++;
+                        sent = true;
+                    }
+                }
+                if (sent) {
+                    wfState.mini_floods++;
+                    Serial.printf("[TX] Sent to %08X via MINI-FLOOD (%u neighbors)\n",
+                                  dst, n_best);
+                } else {
+                    Serial.println("[TX] FAILED");
+                }
+            }
         } else {
-            Serial.println("[TX] FAILED");
+            // Flood: no route known
+            uint8_t len = s5_create_data(&nodeState, dst, 0, 3,
+                                          (const uint8_t *)msg.c_str(), msg.length(),
+                                          txBuf, sizeof(txBuf));
+            if (len > 0 && lora_send(txBuf, len)) {
+                packetsTx++;
+                wfState.floods++;
+                Serial.printf("[TX] Sent to %08X via FLOOD (%u bytes)\n", dst, len);
+            } else {
+                Serial.println("[TX] FAILED");
+            }
         }
 
     } else if (line == "status") {
-        Serial.printf("\n=== Node %08X (%s) ===\n", nodeState.my_id, BOARD_NAME);
-        Serial.printf("Cluster: %u, Border: %s\n", nodeState.my_cluster_id,
-                      nodeState.my_is_border ? "yes" : "no");
+        Serial.printf("\n=== WalkFlood Node %08X (%s) ===\n", nodeState.my_id, BOARD_NAME);
         position_t pos = gps_get_position();
         Serial.printf("Position: %.6f, %.6f (source: %u)\n", pos.lat, pos.lon, pos.source);
-        Serial.printf("NHS: %.2f\n", s5_get_nhs(&nodeState));
-        Serial.printf("Neighbors: %u\n", nodeState.neighbor_count);
-        for (uint8_t i = 0; i < nodeState.neighbor_count; i++) {
-            const s5_neighbor_t *n = &nodeState.neighbors[i];
-            Serial.printf("  %08X: q=%.2f snr=%d batt=%u%% cluster=%u %s\n",
-                          n->id, n->link_quality, n->snr, n->battery_pct,
-                          n->cluster_id, n->is_border ? "[BORDER]" : "");
+        Serial.printf("Neighbors: %u  Routes: %u\n",
+                      wfState.neighbor_count, wfState.route_count);
+        Serial.printf("MPR set: %u nodes\n", wfState.mpr_count);
+
+        // Neighbors
+        Serial.println("--- Neighbors ---");
+        for (uint8_t i = 0; i < wfState.neighbor_count; i++) {
+            const wf_neighbor_t *n = &wfState.neighbors[i];
+            Serial.printf("  %08X: q=%.2f deg=%u %s\n",
+                          n->node_id, n->quality, n->degree,
+                          wf_is_mpr(&wfState, n->node_id) ? "[MPR]" : "");
         }
-        Serial.printf("Stats: TX=%u RX=%u Routed=%u\n\n", packetsTx, packetsRx, packetsRouted);
+
+        // Route table (first 20)
+        Serial.println("--- Routes (top 20) ---");
+        uint16_t show = wfState.route_count;
+        if (show > 20) show = 20;
+        for (uint16_t i = 0; i < show; i++) {
+            const wf_route_entry_t *r = &wfState.routes[i];
+            Serial.printf("  %08X -> via %08X (%u hops, q=%u)\n",
+                          r->dest_id, r->next_hop, r->hop_count, r->quality);
+        }
+
+        Serial.printf("Stats: TX=%u RX=%u Routed=%u Walk=%u Flood=%u MiniFlood=%u\n\n",
+                      packetsTx, packetsRx, packetsRouted,
+                      wfState.walks, wfState.floods, wfState.mini_floods);
 
     } else if (line.startsWith("pos ")) {
         // "pos <lat> <lon>" — set manual position
         float lat = line.substring(4).toFloat();
-        int comma = line.indexOf(' ', 5);
-        float lon = line.substring(comma + 1).toFloat();
+        int space = line.indexOf(' ', 5);
+        float lon = line.substring(space + 1).toFloat();
         gps_set_manual(lat, lon);
         s5_update_position(&nodeState, lat, lon);
 
     } else if (line == "help") {
         Serial.println("\nCommands:");
-        Serial.println("  send <dst_hex> <message>  — Send message to node");
-        Serial.println("  status                    — Show node status");
-        Serial.println("  pos <lat> <lon>           — Set manual position");
-        Serial.println("  help                      — This help\n");
+        Serial.println("  send <dst_hex> <message>  - Send message to node");
+        Serial.println("  status                    - Show node status + routes");
+        Serial.println("  pos <lat> <lon>           - Set manual position");
+        Serial.println("  help                      - This help\n");
     }
 }
 
@@ -280,19 +406,18 @@ static void updateDisplay(void) {
 
     // Line 1: Node ID
     char line[32];
-    snprintf(line, sizeof(line), "S5 %08X", nodeState.my_id);
+    snprintf(line, sizeof(line), "WF %08X", nodeState.my_id);
     display.drawStr(0, 10, line);
     display.drawStr(90, 10, BOARD_NAME);
 
-    // Line 2: Cluster + NHS
-    snprintf(line, sizeof(line), "C%u %s NHS:%.1f",
-             nodeState.my_cluster_id,
-             nodeState.my_is_border ? "BRD" : "   ",
-             s5_get_nhs(&nodeState));
+    // Line 2: Neighbors + Routes
+    snprintf(line, sizeof(line), "N:%u R:%u MPR:%u",
+             wfState.neighbor_count, wfState.route_count, wfState.mpr_count);
     display.drawStr(0, 22, line);
 
-    // Line 3: Neighbors
-    snprintf(line, sizeof(line), "Neighbors: %u", nodeState.neighbor_count);
+    // Line 3: Walk/Flood stats
+    snprintf(line, sizeof(line), "W:%u F:%u MF:%u",
+             wfState.walks, wfState.floods, wfState.mini_floods);
     display.drawStr(0, 34, line);
 
     // Line 4: Position source
@@ -315,7 +440,7 @@ static void updateDisplay(void) {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.printf("\n\n=== MeshRoute System 5 v%s ===\n", S5_FIRMWARE_VERSION);
+    Serial.printf("\n\n=== MeshRoute WalkFlood v%s ===\n", S5_FIRMWARE_VERSION);
     Serial.printf("Board: %s\n", BOARD_NAME);
 
     // Watchdog (30s timeout, reboot on hang)
@@ -339,11 +464,15 @@ void setup() {
     }
 #endif
 
-    // Init System 5
+    // Init System 5 state (for OGM/wire_protocol compat)
     s5_init(&nodeState);
     nodeState.my_id = getNodeId();
-    nodeState.my_battery_pct = 100; // TODO: read from ADC/AXP
+    nodeState.my_battery_pct = 100;
     s5_wire_seed_packet_id(nodeState.my_id, millis());
+
+    // Init WalkFlood
+    wf_init(&wfState);
+    wfState.my_id = nodeState.my_id;
     Serial.printf("Node ID: %08X\n", nodeState.my_id);
 
     // Init GPS
@@ -365,7 +494,7 @@ void setup() {
     display.begin();
     display.setFont(u8g2_font_6x10_tr);
     display.clearBuffer();
-    display.drawStr(0, 30, "MeshRoute S5");
+    display.drawStr(0, 30, "MeshRoute WF");
     display.drawStr(0, 45, BOARD_NAME);
     display.sendBuffer();
     delay(1000);
@@ -410,6 +539,7 @@ void loop() {
                             handleOGM(&hdr, payload, rssi, snr);
                             break;
                         case PKT_TYPE_DATA:
+                        case PKT_TYPE_WALKFLOOD:
                             handleData(&hdr, payload, rssi, snr);
                             break;
                     }
@@ -426,9 +556,10 @@ void loop() {
         sendOGM();
     }
 
-    // Periodic maintenance
+    // Periodic maintenance: expire routes + neighbors
     if (now - lastMaintenance >= MAINTENANCE_INTERVAL_MS) {
         lastMaintenance = now;
+        wf_expire_routes(&wfState, now);
         s5_maintenance(&nodeState, now);
     }
 
