@@ -201,7 +201,8 @@ function resetSim() {
   simState.msgCount = Math.max(1, Math.min(200, +document.getElementById('msg-count').value || 20));
 
   // Invalidate route cache when scenario changes
-  if (typeof echoRouteReset === 'function') echoRouteReset();
+  if (typeof walkFloodReset === 'function') walkFloodReset();
+  else if (typeof echoRouteReset === 'function') echoRouteReset();
 
   // Build full network immediately (visible from start)
   const netManaged = buildNetwork(simState.scenario, new RNG(42));
@@ -430,9 +431,16 @@ function prepareHopByHop() {
         const phaseLabel = phase === 'directed' ? 'Directed (learned route)'
           : phase === 'walk' ? 'Walk (neighbor exploration)'
           : phase === 'walk+direct' ? 'Walk → Directed'
+          : phase === 'flood (learning)' ? 'Managed Flood (still learning)'
           : 'Mini-Flood (last resort)';
+        const isLearning = phase === 'flood (learning)';
         rightIntro = `Delivered via <b>${phaseLabel}</b>: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops, ${wfResult.totalTx} TX).`
-          + `<br><span class="log-dim">WalkFlood: Learn → Direct → Walk → Mini-Flood. Zero control packets. 88% delivery at 1200 nodes.</span>`;
+          + (isLearning
+            ? `<br><span class="log-dim">Early phase: using managed flooding like the left panel. Routes are being learned from this delivery. After ~10 messages, WalkFlood switches to directed routing.</span>`
+            : `<br><span class="log-dim">WalkFlood: learned route → directed forwarding. No flooding needed. <span style="color:#a78bfa">Purple nodes</span> = upgraded to WalkFlood.</span>`);
+      } else if (!wfResult.delivered && wfResult.phase === 'flood (learning)') {
+        rightIntro = `<span class="log-bad">Managed flood failed (learning phase) — ${wfResult.totalTx} TX.</span><br>`
+          + `<span class="log-dim">Still in learning phase — flooding like the left panel. Routes will improve with more messages.</span>`;
       } else {
         rightIntro = `<span class="log-bad">All 4 phases failed — packet dropped (${wfResult.totalTx} TX spent).</span><br>`
           + `<span class="log-dim">WalkFlood tried: directed routing, walking toward destination, and mini-flood. No reachable path found.</span>`;

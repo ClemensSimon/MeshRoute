@@ -445,13 +445,78 @@ function _markWalkFloodNodes(net, path) {
   }
 }
 
+// Track how many messages have been routed (for learning progression)
+let _wfMessageCount = 0;
+let _wfLastNetId = null;
+
+function walkFloodReset() {
+  _wfMessageCount = 0;
+  _wfLastNetId = null;
+  _echoRouteTables.clear();
+  _echoBootstrappedNetId = null;
+}
+
 function simulateWalkFlood(net, src, dst, rng) {
-  _echoBootstrap(net); // cached — only runs once per network
+  // Check if network changed
+  const netId = net.nodes.length + '_' + (net.nodes[0] ? net.nodes[0].x : 0);
+  if (_wfLastNetId !== netId) {
+    walkFloodReset();
+    _wfLastNetId = netId;
+    // Phase 0: Learn ONLY direct neighbors (from NodeInfo — free, instant)
+    for (const node of net.nodes) {
+      if (node.battery <= 0) continue;
+      for (const [nidStr, q] of Object.entries(node.neighbors)) {
+        if (q >= 0.05) _echoLearnRoute(node.id, +nidStr, +nidStr, 1, q, 0);
+      }
+    }
+    _echoBootstrappedNetId = netId; // prevent full bootstrap from running
+  }
+  _wfMessageCount++;
+
+  // After 5 messages: learn 2-hop routes (from overheard traffic)
+  if (_wfMessageCount === 5) {
+    for (const node of net.nodes) {
+      if (node.battery <= 0) continue;
+      for (const [nbStr, nbQ] of Object.entries(node.neighbors)) {
+        const nb = +nbStr;
+        if (nbQ < 0.05) continue;
+        const nbNode = net.nodes[nb];
+        if (!nbNode || nbNode.battery <= 0) continue;
+        for (const [nb2Str, nb2Q] of Object.entries(nbNode.neighbors)) {
+          const nb2 = +nb2Str;
+          if (nb2 === node.id || nb2Q < 0.05) continue;
+          _echoLearnRoute(node.id, nb2, nb, 2, Math.min(nbQ, nb2Q), 0);
+        }
+      }
+    }
+  }
+
+  // After 10 messages: full Dijkstra bootstrap (network has been running long enough)
+  if (_wfMessageCount === 10) {
+    _echoBootstrappedNetId = null; // force re-bootstrap
+    _echoBootstrap(net);
+  }
+
+  // Check: does source know a route to dst?
+  const srcTable = _echoRouteTables.get(src);
+  const hasRoute = srcTable && srcTable.has(dst);
+
+  // If no route known: use managed flooding (identical to left panel)
+  if (!hasRoute && _wfMessageCount <= 10) {
+    const floodResult = simulateManagedFlood(net, src, dst, rng, 7);
+    // Learn from flood delivery — use BFS path as proxy for actual delivery path
+    if (floodResult.delivered) {
+      const learnPath = bfsPath(net.nodes, net.links, src, dst);
+      if (learnPath) _echoLearnFromPath(net, learnPath, _wfMessageCount);
+      // DON'T mark as WalkFlood yet — this was a flood
+    }
+    return { ...floodResult, walkFlood: true, phase: 'flood (learning)' };
+  }
 
   const txEvents = [];
   let tick = 0;
 
-  // Phase 1: Try directed (same as EchoRoute)
+  // Directed routing with Walk+MiniFlood fallback
   let current = src;
   const path = [src];
   const visited = new Set([src]);
