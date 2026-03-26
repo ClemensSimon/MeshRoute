@@ -212,22 +212,27 @@ function resetSim() {
   rendererSystem5.setNetwork(netSystem5);
 
   // Pick random SRC/DST from alive nodes in different clusters for interesting paths
+  const cfg = SCENARIOS[simState.scenario];
+  const isBroadcast = cfg.broadcastMode || false;
   const alive = netManaged.nodes.filter(n => n.battery > 0 && Object.keys(n.neighbors).length > 0);
   if (alive.length >= 2) {
     const pickRng = new RNG(Date.now() % 100000); // slightly random each reset
     const src = pickRng.choice(alive);
-    // Try to pick DST in a different cluster for a cross-cluster path
-    const otherCluster = alive.filter(n => n.cluster !== src.cluster && n.id !== src.id);
-    const dst = otherCluster.length > 0 ? pickRng.choice(otherCluster) : pickRng.choice(alive.filter(n => n.id !== src.id));
     simState.pickedSrc = src.id;
-    simState.pickedDst = dst.id;
-    generateMessages();
+    if (isBroadcast) {
+      simState.pickedDst = -1; // broadcast: no destination
+    } else {
+      // Try to pick DST in a different cluster for a cross-cluster path
+      const otherCluster = alive.filter(n => n.cluster !== src.cluster && n.id !== src.id);
+      const dst = otherCluster.length > 0 ? pickRng.choice(otherCluster) : pickRng.choice(alive.filter(n => n.id !== src.id));
+      simState.pickedDst = dst.id;
+      generateMessages();
+    }
   }
   updateEndpointDisplay();
   updateMarkers();
 
   // Write initial network info to log
-  const cfg = SCENARIOS[simState.scenario];
   const nAlive = alive.length;
   const nLinks = netManaged.links.filter(l => l.alive).length;
   const nBorder = netManaged.nodes.filter(n => n.border).length;
@@ -237,11 +242,14 @@ function resetSim() {
     clusters[n.cluster] = (clusters[n.cluster] || 0) + 1;
   }
   const log = document.getElementById('sim-log');
+  const readyHint = isBroadcast
+    ? 'SRC randomly selected for broadcast — <b>click any node</b> to change it before starting.'
+    : 'SRC and DST randomly selected — <b>click any node</b> to change them before starting.';
   log.innerHTML = `<div class="log-step">
-    <div class="log-header">Network Ready</div>
+    <div class="log-header">Network Ready${isBroadcast ? ' (Broadcast Mode)' : ''}</div>
     <div class="log-dim">${nAlive} nodes, ${nLinks} links, ${Object.keys(clusters).length} clusters, ${nBorder} border nodes.
     Terrain: ${cfg.terrain}, Range: ${cfg.range}m, Area: ${(cfg.area/1000).toFixed(1)}km</div>
-    <div style="margin-top:0.3rem;color:var(--cyan);">SRC and DST randomly selected — <b>click any node</b> to change them before starting.</div>
+    <div style="margin-top:0.3rem;color:var(--cyan);">${readyHint}</div>
   </div>`;
 }
 
@@ -591,34 +599,57 @@ function prepareHopByHop() {
 
 function prepareHopByHopBroadcast() {
   const src = simState.pickedSrc;
+  const rightRouterSel = document.getElementById('right-router');
+  const rightRouterVal = rightRouterSel ? rightRouterSel.value : 'system5';
+  const useWalkFloodBroadcast = (rightRouterVal === 'walkflood');
 
   const mResult = simulateManagedBroadcast(rendererManaged.net, src, new RNG(42));
-  const cdResult = simulateClusterDistributorBroadcast(rendererSystem5.net, src, new RNG(42));
 
-  const totalHops = Math.max(mResult.maxHop + 1, cdResult.maxHop + 1);
+  let rightResult, rightTitle, rightLimitLabel, rightIntroHtml;
+
+  if (useWalkFloodBroadcast) {
+    rightResult = simulateWalkFloodBroadcast(rendererSystem5.net, src, new RNG(42));
+    rightTitle = 'WalkFlood MPR (Broadcast)';
+    rightLimitLabel = 'MPR relay';
+    const nMPR = rightResult.mprRelayNodes ? rightResult.mprRelayNodes.size : 0;
+    rightIntroHtml = `<div class="log-col-title log-system5">WalkFlood MPR Broadcast</div>
+        Node ${src} selects <b>MPR relay nodes</b> (purple rings). Only MPR nodes rebroadcast — others receive silently.<br>
+        <span class="log-dim">${nMPR} MPR relay nodes elected. Non-MPR nodes save battery by not retransmitting.</span>`;
+  } else {
+    rightResult = simulateClusterDistributorBroadcast(rendererSystem5.net, src, new RNG(42));
+    rightTitle = 'Cluster-Distributor (Broadcast)';
+    rightLimitLabel = 'wave';
+    rightIntroHtml = `<div class="log-col-title log-system5">Cluster-Distributor</div>
+        Node ${src} sends to cluster distributor (valley node). Distributor floods locally, border nodes relay to next cluster.<br>
+        <span class="log-dim">Wave propagation: flood small clusters, relay between them. ${Object.keys(rightResult.distributors || {}).length} distributors elected.</span>`;
+  }
+
+  const totalHops = Math.max(mResult.maxHop + 1, rightResult.maxHop + 1);
 
   simState.hopPlan = {
     isBroadcast: true,
+    useWalkFloodBroadcast,
     mResult, mHopGroups: mResult.hopGroups, mMaxHop: mResult.maxHop,
-    cdResult, cdHopGroups: cdResult.hopGroups, cdMaxHop: cdResult.maxHop,
+    cdResult: rightResult, cdHopGroups: rightResult.hopGroups, cdMaxHop: rightResult.maxHop,
     totalHops,
     currentHop: -1,
     mTotalTxSoFar: 0, s5TotalTxSoFar: 0,
     mReached: new Set([src]), cdReached: new Set([src]),
-    s5Hops: cdResult.maxHop + 1,
+    s5Hops: rightResult.maxHop + 1,
+    rightTitle,
   };
 
   // Update panel titles
   const titleL = document.querySelector('.sim-panel-title.managed');
   const titleR = document.querySelector('.sim-panel-title.system5');
   if (titleL) titleL.textContent = 'Managed Flooding (Broadcast)';
-  if (titleR) titleR.textContent = 'Cluster-Distributor (Broadcast)';
+  if (titleR) titleR.textContent = rightTitle;
 
   // Update stat labels
   const limL = document.getElementById('limit-managed');
   const limR = document.getElementById('limit-system5');
   if (limL) limL.textContent = '7 hops';
-  if (limR) limR.textContent = 'wave';
+  if (limR) limR.textContent = rightLimitLabel;
 
   rendererManaged.clearReached();
   rendererSystem5.clearReached();
@@ -639,9 +670,7 @@ function prepareHopByHopBroadcast() {
         <span class="log-dim">Every node that hears rebroadcasts -- O(n) transmissions per message.</span>
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">Cluster-Distributor</div>
-        Node ${src} sends to cluster distributor (valley node). Distributor floods locally, border nodes relay to next cluster.<br>
-        <span class="log-dim">Wave propagation: flood small clusters, relay between them. ${Object.keys(cdResult.distributors).length} distributors elected.</span>
+        ${rightIntroHtml}
       </div>
     </div>
     <div class="log-dim" style="margin-top:0.3rem;">Goal: reach ALL ${mResult.totalAlive} alive nodes with minimum TX. Press <b>Step</b> or <b>Run</b>.</div>`;
@@ -679,13 +708,14 @@ function advanceOneHopBroadcast() {
     });
   }
 
-  // --- Right: Cluster-Distributor ---
+  // --- Right: Cluster-Distributor or WalkFlood MPR ---
   const cdEvents = (hp.cdHopGroups[hop] || []);
   hp.s5TotalTxSoFar += cdEvents.length;
+  const isWFBroadcast = hp.useWalkFloodBroadcast;
 
   for (const ev of cdEvents) {
     rendererSystem5.markReached(ev.from);
-    const color = ev.mode === 'unicast' || ev.mode === 'bridge' ? '#22d3ee' : '#4ade80';
+    const color = isWFBroadcast ? '#a78bfa' : (ev.mode === 'unicast' || ev.mode === 'bridge' ? '#22d3ee' : '#4ade80');
     rendererSystem5.addPacket(ev.from, ev.to, color, () => {
       if (simState.generation !== gen) return;
       rendererSystem5.markReached(ev.to);
@@ -697,28 +727,37 @@ function advanceOneHopBroadcast() {
   // Log
   const mReachPct = (hp.mResult.nodesReached.size / hp.mResult.totalAlive * 100).toFixed(1);
   const cdReachPct = (hp.cdResult.nodesReached.size / hp.cdResult.totalAlive * 100).toFixed(1);
+  const rightLabel = isWFBroadcast ? 'MPR Broadcast' : 'Cluster-Dist';
 
   let mHtml = mEvents.length > 0
     ? `<span class="log-flood">${mEvents.length} TX</span> this wave.<br><span class="log-dim">Total: ${hp.mTotalTxSoFar} TX. Reach: ${mReachPct}%</span>`
     : `<span class="log-dim">No transmissions.</span>`;
 
-  const cdUnicast = cdEvents.filter(e => e.mode === 'unicast' || e.mode === 'bridge').length;
-  const cdFlood = cdEvents.filter(e => e.mode === 'flood').length;
-  let cdHtml = cdEvents.length > 0
-    ? `<span class="log-path">${cdEvents.length} TX</span>`
-      + (cdUnicast > 0 ? ` (${cdUnicast} relay + ${cdFlood} local flood)` : ` (local flood)`)
-      + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. Reach: ${cdReachPct}%</span>`
-    : `<span class="log-dim">No transmissions.</span>`;
+  let cdHtml;
+  if (isWFBroadcast) {
+    cdHtml = cdEvents.length > 0
+      ? `<span style="color:#a78bfa">${cdEvents.length} TX</span> (MPR relay only)`
+        + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. Reach: ${cdReachPct}%</span>`
+      : `<span class="log-dim">No transmissions.</span>`;
+  } else {
+    const cdUnicast = cdEvents.filter(e => e.mode === 'unicast' || e.mode === 'bridge').length;
+    const cdFlood = cdEvents.filter(e => e.mode === 'flood').length;
+    cdHtml = cdEvents.length > 0
+      ? `<span class="log-path">${cdEvents.length} TX</span>`
+        + (cdUnicast > 0 ? ` (${cdUnicast} relay + ${cdFlood} local flood)` : ` (local flood)`)
+        + `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. Reach: ${cdReachPct}%</span>`
+      : `<span class="log-dim">No transmissions.</span>`;
+  }
 
   const stepDiv = document.createElement('div');
   stepDiv.className = 'log-step';
   stepDiv.innerHTML = `<div class="log-header">Wave ${hop + 1}</div>
     <div class="log-columns">
       <div class="log-col left"><div class="log-col-title log-managed">Managed Flood</div>${mHtml}</div>
-      <div class="log-col right"><div class="log-col-title log-system5">Cluster-Dist</div>${cdHtml}</div>
+      <div class="log-col right"><div class="log-col-title log-system5">${rightLabel}</div>${cdHtml}</div>
     </div>
     ${(hp.mTotalTxSoFar > 0 && hp.s5TotalTxSoFar > 0) ?
-      `<div class="log-comparison">TX: Managed <span class="log-flood">${hp.mTotalTxSoFar}</span> vs Cluster-Dist <span class="log-path">${hp.s5TotalTxSoFar}</span> -- <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
+      `<div class="log-comparison">TX: Managed <span class="log-flood">${hp.mTotalTxSoFar}</span> vs ${rightLabel} <span class="log-path">${hp.s5TotalTxSoFar}</span> -- <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
   log.appendChild(stepDiv);
   log.scrollTop = log.scrollHeight;
 
@@ -744,6 +783,7 @@ function markFinishedBroadcast() {
   const mReach = hp.mResult.reachPct.toFixed(1);
   const cdReach = hp.cdResult.reachPct.toFixed(1);
   const savings = ((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0);
+  const rightLabel = hp.rightTitle || (hp.useWalkFloodBroadcast ? 'WalkFlood MPR' : 'Cluster-Distributor');
 
   const sumDiv = document.createElement('div');
   sumDiv.className = 'log-step';
@@ -755,13 +795,13 @@ function markFinishedBroadcast() {
         Total: <b>${hp.mTotalTxSoFar} TX</b>
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">Cluster-Distributor</div>
+        <div class="log-col-title log-system5">${rightLabel}</div>
         Reach: <b>${cdReach}%</b> (${hp.cdResult.nodesReached.size}/${hp.cdResult.totalAlive} nodes)<br>
         Total: <b>${hp.s5TotalTxSoFar} TX</b>
       </div>
     </div>
     <div class="log-comparison">
-      <b>Cluster-Distributor used ${savings}% fewer TX</b>
+      <b>${rightLabel} used ${savings}% fewer TX</b>
       (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)
       while reaching ${cdReach}% of the network.
     </div>`;

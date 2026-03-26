@@ -676,3 +676,154 @@ function simulateWalkFlood(net, src, dst, rng) {
   return { txEvents, delivered: false, totalTx: txEvents.length, path: null,
            retries: 0, failHop: path.length - 1, fallback: false, walkFlood: true, phase: 'dropped' };
 }
+
+
+// ---- WalkFlood Broadcast: MPR-based efficient broadcast ----
+// Computes Multi-Point Relay set for the source, then floods via MPR nodes only.
+// Non-MPR nodes receive but do NOT rebroadcast — dramatically fewer TX than managed flooding.
+
+function _computeMPR(net, nodeId) {
+  // Greedy MPR selection: pick 1-hop neighbors that cover the most uncovered 2-hop neighbors
+  const node = net.nodes[nodeId];
+  if (!node || node.battery <= 0) return new Set();
+
+  const oneHop = new Set();
+  for (const [nidStr, q] of Object.entries(node.neighbors)) {
+    const nid = +nidStr;
+    if (q >= 0.05 && net.nodes[nid].battery > 0) oneHop.add(nid);
+  }
+
+  // Collect all 2-hop neighbors (reachable through 1-hop, but not 1-hop themselves and not self)
+  const twoHopMap = new Map(); // 2-hop node -> set of 1-hop nodes that cover it
+  for (const nb of oneHop) {
+    const nbNode = net.nodes[nb];
+    if (!nbNode) continue;
+    for (const [nb2Str, q2] of Object.entries(nbNode.neighbors)) {
+      const nb2 = +nb2Str;
+      if (nb2 === nodeId || oneHop.has(nb2) || q2 < 0.05 || net.nodes[nb2].battery <= 0) continue;
+      if (!twoHopMap.has(nb2)) twoHopMap.set(nb2, new Set());
+      twoHopMap.get(nb2).add(nb);
+    }
+  }
+
+  const mprSet = new Set();
+  const uncovered = new Set(twoHopMap.keys());
+
+  // Step 1: Any 2-hop node reachable through only ONE 1-hop neighbor -> that neighbor is mandatory MPR
+  for (const [twoHop, coverSet] of twoHopMap) {
+    if (coverSet.size === 1) {
+      const mandatory = coverSet.values().next().value;
+      mprSet.add(mandatory);
+    }
+  }
+
+  // Remove covered 2-hop nodes
+  for (const mpr of mprSet) {
+    const mprNode = net.nodes[mpr];
+    if (!mprNode) continue;
+    for (const nb2Str of Object.keys(mprNode.neighbors)) {
+      uncovered.delete(+nb2Str);
+    }
+  }
+
+  // Step 2: Greedy — pick 1-hop neighbor covering the most remaining uncovered 2-hop nodes
+  while (uncovered.size > 0) {
+    let bestNb = -1, bestCount = 0;
+    for (const nb of oneHop) {
+      if (mprSet.has(nb)) continue;
+      const nbNode = net.nodes[nb];
+      if (!nbNode) continue;
+      let count = 0;
+      for (const nb2Str of Object.keys(nbNode.neighbors)) {
+        if (uncovered.has(+nb2Str)) count++;
+      }
+      if (count > bestCount) { bestCount = count; bestNb = nb; }
+    }
+    if (bestNb < 0 || bestCount === 0) break;
+    mprSet.add(bestNb);
+    const bestNode = net.nodes[bestNb];
+    for (const nb2Str of Object.keys(bestNode.neighbors)) {
+      uncovered.delete(+nb2Str);
+    }
+  }
+
+  return mprSet;
+}
+
+function simulateWalkFloodBroadcast(net, src, rng, hopLimit = 7) {
+  // MPR-based broadcast: only MPR-elected nodes rebroadcast
+  const txEvents = [];
+  const seen = new Set([src]);
+  const rebroadcast = new Set([src]);
+  const mprRelayNodes = new Set(); // nodes that actually relayed (for visualization)
+  const queue = [[src, 0]]; // [nodeId, hop]
+  let tick = 0;
+  const nodesReached = new Set([src]);
+  const totalAlive = net.nodes.filter(n => n.battery > 0).length;
+
+  // Pre-compute MPR sets for all nodes (cached per broadcast)
+  const mprSets = new Map();
+  for (const n of net.nodes) {
+    if (n.battery <= 0) continue;
+    mprSets.set(n.id, _computeMPR(net, n.id));
+  }
+
+  while (queue.length) {
+    const [cur, hop] = queue.shift();
+    if (hop >= hopLimit) continue;
+
+    const node = net.nodes[cur];
+
+    // Only the source and MPR-designated nodes rebroadcast
+    if (cur !== src) {
+      // Check: was this node designated as MPR by whoever sent to it?
+      // In MPR flooding, a node rebroadcasts only if its sender selected it as MPR
+      const senderMPR = mprSets.get(cur);
+      // The node rebroadcasts if it was selected as MPR by ANY node that already rebroadcasted
+      let isMPR = false;
+      for (const prevRelay of rebroadcast) {
+        const prevMPRSet = mprSets.get(prevRelay);
+        if (prevMPRSet && prevMPRSet.has(cur)) { isMPR = true; break; }
+      }
+      if (!isMPR) continue; // Not an MPR — receive only, don't rebroadcast
+    }
+
+    rebroadcast.add(cur);
+    if (cur !== src) mprRelayNodes.add(cur);
+
+    for (const [nidStr, quality] of Object.entries(node.neighbors)) {
+      const nid = +nidStr;
+      const link = net.links.find(l => l.alive &&
+        ((l.a===cur && l.b===nid) || (l.a===nid && l.b===cur)));
+      if (!link) continue;
+
+      txEvents.push({ from: cur, to: nid, time: tick++, hop });
+
+      if (rng.next() > quality) continue;
+      if (seen.has(nid)) continue;
+      seen.add(nid);
+      nodesReached.add(nid);
+      if (net.nodes[nid].battery <= 0) continue;
+      queue.push([nid, hop + 1]);
+    }
+  }
+
+  // Mark MPR relay nodes on the network for visualization (purple ring)
+  for (const nid of mprRelayNodes) {
+    if (net.nodes[nid]) net.nodes[nid].isMprRelay = true;
+  }
+
+  const hopGroups = {};
+  let maxHop = 0;
+  for (const ev of txEvents) {
+    if (!hopGroups[ev.hop]) hopGroups[ev.hop] = [];
+    hopGroups[ev.hop].push(ev);
+    if (ev.hop > maxHop) maxHop = ev.hop;
+  }
+
+  return {
+    txEvents, totalTx: txEvents.length, hopGroups, maxHop,
+    nodesReached, totalAlive, reachPct: (nodesReached.size / totalAlive * 100),
+    mprRelayNodes, rebroadcasters: rebroadcast.size,
+  };
+}

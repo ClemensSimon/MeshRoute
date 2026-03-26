@@ -27,4 +27,8 @@ const SCENARIOS = {
   bayarea:      { nodes: 235,  area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0, kills:0,    degrade:0 },
   bayarea_s:    { nodes: 235,  area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0, kills:0.15, degrade:0.2 },
   bayarea1200:  { nodes: 1200, area: 50000, range: 5000, terrain:'urban', placement:'bay_area', mobile:0, kills:0,    degrade:0 },
+
+  // Broadcast Comparison
+  bc_medium:    { nodes: 80,   area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0, kills:0,    degrade:0,   broadcastMode: true },
+  bc_bayarea:   { nodes: 235,  area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0, kills:0,    degrade:0,   broadcastMode: true },
 };

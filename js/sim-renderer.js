@@ -348,6 +348,19 @@ class SimRenderer {
         ctx.stroke();
       }
 
+      // MPR relay node indicator — purple ring (broadcast mode)
+      if (n.isMprRelay && n.battery > 0) {
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 3, 0, PI2);
+        ctx.strokeStyle = '#a78bfa'; // purple
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        // Outer glow
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 6, 0, PI2);
+        ctx.strokeStyle = 'rgba(167,139,250,0.35)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
       // Legacy S5 indicator (backward compat)
       if (n.isS5 && !n.isWalkFlood && n.battery > 0) {
         ctx.beginPath(); ctx.arc(sx, sy, nodeR + 3, 0, PI2);
