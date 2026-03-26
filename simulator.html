@@ -219,6 +219,14 @@
           Click nodes to set <span style="color:#4ade80">SRC</span> &amp; <span style="color:#f87171">DST</span>
         </span>
       </div>
+      <div style="flex-shrink:0;">
+        <label>Right Panel</label><br>
+        <select id="right-router" style="min-width:120px">
+          <option value="system5">System 5</option>
+          <option value="echoroute">EchoRoute</option>
+          <option value="walkflood" selected>WalkFlood</option>
+        </select>
+      </div>
       <div style="display:flex; gap:0.5rem; flex-shrink:0; align-self:flex-end;">
         <button id="btn-build" style="min-width:110px">Build Network</button>
         <button class="primary" id="btn-start" style="min-width:80px">Run</button>

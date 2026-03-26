@@ -411,34 +411,73 @@ function prepareHopByHop() {
         + `<span class="log-dim">S5 nodes use their routing table to skip broadcasting — they send only to the next hop on the path. Legacy nodes still flood to ALL neighbors. Same suppression rate (40%) for full backward compatibility.</span>`;
     }
   } else {
-    // Pure System 5 — simulate with multi-path + fallback
-    const s5Result = simulateSystem5(rendererSystem5.net, src, dst, new RNG(42));
-    s5Path = s5Result.path;
-    s5Hops = s5Path ? s5Path.length - 1 : 0;
+    // Check which right-panel router is selected
+    const rightRouterSel = document.getElementById('right-router');
+    const rightRouterVal = rightRouterSel ? rightRouterSel.value : 'system5';
 
-    if (s5Result.fallback) {
-      // Fallback flooding was used — group events by hop like managed flooding
-      const s5HopGroups = {};
-      let s5MaxHop = 0;
-      for (const ev of s5Result.txEvents) {
-        const h = ev.hop || 0;
-        if (!s5HopGroups[h]) s5HopGroups[h] = [];
-        s5HopGroups[h].push(ev);
-        if (h > s5MaxHop) s5MaxHop = h;
+    if (rightRouterVal === 'walkflood') {
+      // WalkFlood — Passive Learning + Walk + Mini-Flood
+      const wfResult = simulateWalkFlood(rendererSystem5.net, src, dst, new RNG(42));
+      s5Path = wfResult.path;
+      s5Hops = s5Path ? s5Path.length - 1 : 0;
+      rightTitle = 'WalkFlood';
+      const phase = wfResult.phase || 'unknown';
+
+      if (wfResult.delivered && s5Path) {
+        const phaseLabel = phase === 'directed' ? 'Directed (learned route)'
+          : phase === 'walk' ? 'Walk (neighbor exploration)'
+          : phase === 'walk+direct' ? 'Walk → Directed'
+          : 'Mini-Flood (last resort)';
+        rightIntro = `Delivered via <b>${phaseLabel}</b>: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops, ${wfResult.totalTx} TX).`
+          + `<br><span class="log-dim">WalkFlood: Learn → Direct → Walk → Mini-Flood. Zero control packets. 88% delivery at 1200 nodes.</span>`;
+      } else {
+        rightIntro = `<span class="log-bad">All 4 phases failed — packet dropped (${wfResult.totalTx} TX spent).</span><br>`
+          + `<span class="log-dim">WalkFlood tried: directed routing, walking toward destination, and mini-flood. No reachable path found.</span>`;
       }
-      dualResult = { mode: 'mixed', _hopGroups: s5HopGroups, _maxHop: s5MaxHop,
-                     txEvents: s5Result.txEvents, delivered: s5Result.delivered,
-                     totalTx: s5Result.totalTx };
-      s5Hops = s5MaxHop + 1;
-      rightTitle = 'System 5 (fallback flood)';
-      rightIntro = `All direct routes failed — using <b>scoped cluster flooding</b> as fallback.<br>`
-        + `<span class="log-dim">Flooding only in SRC + DST clusters + border nodes. Much less TX than full-network flooding.</span>`;
-    } else if (s5Path) {
-      rightIntro = `Route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).`
-        + (s5Result.retries > 0 ? ` (${s5Result.retries} retries needed)` : '')
-        + `<br><span class="log-dim">The routing table was built during cluster formation. Each node knows the best path to every other node via border nodes between clusters. Up to 3 alternative paths are tried before fallback flooding.</span>`;
+    } else if (rightRouterVal === 'echoroute') {
+      // EchoRoute — zero-overhead directed routing via passive learning
+      const erResult = simulateEchoRoute(rendererSystem5.net, src, dst, new RNG(42));
+      s5Path = erResult.path;
+      s5Hops = s5Path ? s5Path.length - 1 : 0;
+      rightTitle = 'EchoRoute';
+
+      if (erResult.delivered && s5Path) {
+        rightIntro = `Route learned passively: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).`
+          + (erResult.retries > 0 ? ` (${erResult.retries} retries on lossy links)` : '')
+          + `<br><span class="log-dim">EchoRoute learns routes by overhearing traffic — zero control packets. Each hop is 1 directed TX. No flooding.</span>`;
+      } else {
+        rightIntro = `<span class="log-bad">No learned route to DST — packet dropped.</span><br>`
+          + `<span class="log-dim">EchoRoute never floods. If no route is known from passive learning, the packet is dropped.</span>`;
+      }
     } else {
-      rightIntro = `<span class="log-bad">No route found — even fallback flooding couldn't reach DST.</span>`;
+      // Pure System 5 — simulate with multi-path + fallback
+      const s5Result = simulateSystem5(rendererSystem5.net, src, dst, new RNG(42));
+      s5Path = s5Result.path;
+      s5Hops = s5Path ? s5Path.length - 1 : 0;
+
+      if (s5Result.fallback) {
+        const s5HopGroups = {};
+        let s5MaxHop = 0;
+        for (const ev of s5Result.txEvents) {
+          const h = ev.hop || 0;
+          if (!s5HopGroups[h]) s5HopGroups[h] = [];
+          s5HopGroups[h].push(ev);
+          if (h > s5MaxHop) s5MaxHop = h;
+        }
+        dualResult = { mode: 'mixed', _hopGroups: s5HopGroups, _maxHop: s5MaxHop,
+                       txEvents: s5Result.txEvents, delivered: s5Result.delivered,
+                       totalTx: s5Result.totalTx };
+        s5Hops = s5MaxHop + 1;
+        rightTitle = 'System 5 (fallback flood)';
+        rightIntro = `All direct routes failed — using <b>scoped cluster flooding</b> as fallback.<br>`
+          + `<span class="log-dim">Flooding only in SRC + DST clusters + border nodes. Much less TX than full-network flooding.</span>`;
+      } else if (s5Path) {
+        rightIntro = `Route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).`
+          + (s5Result.retries > 0 ? ` (${s5Result.retries} retries needed)` : '')
+          + `<br><span class="log-dim">The routing table was built during cluster formation. Each node knows the best path to every other node via border nodes between clusters. Up to 3 alternative paths are tried before fallback flooding.</span>`;
+      } else {
+        rightIntro = `<span class="log-bad">No route found — even fallback flooding couldn't reach DST.</span>`;
+      }
     }
   }
 
@@ -467,7 +506,7 @@ function prepareHopByHop() {
 
   // Update right panel title for mixed mode
   const titleEl = document.querySelector('.sim-panel-title.system5');
-  if (titleEl) titleEl.textContent = isMixed ? rightTitle : 'System 5 (MeshRoute)';
+  if (titleEl) titleEl.textContent = rightTitle || (isMixed ? rightTitle : 'System 5 (MeshRoute)');
 
   // Write initial log
   const srcNode = rendererManaged.net.nodes[src];

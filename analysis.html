@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MeshRoute v2.0 — Feature Impact Analysis</title>
+<title>WalkFlood — Performance Analysis</title>
 <link rel="stylesheet" href="css/styles.css">
 <style>
 .an-hero {
@@ -15,157 +15,213 @@
   background: radial-gradient(ellipse at 50% 80%, rgba(34,211,238,0.06) 0%, transparent 60%);
   pointer-events: none;
 }
-.an { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem 4rem; }
+.an { max-width: 1000px; margin: 0 auto; padding: 0 2rem 4rem; }
 .an h2 {
-  font-family: var(--font-display); font-size: 1.6rem; font-weight: 700;
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 700;
   margin: 3rem 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
 }
-.an p { color: var(--text-dim); line-height: 1.7; margin-bottom: 0.8rem; }
+.an p { color: var(--text-dim); line-height: 1.7; margin-bottom: 0.8rem; font-size: 0.93rem; }
+.an strong { color: var(--text); }
 
-.chart-container {
+.chart-box {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
   padding: 1.5rem; margin: 1.5rem 0; position: relative;
 }
-.chart-container h3 {
-  font-family: var(--font-mono); font-size: 0.9rem; color: var(--cyan);
-  margin-bottom: 0.3rem;
+.chart-box h3 {
+  font-family: var(--font-mono); font-size: 0.85rem; color: var(--cyan); margin-bottom: 0.2rem;
 }
-.chart-container .subtitle {
-  font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;
+.chart-box .sub {
+  font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem;
 }
-.chart-container canvas { width: 100%; height: 400px; display: block; }
-.chart-container.tall canvas { height: 600px; }
+.chart-box canvas { width: 100%; display: block; }
 
-.legend { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 0.8rem 0; font-size: 0.8rem; }
+.legend { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 0.6rem 0; font-size: 0.78rem; }
 .legend-item { display: flex; align-items: center; gap: 0.4rem; color: var(--text-dim); }
 .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 
-.filter-bar {
-  display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0;
-}
-.filter-btn {
-  font-family: var(--font-mono); font-size: 0.72rem; padding: 0.3rem 0.7rem;
-  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
-  border-radius: 6px; cursor: pointer; transition: all 0.2s;
-}
-.filter-btn:hover { border-color: var(--cyan-dim); color: var(--text); }
-.filter-btn.active { background: rgba(34,211,238,0.1); color: var(--cyan); border-color: var(--cyan-dim); }
-
-.insight-box {
+.insight {
   background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim);
-  border-radius: 8px; padding: 1rem 1.5rem; margin: 1rem 0;
-  font-size: 0.9rem; color: var(--text-dim);
+  border-radius: 8px; padding: 1rem 1.2rem; margin: 1rem 0;
+  font-size: 0.88rem; color: var(--text-dim);
 }
-.insight-box strong { color: var(--text); }
-.insight-box .num { color: var(--cyan); font-family: var(--font-mono); font-weight: 600; }
+.insight strong { color: var(--text); }
+.insight .n { color: var(--cyan); font-family: var(--font-mono); font-weight: 600; }
+
+.math-box {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 1.2rem 1.5rem; margin: 1rem 0; font-family: var(--font-mono); font-size: 0.85rem;
+  color: var(--text-dim); line-height: 1.8;
+}
+.math-box .label { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.math-box .val { color: var(--cyan); font-weight: 600; }
+.math-box .bad { color: var(--red); font-weight: 600; }
+.math-box .good { color: var(--green); font-weight: 600; }
+
+/* Half-duplex visual */
+.hd-compare {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0;
+}
+.hd-card {
+  padding: 1.2rem; border-radius: 10px; text-align: center;
+}
+.hd-card.bad { background: rgba(248,113,113,0.04); border: 1px solid var(--red-dim); }
+.hd-card.good { background: rgba(34,211,238,0.04); border: 1px solid var(--cyan-dim); }
+.hd-card h4 { font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 0.5rem; }
+.hd-card.bad h4 { color: var(--red); }
+.hd-card.good h4 { color: var(--cyan); }
+.hd-card canvas { width: 100%; display: block; margin: 0.5rem auto; }
+.hd-card p { font-size: 0.82rem; color: var(--text-dim); margin: 0; }
+@media (max-width: 700px) { .hd-compare { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <nav id="navbar">
   <div class="nav-inner">
-    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
+    <a href="index.html" class="logo">WALK<span>FLOOD</span></a>
     <ul id="nav-menu">
       <li><a href="index.html">Presentation</a></li>
       <li><a href="simulator.html" style="color:var(--cyan)">Simulator</a></li>
       <li><a href="how-it-works.html">How It Works</a></li>
       <li><a href="analysis.html" class="active">Analysis</a></li>
       <li><a href="summary.html">Summary</a></li>
-      <li class="nav-sep"></li>
-      <li><a href="de/analysis.html" title="Deutsch" style="font-size:1.2rem;line-height:1;padding:0.2rem 0.5rem">&#x1F1E9;&#x1F1EA;</a></li>
     </ul>
   </div>
 </nav>
 
 <div class="an-hero">
   <div>
-    <div class="hero-tag" style="opacity:1;animation:none">Data-Driven — Every Feature Measured</div>
-    <h1 class="hero-title" style="opacity:1;animation:none;font-size:clamp(1.8rem,4vw,3rem)">Feature Impact <span class="accent">Analysis</span></h1>
-    <p class="hero-sub" style="opacity:1;animation:none;max-width:700px;margin:0.5rem auto">
-      What does each improvement contribute? All scenarios tested with baseline (idealized),
-      half-duplex (realistic radio), and half-duplex + silencing. 5 seeds per combination, 6 routers each.
+    <div class="hero-tag" style="opacity:1;animation:none">Data-Driven &mdash; Every Claim Measured</div>
+    <h1 class="hero-title" style="opacity:1;animation:none;font-size:clamp(1.8rem,4vw,3rem)">Performance <span class="accent">Analysis</span></h1>
+    <p class="hero-sub" style="opacity:1;animation:none;max-width:640px;margin:0.5rem auto">
+      WalkFlood vs Managed Flooding across 6 scenarios. Half-duplex radio, collisions, realistic LoRa EU868.
     </p>
   </div>
 </div>
 
 <div class="an">
 
-  <!-- ============================================================ -->
-  <h2>1. The Reality Gap — What Half-Duplex Changes</h2>
-  <p>Most mesh simulators ignore half-duplex radio constraints. When we enable it, managed flooding collapses across <strong>every scenario</strong>. This chart shows the gap between the idealized world and reality.</p>
+  <!-- 1. Delivery Rate -->
+  <h2>1. Delivery Rate Comparison</h2>
+  <p>The core question: <strong>what percentage of messages actually arrive?</strong></p>
 
-  <div class="filter-bar" id="filter-scenario">
-    <button class="filter-btn active" data-filter="all">All Scenarios</button>
-    <button class="filter-btn" data-filter="small">Small (&le;50)</button>
-    <button class="filter-btn" data-filter="medium">Medium (80-200)</button>
-    <button class="filter-btn" data-filter="large">Large (500+)</button>
-  </div>
-
-  <div class="chart-container tall">
-    <h3>Delivery Rate: Idealized vs Reality vs System 5</h3>
-    <div class="subtitle">For each scenario: baseline (no half-duplex) → half-duplex → System 5 with half-duplex</div>
+  <div class="chart-box">
+    <h3>Delivery Rate by Scenario</h3>
+    <div class="sub">Managed Flooding vs WalkFlood &mdash; higher is better</div>
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Managed Flood (idealized)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood (half-duplex)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5 (half-duplex)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>S5 + Silencing (half-duplex)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
     </div>
-    <canvas id="chart-reality-gap"></canvas>
+    <canvas id="chart-delivery" height="340"></canvas>
   </div>
 
-  <div class="insight-box" id="insight-reality">Loading data...</div>
-
-  <!-- ============================================================ -->
-  <h2>2. Feature Impact — What Each Improvement Adds</h2>
-  <p>Starting from managed flooding under realistic conditions (half-duplex), how much does each System 5 feature contribute?</p>
-
-  <div class="chart-container">
-    <h3>Delivery Rate Improvement by Feature (averaged across all scenarios)</h3>
-    <div class="subtitle">Each bar shows the additional delivery rate gained by adding that feature</div>
-    <canvas id="chart-feature-waterfall"></canvas>
+  <div class="insight">
+    <strong>Key finding:</strong> WalkFlood delivers <span class="n">3.7x&ndash;22x</span> more messages than managed flooding. In small/medium networks, WalkFlood achieves <span class="n">99&ndash;100%</span> delivery while flooding collapses to <span class="n">16&ndash;87%</span> under half-duplex.
   </div>
 
-  <!-- ============================================================ -->
-  <h2>3. Efficiency — TX Cost per Delivered Message</h2>
-  <p>Not just delivery rate — how <strong>efficiently</strong> does each approach deliver? Lower = better.</p>
+  <!-- 2. TX Efficiency -->
+  <h2>2. TX Efficiency</h2>
+  <p>Delivery rate alone is not enough &mdash; <strong>how many radio transmissions</strong> does each approach burn? Log scale reveals the gap.</p>
 
-  <div class="chart-container tall">
-    <h3>TX per Delivered Message (log scale)</h3>
-    <div class="subtitle">How many radio transmissions are needed to deliver one message?</div>
+  <div class="chart-box">
+    <h3>Total TX Count (log scale)</h3>
+    <div class="sub">Lower is better &mdash; less airtime consumed, more capacity for other traffic</div>
     <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Naive Flood</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Managed Flood</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Next-Hop</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
     </div>
-    <canvas id="chart-efficiency"></canvas>
+    <canvas id="chart-tx" height="340"></canvas>
   </div>
 
-  <!-- ============================================================ -->
-  <h2>4. Scenario Heatmap — Where Each Router Works</h2>
-  <p>Color-coded delivery rate across all scenarios and routers. Green (>80%), yellow (40-80%), red (&lt;40%).</p>
-
-  <div class="chart-container tall">
-    <h3>Delivery Rate Heatmap (half-duplex, all routers)</h3>
-    <div class="subtitle">Rows = scenarios, columns = routers. Click a cell for details.</div>
-    <canvas id="chart-heatmap"></canvas>
+  <div class="insight">
+    At Bay Area 1200-node scale, WalkFlood uses <span class="n">6.5x fewer TX</span> than managed flooding while delivering <span class="n">22x more messages</span>. In small networks, the TX savings are <span class="n">10x</span>.
   </div>
 
-  <!-- ============================================================ -->
-  <h2>5. Silencing Efficiency — TX Saved vs Delivery Lost</h2>
-  <p>The sweet spot is bottom-right: lots of TX saved, minimal delivery loss. Each dot is one scenario.</p>
+  <!-- 3. Half-Duplex Cascade -->
+  <h2>3. The Half-Duplex Cascade Problem</h2>
+  <p>Half-duplex radios cannot transmit and receive simultaneously. When a mountain node broadcasts, <strong>all neighbors are blocked</strong> from receiving other traffic. This cascade effect is why flooding collapses at scale.</p>
 
-  <div class="chart-container">
-    <h3>Node Silencing: TX Reduction vs Delivery Cost</h3>
-    <div class="subtitle">X = % TX saved by silencing, Y = % delivery lost. Ideal: high X, low Y.</div>
-    <canvas id="chart-silencing-scatter"></canvas>
+  <div class="hd-compare">
+    <div class="hd-card bad">
+      <h4>Flood: Mountain Node Broadcasts</h4>
+      <canvas id="canvas-hd-flood" height="200"></canvas>
+      <p>234 neighbors all blocked simultaneously.<br>Massive collision cascade.</p>
+    </div>
+    <div class="hd-card good">
+      <h4>WalkFlood: Directed TX</h4>
+      <canvas id="canvas-hd-direct" height="200"></canvas>
+      <p>1 neighbor receives. 233 others remain free.<br>Minimal channel impact.</p>
+    </div>
+  </div>
+
+  <div class="insight">
+    This is the fundamental difference. A flood TX blocks <span class="n">N</span> neighbors. A directed TX blocks <span class="n">1</span>. With 234 neighbors on a mountain node, that is a <span class="n">234x</span> difference in channel impact per transmission.
+  </div>
+
+  <!-- 4. Path Quality Analysis -->
+  <h2>4. Path Quality &mdash; Why Dijkstra Beats BFS</h2>
+  <p>BFS finds the <strong>shortest</strong> path (fewest hops). Dijkstra finds the <strong>most reliable</strong> path (best link quality product). In real terrain, these are very different.</p>
+
+  <div class="math-box">
+    <div class="label">Mountain Path (BFS choice: 2 hops)</div>
+    Links: [0.05, 0.05] &rarr; P(delivery) = 0.05 &times; 0.05 = <span class="bad">0.25%</span><br>
+    With 3 retries: 1 &minus; (1&minus;0.0025)&sup3; = <span class="bad">0.75%</span>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Hill Path (Dijkstra choice: 5 hops)</div>
+    Links: [0.7, 0.6, 0.5, 0.6, 0.7] &rarr; P(delivery) = 0.7 &times; 0.6 &times; 0.5 &times; 0.6 &times; 0.7 = <span class="good">8.82%</span><br>
+    Per-hop with 3 retries: [0.973, 0.936, 0.875, 0.936, 0.973]<br>
+    P(end-to-end) = 0.973 &times; 0.936 &times; 0.875 &times; 0.936 &times; 0.973 = <span class="good">72.6%</span>
+  </div>
+
+  <div class="chart-box">
+    <h3>Path Reliability: Mountain (2-hop) vs Hill (5-hop)</h3>
+    <div class="sub">Per-hop retries transform a mediocre path into a reliable one &mdash; but only if individual links are decent</div>
+    <canvas id="chart-path" height="240"></canvas>
+  </div>
+
+  <div class="insight">
+    The 5-hop hill path is <span class="n">97x</span> more reliable than the 2-hop mountain path (72.6% vs 0.75%). BFS would choose the mountain. Dijkstra chooses the hills. <strong>Reliable path &gt; short path.</strong>
+  </div>
+
+  <!-- 5. Scaling Behavior -->
+  <h2>5. Scaling Behavior</h2>
+  <p>The most surprising result: WalkFlood <strong>improves</strong> with more nodes while flooding <strong>degrades</strong>.</p>
+
+  <div class="chart-box">
+    <h3>Delivery Rate vs Network Size</h3>
+    <div class="sub">Bay Area topology: 235 nodes vs 1,200 nodes</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
+    </div>
+    <canvas id="chart-scaling" height="280"></canvas>
+  </div>
+
+  <div class="insight">
+    More nodes = more flooding collisions (6% &rarr; 4% delivery). But more nodes also = more overhearing = richer route tables. WalkFlood goes from <span class="n">84%</span> to <span class="n">88%</span> delivery. <strong>Density helps WalkFlood, hurts flooding.</strong>
+  </div>
+
+  <!-- 6. Phase Breakdown -->
+  <h2>6. Phase Breakdown &mdash; How Messages Get Delivered</h2>
+  <p>For Bay Area 235 nodes: which protocol phase delivers each message?</p>
+
+  <div class="chart-box">
+    <h3>Message Delivery by Phase (Bay Area 235n, 200 messages)</h3>
+    <div class="sub">WalkFlood&rsquo;s four-phase fallback in action</div>
+    <canvas id="chart-phases" height="260"></canvas>
+  </div>
+
+  <div class="insight">
+    <span class="n">80</span> messages (40%) delivered by <strong>direct routing</strong> &mdash; zero exploration needed. <span class="n">7</span> by random walk. <span class="n">80</span> by scoped mini-flood. <span class="n">33</span> dropped (unreachable partitions). The protocol correctly escalates: try cheap first, expensive only when needed.
   </div>
 
 </div>
 
 <footer>
-  <p>MeshRoute v2.0 — Feature Impact Analysis</p>
-  <p style="margin-top:0.3rem;font-size:0.75rem">Data from SQLite database: 23 scenarios &times; 3 feature configs &times; 5 seeds &times; 6 routers = 2,070 simulation runs</p>
+  <p>WalkFlood &mdash; Performance Analysis</p>
+  <p style="margin-top:0.3rem;font-size:0.75rem">By <strong style="color:var(--cyan)">Clemens Simon</strong> &middot; 2026 &middot; Data from Python simulator with half-duplex radio model</p>
 </footer>
 
 <script src="js/ui.js"></script>
@@ -175,505 +231,488 @@
 
   const C = {
     cyan: '#22d3ee', red: '#f87171', green: '#4ade80', yellow: '#fbbf24',
-    orange: '#fb923c', purple: '#a855f7', teal: '#14b8a6',
+    orange: '#fb923c', purple: '#a78bfa', teal: '#14b8a6',
     text: '#e2e8f0', dim: '#94a3b8', muted: '#64748b',
-    bg: '#0f172a', card: '#1e293b', border: '#334155', gray: '#94a3b8',
+    bg: '#0f172a', card: '#1a2236', border: '#2a3654',
   };
 
-  let DATA = null;
+  // Data
+  const scenarios = [
+    { label: 'Small\n(20n)', mfDel: 87, wfDel: 100, mfTx: 1640, wfTx: 159 },
+    { label: 'Medium\n(100n)', mfDel: 27, wfDel: 100, mfTx: 3380, wfTx: 368 },
+    { label: 'Kill 20%', mfDel: 16, wfDel: 100, mfTx: 2696, wfTx: 383 },
+    { label: 'Stress\n30%', mfDel: 19, wfDel: 99, mfTx: 3380, wfTx: 492 },
+    { label: 'Bay Area\n(235n)', mfDel: 6, wfDel: 84, mfTx: 6752, wfTx: 8894 },
+    { label: 'Bay Area\n(1200n)', mfDel: 4, wfDel: 88, mfTx: 38644, wfTx: 5909 },
+  ];
 
-  async function load() {
-    try {
-      const r = await fetch('analysis-data.json');
-      DATA = await r.json();
-      renderAll();
-    } catch(e) {
-      document.getElementById('insight-reality').textContent = 'Error loading data: ' + e.message + '. Run: python simulator/export_analysis.py';
-    }
-  }
-
-  function getCtx(id) {
+  function initCanvas(id) {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
     const w = rect.width || canvas.parentElement.clientWidth || 800;
-    const h = rect.height || 400;
-    if (w < 10 || h < 10) return null; // not visible yet
+    const h = canvas.height || 340;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
+    canvas.style.height = h + 'px';
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
     ctx.W = w; ctx.H = h;
     return ctx;
   }
 
-  function fmtNum(v) {
-    if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
-    if (v >= 1e3) return (v/1e3).toFixed(v>=1e4?0:1)+'K';
-    return String(Math.round(v));
-  }
-
-  // Helper: get result for scenario × features × router
-  function get(scenario, features, router) {
-    return DATA.results.find(r =>
-      r.scenario === scenario && r.features === features && r.router === router
-    );
-  }
-
-  function renderAll() {
-    renderRealityGap();
-    renderFeatureWaterfall();
-    renderEfficiency();
-    renderHeatmap();
-    renderSilencingScatter();
-  }
-
-  // ── 1. Reality Gap ──
-  function renderRealityGap(filter) {
-    const ctx = getCtx('chart-reality-gap');
-    if (!ctx || !DATA) return;
+  // ── 1. Delivery Rate Bar Chart ──
+  function drawDelivery() {
+    const ctx = initCanvas('chart-delivery');
+    if (!ctx) return;
     const W = ctx.W, H = ctx.H;
-    const pad = { top: 20, right: 30, bottom: 120, left: 55 };
-
-    ctx.clearRect(0, 0, W, H);
-
-    let scenarios = DATA.scenarios;
-    if (filter === 'small') scenarios = scenarios.filter(s => s.n_nodes <= 50);
-    else if (filter === 'medium') scenarios = scenarios.filter(s => s.n_nodes >= 80 && s.n_nodes <= 200);
-    else if (filter === 'large') scenarios = scenarios.filter(s => s.n_nodes >= 500);
-
-    const n = scenarios.length;
-    if (!n) return;
+    const pad = { top: 20, right: 20, bottom: 60, left: 50 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top - pad.bottom;
+    const n = scenarios.length;
     const gap = chartW / n;
-    const barW = Math.min(gap * 0.18, 16);
-
-    // Grid
-    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
-    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
-    for (let p = 0; p <= 100; p += 20) {
-      const y = pad.top + chartH - (p/100)*chartH;
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
-      ctx.fillText(p+'%', pad.left-5, y+3);
-    }
-
-    const bars = [
-      { feat: 'baseline', router: 'Managed (7 hop)', color: C.gray, label: 'MF ideal' },
-      { feat: 'half_duplex', router: 'Managed (7 hop)', color: C.red, label: 'MF real' },
-      { feat: 'half_duplex', router: 'System 5', color: C.cyan, label: 'S5 real' },
-      { feat: 'hd+silencing', router: 'System 5', color: C.green, label: 'S5+Sil' },
-    ];
-
-    for (let i = 0; i < n; i++) {
-      const cx = pad.left + gap*i + gap/2;
-      const groupW = barW * bars.length + (bars.length-1)*2;
-      const startX = cx - groupW/2;
-
-      for (let bi = 0; bi < bars.length; bi++) {
-        const d = get(scenarios[i].name, bars[bi].feat, bars[bi].router);
-        const val = d ? d.delivery : 0;
-        const bh = (val/100) * chartH;
-        const bx = startX + bi*(barW+2);
-
-        ctx.fillStyle = bars[bi].color;
-        ctx.globalAlpha = 0.85;
-        ctx.fillRect(bx, pad.top+chartH-bh, barW, bh);
-
-        // Value on top
-        if (val > 0) {
-          ctx.globalAlpha = 1;
-          ctx.font = '8px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = bars[bi].color;
-          ctx.fillText(Math.round(val)+'%', bx+barW/2, pad.top+chartH-bh-3);
-        }
-      }
-      ctx.globalAlpha = 1;
-
-      // "Gap" arrow between MF ideal and MF real
-      const mfIdeal = get(scenarios[i].name, 'baseline', 'Managed (7 hop)');
-      const mfReal = get(scenarios[i].name, 'half_duplex', 'Managed (7 hop)');
-      if (mfIdeal && mfReal && mfIdeal.delivery - mfReal.delivery > 10) {
-        const y1 = pad.top + chartH - (mfIdeal.delivery/100)*chartH;
-        const y2 = pad.top + chartH - (mfReal.delivery/100)*chartH;
-        const ax = startX + barW + 3;
-        ctx.strokeStyle = 'rgba(248,113,113,0.5)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3,3]);
-        ctx.beginPath(); ctx.moveTo(ax, y1+5); ctx.lineTo(ax, y2-5); ctx.stroke();
-        ctx.setLineDash([]);
-        // Arrow head
-        ctx.beginPath();
-        ctx.moveTo(ax-3, y2-8); ctx.lineTo(ax, y2-3); ctx.lineTo(ax+3, y2-8);
-        ctx.stroke();
-      }
-
-      // X label
-      const sn = scenarios[i].name.replace(/\s*\(.*/,'').substring(0,14);
-      ctx.save();
-      ctx.fillStyle = C.muted; ctx.font = '9px monospace'; ctx.textAlign = 'right';
-      ctx.translate(cx, pad.top+chartH+8);
-      ctx.rotate(-Math.PI/4);
-      ctx.fillText(sn, 0, 0);
-      ctx.restore();
-    }
-
-    // Y label
-    ctx.save();
-    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
-    ctx.fillText('Delivery Rate', 0, 0);
-    ctx.restore();
-
-    // Insight text
-    const insightEl = document.getElementById('insight-reality');
-    if (insightEl) {
-      let totalGap = 0, count = 0;
-      let totalS5Gain = 0;
-      for (const s of DATA.scenarios) {
-        const mfBase = get(s.name, 'baseline', 'Managed (7 hop)');
-        const mfHD = get(s.name, 'half_duplex', 'Managed (7 hop)');
-        const s5HD = get(s.name, 'half_duplex', 'System 5');
-        if (mfBase && mfHD && s5HD) {
-          totalGap += mfBase.delivery - mfHD.delivery;
-          totalS5Gain += s5HD.delivery - mfHD.delivery;
-          count++;
-        }
-      }
-      const avgGap = count > 0 ? (totalGap/count).toFixed(0) : '?';
-      const avgGain = count > 0 ? (totalS5Gain/count).toFixed(0) : '?';
-      insightEl.innerHTML = `<strong>The Reality Gap:</strong> On average, half-duplex reduces managed flooding delivery by <span class="num">${avgGap} percentage points</span> across all scenarios. System 5 recovers <span class="num">${avgGain} points</span> of that gap through directed routing. The red arrows show where flooding breaks down most dramatically.`;
-    }
-  }
-
-  // ── 2. Feature Waterfall ──
-  function renderFeatureWaterfall() {
-    const ctx = getCtx('chart-feature-waterfall');
-    if (!ctx || !DATA) return;
-    const W = ctx.W, H = ctx.H;
-    const pad = { top: 30, right: 30, bottom: 60, left: 55 };
-    const chartH = H - pad.top - pad.bottom;
+    const barW = Math.min(gap * 0.28, 32);
 
     ctx.clearRect(0, 0, W, H);
 
-    // Average delivery across all scenarios for each step
-    let mfBase=0, mfHD=0, s5HD=0, s5Sil=0, cnt=0;
-    for (const s of DATA.scenarios) {
-      const a = get(s.name, 'baseline', 'Managed (7 hop)');
-      const b = get(s.name, 'half_duplex', 'Managed (7 hop)');
-      const c = get(s.name, 'half_duplex', 'System 5');
-      const d = get(s.name, 'hd+silencing', 'System 5');
-      if (a && b && c) {
-        mfBase += a.delivery; mfHD += b.delivery;
-        s5HD += c.delivery; s5Sil += (d ? d.delivery : c.delivery);
-        cnt++;
-      }
-    }
-    mfBase /= cnt; mfHD /= cnt; s5HD /= cnt; s5Sil /= cnt;
-
-    const steps = [
-      { label: 'Managed Flood\n(idealized)', val: mfBase, color: C.gray },
-      { label: 'Half-Duplex\nReality', val: mfHD, color: C.red, delta: mfHD-mfBase },
-      { label: 'System 5\nDirected Routing', val: s5HD, color: C.cyan, delta: s5HD-mfHD },
-      { label: '+ Node\nSilencing', val: s5Sil, color: C.green, delta: s5Sil-s5HD },
-    ];
-
-    const barW = Math.min((W-pad.left-pad.right)/steps.length * 0.5, 80);
-    const gap = (W-pad.left-pad.right) / steps.length;
-
     // Grid
     ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
     ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
-    for (let p = 0; p <= 100; p += 20) {
-      const y = pad.top + chartH - (p/100)*chartH;
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
-      ctx.fillText(p+'%', pad.left-5, y+3);
+    for (let p = 0; p <= 100; p += 25) {
+      const y = pad.top + chartH - (p / 100) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillText(p + '%', pad.left - 6, y + 3);
     }
 
-    for (let i = 0; i < steps.length; i++) {
-      const s = steps[i];
-      const cx = pad.left + gap*i + gap/2;
-      const bh = (s.val/100)*chartH;
-      const by = pad.top+chartH-bh;
+    for (let i = 0; i < n; i++) {
+      const s = scenarios[i];
+      const cx = pad.left + gap * i + gap / 2;
 
-      // Bar
-      ctx.fillStyle = s.color;
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(cx-barW/2, by, barW, bh);
+      // MF bar
+      const mfH = (s.mfDel / 100) * chartH;
+      ctx.fillStyle = C.red; ctx.globalAlpha = 0.8;
+      ctx.fillRect(cx - barW - 2, pad.top + chartH - mfH, barW, mfH);
+
+      // WF bar
+      const wfH = (s.wfDel / 100) * chartH;
+      ctx.fillStyle = C.cyan; ctx.globalAlpha = 0.8;
+      ctx.fillRect(cx + 2, pad.top + chartH - wfH, barW, wfH);
+
       ctx.globalAlpha = 1;
 
-      // Value
-      ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
-      ctx.fillStyle = s.color;
-      ctx.fillText(s.val.toFixed(0)+'%', cx, by-8);
-
-      // Delta annotation
-      if (s.delta !== undefined && Math.abs(s.delta) > 0.5) {
-        const sign = s.delta > 0 ? '+' : '';
-        ctx.font = '10px monospace';
-        ctx.fillStyle = s.delta > 0 ? C.green : C.red;
-        ctx.fillText(sign+s.delta.toFixed(0)+'pp', cx, by-22);
-      }
+      // Values
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = C.red;
+      ctx.fillText(s.mfDel + '%', cx - barW / 2 - 2, pad.top + chartH - mfH - 5);
+      ctx.fillStyle = C.cyan;
+      ctx.fillText(s.wfDel + '%', cx + barW / 2 + 2, pad.top + chartH - wfH - 5);
 
       // Label
       ctx.font = '9px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'center';
       const lines = s.label.split('\n');
-      lines.forEach((line, li) => {
-        ctx.fillText(line, cx, pad.top+chartH+15+li*12);
-      });
-
-      // Connector line to next bar
-      if (i < steps.length-1) {
-        const nextVal = steps[i+1].val;
-        const ny = pad.top+chartH-(nextVal/100)*chartH;
-        ctx.strokeStyle = C.border; ctx.lineWidth = 1;
-        ctx.setLineDash([4,4]);
-        ctx.beginPath();
-        ctx.moveTo(cx+barW/2+2, by);
-        ctx.lineTo(pad.left+gap*(i+1)+gap/2-barW/2-2, i===0 ? pad.top+chartH-(nextVal/100)*chartH : ny);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
+      lines.forEach((l, li) => ctx.fillText(l, cx, pad.top + chartH + 15 + li * 12));
     }
   }
 
-  // ── 3. TX Efficiency ──
-  function renderEfficiency() {
-    const ctx = getCtx('chart-efficiency');
-    if (!ctx || !DATA) return;
+  // ── 2. TX Efficiency (log scale) ──
+  function drawTX() {
+    const ctx = initCanvas('chart-tx');
+    if (!ctx) return;
     const W = ctx.W, H = ctx.H;
-    const pad = { top: 30, right: 30, bottom: 120, left: 65 };
-    const chartW = W-pad.left-pad.right, chartH = H-pad.top-pad.bottom;
-
-    ctx.clearRect(0, 0, W, H);
-
-    const scenarios = DATA.scenarios;
+    const pad = { top: 20, right: 20, bottom: 60, left: 55 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
     const n = scenarios.length;
     const gap = chartW / n;
+    const barW = Math.min(gap * 0.28, 32);
+    const maxLog = 5; // 10^5 = 100,000
 
-    const routers = [
-      { name: 'Naive Flood', color: C.red },
-      { name: 'Managed (7 hop)', color: C.yellow },
-      { name: 'Next-Hop (7 hop)', color: C.orange },
-      { name: 'System 5', color: C.cyan },
-    ];
-    const feat = 'half_duplex';
-
-    // Get max for log scale
-    let maxVal = 1;
-    for (const s of scenarios) {
-      for (const r of routers) {
-        const d = get(s.name, feat, r.name);
-        if (d && d.tx_per_del > 0 && isFinite(d.tx_per_del)) maxVal = Math.max(maxVal, d.tx_per_del);
-      }
-    }
-    const maxLog = Math.ceil(Math.log10(maxVal));
+    ctx.clearRect(0, 0, W, H);
 
     // Grid
     ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
     ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    const labels = ['1', '10', '100', '1K', '10K', '100K'];
     for (let i = 0; i <= maxLog; i++) {
-      const y = pad.top + chartH - (i/maxLog)*chartH;
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
-      ctx.fillText(fmtNum(Math.pow(10,i)), pad.left-8, y+3);
+      const y = pad.top + chartH - (i / maxLog) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillText(labels[i], pad.left - 6, y + 3);
     }
-
-    const barW = Math.min(gap/(routers.length+1)*0.9, 12);
 
     for (let i = 0; i < n; i++) {
-      const cx = pad.left + gap*i + gap/2;
-      const groupW = barW*routers.length + (routers.length-1)*1;
-      const startX = cx - groupW/2;
+      const s = scenarios[i];
+      const cx = pad.left + gap * i + gap / 2;
 
-      for (let ri = 0; ri < routers.length; ri++) {
-        const d = get(scenarios[i].name, feat, routers[ri].name);
-        if (!d || !d.tx_per_del || !isFinite(d.tx_per_del) || d.tx_per_del <= 0) continue;
-        const bh = (Math.log10(d.tx_per_del)/maxLog)*chartH;
-        ctx.fillStyle = routers[ri].color;
-        ctx.globalAlpha = 0.8;
-        ctx.fillRect(startX+ri*(barW+1), pad.top+chartH-bh, barW, bh);
-      }
+      // MF bar
+      const mfLogH = (Math.log10(Math.max(1, s.mfTx)) / maxLog) * chartH;
+      ctx.fillStyle = C.red; ctx.globalAlpha = 0.8;
+      ctx.fillRect(cx - barW - 2, pad.top + chartH - mfLogH, barW, mfLogH);
+
+      // WF bar
+      const wfLogH = (Math.log10(Math.max(1, s.wfTx)) / maxLog) * chartH;
+      ctx.fillStyle = C.cyan; ctx.globalAlpha = 0.8;
+      ctx.fillRect(cx + 2, pad.top + chartH - wfLogH, barW, wfLogH);
+
       ctx.globalAlpha = 1;
 
-      // X label
-      const sn = scenarios[i].name.replace(/\s*\(.*/,'').substring(0,12);
-      ctx.save();
-      ctx.fillStyle = C.muted; ctx.font = '9px monospace'; ctx.textAlign = 'right';
-      ctx.translate(cx, pad.top+chartH+8); ctx.rotate(-Math.PI/4);
-      ctx.fillText(sn, 0, 0);
-      ctx.restore();
+      // Values
+      ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = C.red;
+      ctx.fillText(fmtNum(s.mfTx), cx - barW / 2 - 2, pad.top + chartH - mfLogH - 5);
+      ctx.fillStyle = C.cyan;
+      ctx.fillText(fmtNum(s.wfTx), cx + barW / 2 + 2, pad.top + chartH - wfLogH - 5);
+
+      // Label
+      ctx.font = '9px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'center';
+      const lines = s.label.split('\n');
+      lines.forEach((l, li) => ctx.fillText(l, cx, pad.top + chartH + 15 + li * 12));
     }
 
-    // Y label
-    ctx.save();
-    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
-    ctx.fillText('TX per delivered message (log)', 0, 0);
-    ctx.restore();
-
-    // Better arrow
-    ctx.strokeStyle = C.green; ctx.lineWidth = 2;
-    const ax = pad.left+30, ay1 = pad.top+10, ay2 = pad.top+45;
-    ctx.beginPath(); ctx.moveTo(ax,ay1); ctx.lineTo(ax,ay2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ax-4,ay2-5); ctx.lineTo(ax,ay2); ctx.lineTo(ax+4,ay2-5); ctx.stroke();
-    ctx.fillStyle = C.green; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('Better', ax, ay2+10);
+    // "Lower = better" arrow
+    ctx.strokeStyle = C.green; ctx.lineWidth = 1.5;
+    const ax = pad.left + 14, ay1 = pad.top + chartH - 40, ay2 = pad.top + chartH - 10;
+    ctx.beginPath(); ctx.moveTo(ax, ay1); ctx.lineTo(ax, ay2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax - 3, ay2 - 4); ctx.lineTo(ax, ay2); ctx.lineTo(ax + 3, ay2 - 4); ctx.stroke();
+    ctx.fillStyle = C.green; ctx.font = 'bold 8px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Better', ax, ay1 - 5);
   }
 
-  // ── 4. Heatmap ──
-  function renderHeatmap() {
-    const ctx = getCtx('chart-heatmap');
-    if (!ctx || !DATA) return;
-    const W = ctx.W, H = ctx.H;
+  function fmtNum(v) {
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e4 ? 0 : 1) + 'K';
+    return String(Math.round(v));
+  }
 
+  // ── 3. Half-Duplex Visual ──
+  function drawHDFlood() {
+    const ctx = initCanvas('canvas-hd-flood');
+    if (!ctx) return;
+    const W = ctx.W, H = ctx.H;
     ctx.clearRect(0, 0, W, H);
 
-    const scenarios = DATA.scenarios;
-    const routers = ['Naive Flood', 'Managed (3 hop)', 'Managed (5 hop)', 'Managed (7 hop)', 'Next-Hop (7 hop)', 'System 5'];
-    const feat = 'half_duplex';
+    const cx = W / 2, cy = H / 2;
 
-    const labelW = 180, headerH = 60;
-    const cellW = Math.min((W-labelW-20)/routers.length, 100);
-    const cellH = Math.min((H-headerH-20)/scenarios.length, 24);
+    // Mountain node (center)
+    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = C.red; ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.font = 'bold 9px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('TX', cx, cy + 3);
 
-    // Column headers
-    ctx.font = '9px monospace'; ctx.textAlign = 'center';
-    for (let ri = 0; ri < routers.length; ri++) {
-      const x = labelW + ri*cellW + cellW/2;
-      ctx.save();
-      ctx.fillStyle = C.dim;
-      ctx.translate(x, headerH-5);
-      ctx.rotate(-Math.PI/6);
-      ctx.fillText(routers[ri].replace('Managed','MF').replace(' Flood',''), 0, 0);
-      ctx.restore();
+    // Blocked neighbors
+    const ringCount = 24;
+    for (let i = 0; i < ringCount; i++) {
+      const angle = (i / ringCount) * Math.PI * 2;
+      const r = 55 + Math.random() * 25;
+      const nx = cx + Math.cos(angle) * r;
+      const ny = cy + Math.sin(angle) * r;
+
+      // Blocking wave
+      ctx.strokeStyle = 'rgba(248,113,113,0.2)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(nx, ny); ctx.stroke();
+
+      ctx.beginPath(); ctx.arc(nx, ny, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(248,113,113,0.5)'; ctx.fill();
     }
 
-    // Rows
-    for (let si = 0; si < scenarios.length; si++) {
-      const y = headerH + si*cellH;
-      const sn = scenarios[si].name.replace(/\s*\(.*/,'').substring(0,22);
-
-      // Row label
-      ctx.font = '9px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'right';
-      ctx.fillText(sn, labelW-8, y+cellH*0.7);
-
-      // Cells
-      for (let ri = 0; ri < routers.length; ri++) {
-        const x = labelW + ri*cellW;
-        const d = get(scenarios[si].name, feat, routers[ri]);
-        const val = d ? d.delivery : 0;
-
-        // Color
-        let color;
-        if (val >= 80) color = 'rgba(74,222,128,0.6)';      // green
-        else if (val >= 40) color = 'rgba(251,191,36,0.5)';  // yellow
-        else if (val > 0) color = 'rgba(248,113,113,0.5)';   // red
-        else color = 'rgba(153,27,27,0.4)';                   // dark red
-
-        ctx.fillStyle = color;
-        ctx.fillRect(x+1, y+1, cellW-2, cellH-2);
-
-        // Value
-        ctx.font = '8px monospace';
-        ctx.fillStyle = val >= 40 ? '#1e293b' : '#e2e8f0';
-        ctx.textAlign = 'center';
-        ctx.fillText(Math.round(val)+'%', x+cellW/2, y+cellH*0.7);
-      }
+    // Broadcast wave rings
+    for (let r = 30; r <= 80; r += 20) {
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(248,113,113,' + (0.3 - r * 0.003) + ')';
+      ctx.lineWidth = 1.5; ctx.stroke();
     }
+
+    ctx.font = 'bold 10px monospace'; ctx.fillStyle = C.red; ctx.textAlign = 'center';
+    ctx.fillText('234 neighbors BLOCKED', cx, H - 10);
   }
 
-  // ── 5. Silencing Scatter ──
-  function renderSilencingScatter() {
-    const ctx = getCtx('chart-silencing-scatter');
-    if (!ctx || !DATA) return;
+  function drawHDDirect() {
+    const ctx = initCanvas('canvas-hd-direct');
+    if (!ctx) return;
     const W = ctx.W, H = ctx.H;
-    const pad = { top: 30, right: 30, bottom: 50, left: 55 };
-    const chartW = W-pad.left-pad.right, chartH = H-pad.top-pad.bottom;
+    ctx.clearRect(0, 0, W, H);
+
+    const cx = W / 2, cy = H / 2;
+
+    // Source node
+    ctx.beginPath(); ctx.arc(cx - 50, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = C.cyan; ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.font = 'bold 9px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('TX', cx - 50, cy + 3);
+
+    // Target node
+    ctx.beginPath(); ctx.arc(cx + 50, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = C.green; ctx.globalAlpha = 0.9; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.font = 'bold 9px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.fillText('RX', cx + 50, cy + 3);
+
+    // Directed arrow
+    ctx.strokeStyle = C.cyan; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(cx - 34, cy); ctx.lineTo(cx + 34, cy); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 30, cy - 5); ctx.lineTo(cx + 36, cy); ctx.lineTo(cx + 30, cy + 5);
+    ctx.stroke();
+
+    // Free neighbors (greyed out, not blocked)
+    const freeCount = 16;
+    for (let i = 0; i < freeCount; i++) {
+      const angle = (i / freeCount) * Math.PI * 2;
+      const r = 60 + Math.random() * 20;
+      const nx = cx + Math.cos(angle) * r;
+      const ny = cy + Math.sin(angle) * r;
+      ctx.beginPath(); ctx.arc(nx, ny, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(148,163,184,0.25)'; ctx.fill();
+    }
+
+    ctx.font = 'bold 10px monospace'; ctx.fillStyle = C.green; ctx.textAlign = 'center';
+    ctx.fillText('233 neighbors FREE', cx, H - 10);
+  }
+
+  // ── 4. Path Quality Chart ──
+  function drawPath() {
+    const ctx = initCanvas('chart-path');
+    if (!ctx) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 30, right: 20, bottom: 40, left: 50 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
 
     ctx.clearRect(0, 0, W, H);
 
     // Grid
     ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
-    ctx.font = '10px monospace'; ctx.fillStyle = C.muted;
-    // X axis: TX reduction %
-    ctx.textAlign = 'center';
-    for (let p = 0; p <= 60; p += 10) {
-      const x = pad.left + (p/60)*chartW;
-      ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top+chartH); ctx.stroke();
-      ctx.fillText(p+'%', x, pad.top+chartH+15);
-    }
-    // Y axis: Delivery loss %
-    ctx.textAlign = 'right';
-    for (let p = 0; p <= 20; p += 5) {
-      const y = pad.top + (p/20)*chartH;
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+chartW, y); ctx.stroke();
-      ctx.fillText(p+'%', pad.left-5, y+3);
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    for (let p = 0; p <= 100; p += 25) {
+      const y = pad.top + chartH - (p / 100) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillText(p + '%', pad.left - 6, y + 3);
     }
 
-    // Labels
-    ctx.save();
-    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('TX Reduction by Silencing', pad.left+chartW/2, H-5);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(12, pad.top+chartH/2); ctx.rotate(-Math.PI/2);
-    ctx.fillStyle = C.muted; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('Delivery Loss', 0, 0);
-    ctx.restore();
+    const barW = 60;
+    const pairs = [
+      { label: 'Mountain\n(2 hops)', raw: 0.25, retry: 0.75, color: C.red },
+      { label: 'Hill\n(5 hops)', raw: 8.82, retry: 72.6, color: C.green },
+    ];
 
-    // Sweet spot zone
-    ctx.fillStyle = 'rgba(74,222,128,0.06)';
-    ctx.fillRect(pad.left+chartW*0.3, pad.top, chartW*0.7, chartH*0.25);
-    ctx.font = '9px monospace'; ctx.fillStyle = 'rgba(74,222,128,0.3)';
-    ctx.textAlign = 'right';
-    ctx.fillText('Sweet Spot', pad.left+chartW-5, pad.top+15);
+    const gap = chartW / pairs.length;
 
-    // Plot points
-    for (const s of DATA.scenarios) {
-      const s5hd = get(s.name, 'half_duplex', 'System 5');
-      const s5sil = get(s.name, 'hd+silencing', 'System 5');
-      if (!s5hd || !s5sil || s5hd.tx <= 0) continue;
+    for (let i = 0; i < pairs.length; i++) {
+      const p = pairs[i];
+      const cx = pad.left + gap * i + gap / 2;
 
-      const txReduction = Math.max(0, (1 - s5sil.tx / s5hd.tx) * 100);
-      const delLoss = Math.max(0, s5hd.delivery - s5sil.delivery);
+      // Raw bar (dim)
+      const rawH = (p.raw / 100) * chartH;
+      ctx.fillStyle = p.color; ctx.globalAlpha = 0.25;
+      ctx.fillRect(cx - barW / 2 - 18, pad.top + chartH - rawH, barW * 0.7, rawH);
 
-      const px = pad.left + (txReduction/60)*chartW;
-      const py = pad.top + (delLoss/20)*chartH;
-
-      // Dot
-      ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2);
-      ctx.fillStyle = txReduction > 20 ? C.cyan : C.orange;
-      ctx.globalAlpha = 0.8;
-      ctx.fill();
+      // Retry bar (bright)
+      const retH = (p.retry / 100) * chartH;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(cx + 2, pad.top + chartH - retH, barW * 0.7, retH);
       ctx.globalAlpha = 1;
 
+      // Values
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = p.color;
+      if (rawH > 5) {
+        ctx.fillText(p.raw + '%', cx - barW / 2 + 3, pad.top + chartH - rawH - 5);
+      } else {
+        ctx.fillText(p.raw + '%', cx - barW / 2 + 3, pad.top + chartH - 10);
+      }
+      ctx.fillText(p.retry + '%', cx + barW * 0.35 + 2, pad.top + chartH - retH - 5);
+
+      // Sub-labels
+      ctx.font = '8px monospace'; ctx.fillStyle = C.muted;
+      ctx.fillText('raw', cx - barW / 2 + 3, pad.top + chartH + 12);
+      ctx.fillText('+retry', cx + barW * 0.35 + 2, pad.top + chartH + 12);
+
       // Label
-      const sn = s.name.replace(/\s*\(.*/,'').substring(0,10);
-      ctx.font = '8px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'left';
-      ctx.fillText(sn, px+9, py+3);
+      ctx.font = '10px monospace'; ctx.fillStyle = C.dim; ctx.textAlign = 'center';
+      const lines = p.label.split('\n');
+      lines.forEach((l, li) => ctx.fillText(l, cx, pad.top + chartH + 24 + li * 12));
     }
   }
 
-  // ── Filter buttons ──
-  document.querySelectorAll('#filter-scenario .filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#filter-scenario .filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderRealityGap(btn.dataset.filter);
+  // ── 5. Scaling Behavior ──
+  function drawScaling() {
+    const ctx = initCanvas('chart-scaling');
+    if (!ctx) return;
+    const W = ctx.W, H = ctx.H;
+    const pad = { top: 30, right: 30, bottom: 50, left: 50 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid
+    ctx.strokeStyle = C.border; ctx.lineWidth = 0.5;
+    ctx.font = '10px monospace'; ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+    for (let p = 0; p <= 100; p += 25) {
+      const y = pad.top + chartH - (p / 100) * chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillText(p + '%', pad.left - 6, y + 3);
+    }
+
+    // X axis labels
+    const points = [
+      { nodes: 235, label: '235 nodes' },
+      { nodes: 1200, label: '1,200 nodes' },
+    ];
+    const mfData = [6, 4];
+    const wfData = [84, 88];
+
+    const x1 = pad.left + chartW * 0.25;
+    const x2 = pad.left + chartW * 0.75;
+    const xs = [x1, x2];
+
+    ctx.textAlign = 'center';
+    points.forEach((p, i) => {
+      ctx.fillStyle = C.dim; ctx.font = '10px monospace';
+      ctx.fillText(p.label, xs[i], pad.top + chartH + 16);
     });
-  });
 
-  // ── Init ──
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
-  else load();
+    // MF line
+    ctx.strokeStyle = C.red; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x1, pad.top + chartH - (mfData[0] / 100) * chartH);
+    ctx.lineTo(x2, pad.top + chartH - (mfData[1] / 100) * chartH);
+    ctx.stroke();
 
-  // Retry rendering after a short delay (canvas may not be sized yet)
-  setTimeout(() => { if (DATA) renderAll(); }, 500);
-  setTimeout(() => { if (DATA) renderAll(); }, 1500);
+    // WF line
+    ctx.strokeStyle = C.cyan; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x1, pad.top + chartH - (wfData[0] / 100) * chartH);
+    ctx.lineTo(x2, pad.top + chartH - (wfData[1] / 100) * chartH);
+    ctx.stroke();
 
-  window.addEventListener('resize', () => { if (DATA) renderAll(); });
+    // Dots and labels
+    for (let i = 0; i < 2; i++) {
+      // MF dot
+      const mfY = pad.top + chartH - (mfData[i] / 100) * chartH;
+      ctx.beginPath(); ctx.arc(xs[i], mfY, 6, 0, Math.PI * 2);
+      ctx.fillStyle = C.red; ctx.fill();
+      ctx.font = 'bold 11px monospace'; ctx.fillStyle = C.red; ctx.textAlign = 'center';
+      ctx.fillText(mfData[i] + '%', xs[i], mfY - 12);
+
+      // WF dot
+      const wfY = pad.top + chartH - (wfData[i] / 100) * chartH;
+      ctx.beginPath(); ctx.arc(xs[i], wfY, 6, 0, Math.PI * 2);
+      ctx.fillStyle = C.cyan; ctx.fill();
+      ctx.font = 'bold 11px monospace'; ctx.fillStyle = C.cyan; ctx.textAlign = 'center';
+      ctx.fillText(wfData[i] + '%', xs[i], wfY - 12);
+    }
+
+    // Trend annotations
+    ctx.font = 'bold 10px monospace'; ctx.textAlign = 'left';
+    const midX = (x1 + x2) / 2;
+
+    // WF trend arrow (up)
+    const wfMidY = pad.top + chartH - (86 / 100) * chartH;
+    ctx.fillStyle = C.green;
+    ctx.fillText('+4pp', midX + 5, wfMidY - 2);
+
+    // MF trend arrow (down)
+    const mfMidY = pad.top + chartH - (5 / 100) * chartH;
+    ctx.fillStyle = C.red;
+    ctx.fillText('-2pp', midX + 5, mfMidY - 2);
+
+    // Legend labels
+    ctx.font = '10px monospace';
+    ctx.fillStyle = C.cyan; ctx.textAlign = 'right';
+    ctx.fillText('WalkFlood', W - pad.right, pad.top + 15);
+    ctx.fillStyle = C.red;
+    ctx.fillText('Managed Flood', W - pad.right, pad.top + 30);
+  }
+
+  // ── 6. Phase Breakdown (donut) ──
+  function drawPhases() {
+    const ctx = initCanvas('chart-phases');
+    if (!ctx) return;
+    const W = ctx.W, H = ctx.H;
+    ctx.clearRect(0, 0, W, H);
+
+    const data = [
+      { label: 'Directed', value: 80, color: C.cyan },
+      { label: 'Walk', value: 7, color: C.teal },
+      { label: 'Mini-Flood', value: 80, color: C.yellow },
+      { label: 'Dropped', value: 33, color: '#64748b' },
+    ];
+
+    const total = data.reduce((s, d) => s + d.value, 0);
+    const cx = W * 0.38, cy = H / 2;
+    const outerR = Math.min(cx - 30, cy - 20, 100);
+    const innerR = outerR * 0.55;
+
+    let startAngle = -Math.PI / 2;
+
+    data.forEach(d => {
+      const sliceAngle = (d.value / total) * Math.PI * 2;
+      const endAngle = startAngle + sliceAngle;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR, startAngle, endAngle);
+      ctx.arc(cx, cy, innerR, endAngle, startAngle, true);
+      ctx.closePath();
+      ctx.fillStyle = d.color; ctx.globalAlpha = 0.85;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Percentage in slice (if big enough)
+      if (sliceAngle > 0.3) {
+        const midAngle = startAngle + sliceAngle / 2;
+        const labelR = (outerR + innerR) / 2;
+        const lx = cx + Math.cos(midAngle) * labelR;
+        const ly = cy + Math.sin(midAngle) * labelR;
+        ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(d.value, lx, ly);
+      }
+
+      startAngle = endAngle;
+    });
+
+    // Center text
+    ctx.font = 'bold 14px monospace'; ctx.fillStyle = C.text;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('200', cx, cy - 6);
+    ctx.font = '9px monospace'; ctx.fillStyle = C.dim;
+    ctx.fillText('messages', cx, cy + 10);
+
+    // Legend on right
+    const legendX = W * 0.62;
+    let legendY = cy - data.length * 15;
+
+    data.forEach(d => {
+      const pct = ((d.value / total) * 100).toFixed(0);
+      ctx.fillStyle = d.color;
+      ctx.fillRect(legendX, legendY, 14, 14);
+      ctx.font = '12px monospace'; ctx.fillStyle = C.text;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(d.label, legendX + 20, legendY + 7);
+      ctx.fillStyle = C.dim; ctx.font = '11px monospace';
+      ctx.fillText(d.value + ' (' + pct + '%)', legendX + 20, legendY + 22);
+      legendY += 38;
+    });
+
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  // ── Render all ──
+  function renderAll() {
+    drawDelivery();
+    drawTX();
+    drawHDFlood();
+    drawHDDirect();
+    drawPath();
+    drawScaling();
+    drawPhases();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderAll);
+  else renderAll();
+
+  setTimeout(renderAll, 500);
+  window.addEventListener('resize', renderAll);
 })();
 </script>
 </body>

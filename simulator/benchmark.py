@@ -12,7 +12,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from meshsim import MeshNetwork, Packet
-from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router
+from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router, PassiveLearningRouter, OverhearForwardRouter, WalkFloodRouter
 
 # Router registry for multiprocessing (must be picklable by name)
 # Format: (key, label, RouterClass, kwargs)
@@ -23,6 +23,9 @@ ROUTER_REGISTRY = [
     ("managed_7hop", "Managed (7 hop)", ManagedFloodingRouter, {"hop_limit": 7}),
     ("next_hop", "Next-Hop (7 hop)", NextHopRouter, {"hop_limit": 7}),
     ("system5", "System 5", System5Router, {}),
+    ("passive_learning", "Passive Learning", PassiveLearningRouter, {}),
+    ("echoroute", "EchoRoute", OverhearForwardRouter, {}),
+    ("walkflood", "WalkFlood", WalkFloodRouter, {}),
 ]
 
 
@@ -626,6 +629,23 @@ def run_router(router, network, messages):
         result.qos_stats = {k: dict(v) for k, v in router.qos_stats.items()}
         result.fallback_used = router.fallback_used
         result.route_switches = router.route_switches
+
+    # Copy PassiveLearningRouter stats
+    if hasattr(router, 'directed_success'):
+        result.directed_success = router.directed_success
+        result.directed_fail = router.directed_fail
+        result.flood_fallback = router.flood_fallback
+        result.routes_learned = router.routes_learned
+        result.implicit_acks = router.implicit_acks
+
+    # Copy OverhearForwardRouter stats
+    if hasattr(router, 'directed_ok'):
+        result.directed_ok = router.directed_ok
+        result.directed_fail_of = router.directed_fail
+        result.opportunistic_ok = router.opportunistic_ok
+        result.midpath_flood_ok = router.midpath_flood_ok
+        result.flood_fallback_of = router.flood_fallback
+        result.routes_learned_of = router.routes_learned
 
     # Add duty cycle stats
     if network.enable_duty_cycle:
