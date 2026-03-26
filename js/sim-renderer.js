@@ -334,23 +334,26 @@ class SimRenderer {
         ctx.stroke();
       }
 
-      // S5 node indicator — cyan double ring + label
-      if (n.isS5 && n.battery > 0) {
-        // Outer cyan ring
+      // WalkFlood-upgraded node indicator — purple ring + "WF" label
+      if (n.isWalkFlood && n.battery > 0) {
+        // Outer purple ring (distinct from cyan clusters)
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 3, 0, PI2);
+        ctx.strokeStyle = '#a78bfa'; // purple
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Glow
+        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 6, 0, PI2);
+        ctx.strokeStyle = 'rgba(167,139,250,0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Legacy S5 indicator (backward compat)
+      if (n.isS5 && !n.isWalkFlood && n.battery > 0) {
         ctx.beginPath(); ctx.arc(sx, sy, nodeR + 3, 0, PI2);
         ctx.strokeStyle = '#22d3ee';
         ctx.lineWidth = 2;
         ctx.stroke();
-        // Inner cyan ring
-        ctx.beginPath(); ctx.arc(sx, sy, nodeR + 6, 0, PI2);
-        ctx.strokeStyle = 'rgba(34,211,238,0.4)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        // "S5" label below node
-        ctx.font = 'bold 8px JetBrains Mono';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#22d3ee';
-        ctx.fillText('S5', sx, sy + nodeR + 14);
       }
     }
 

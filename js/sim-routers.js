@@ -434,6 +434,17 @@ function simulateEchoRoute(net, src, dst, rng) {
 
 
 // ---- WalkFlood: Passive Learning + Walk + Mini-Flood ----
+// Nodes that successfully participate in directed routing get marked
+// with .isWalkFlood = true (purple ring) to visualize the migration sweep.
+
+function _markWalkFloodNodes(net, path) {
+  // Every node on a successful directed delivery path "upgrades" to WalkFlood
+  if (!path) return;
+  for (const nid of path) {
+    if (net.nodes[nid]) net.nodes[nid].isWalkFlood = true;
+  }
+}
+
 function simulateWalkFlood(net, src, dst, rng) {
   _echoBootstrap(net); // cached — only runs once per network
 
@@ -496,6 +507,7 @@ function simulateWalkFlood(net, src, dst, rng) {
 
   if (current === dst) {
     _echoLearnFromPath(net, path, tick);
+    _markWalkFloodNodes(net, path);
     return { txEvents, delivered: true, totalTx: txEvents.length, path,
              retries: txEvents.length - path.length + 1, failHop: -1,
              fallback: false, walkFlood: true, phase: 'directed' };
@@ -529,6 +541,7 @@ function simulateWalkFlood(net, src, dst, rng) {
     current = best.id;
     if (current === dst) {
       _echoLearnFromPath(net, path, tick);
+      _markWalkFloodNodes(net, path);
       return { txEvents, delivered: true, totalTx: txEvents.length, path,
                retries: 0, failHop: -1, fallback: false, walkFlood: true, phase: 'walk' };
     }
@@ -551,6 +564,7 @@ function simulateWalkFlood(net, src, dst, rng) {
             _echoLearnFromPath(net, path, tick);
             return { txEvents, delivered: true, totalTx: txEvents.length, path,
                      retries: 0, failHop: -1, fallback: false, walkFlood: true, phase: 'walk+direct' };
+          _markWalkFloodNodes(net, sub_path);
           }
         }
       }
@@ -583,6 +597,7 @@ function simulateWalkFlood(net, src, dst, rng) {
 
   if (deliveryPath) {
     _echoLearnFromPath(net, deliveryPath, tick);
+    _markWalkFloodNodes(net, deliveryPath);
     return { txEvents, delivered: true, totalTx: txEvents.length, path: deliveryPath,
              retries: 0, failHop: -1, fallback: true, walkFlood: true, phase: 'mini-flood' };
   }
