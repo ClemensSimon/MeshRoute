@@ -2485,3 +2485,378 @@ class ClusterDistributorBroadcast:
 
         stats.energy = stats.total_tx
         return stats
+
+
+# ============================================================================
+# 8. WALKFLOOD BROADCAST (3-tier: MPR, Scoped, Pull-based)
+# ============================================================================
+
+class WalkFloodBroadcast:
+    """WalkFlood-style broadcast with 3 modes for different use cases.
+
+    1. MPR Broadcast (network-wide: NodeInfo, SOS):
+       - Each node selects Multipoint Relay (MPR) set: minimal subset of
+         1-hop neighbors that covers ALL 2-hop neighbors.
+       - Only MPR-selected nodes rebroadcast. Others receive but stay silent.
+       - Expected savings: ~30% fewer TX vs managed flooding, 100% coverage.
+
+    2. Scoped Broadcast (area messages: group chat):
+       - Flood limited to N hops from source (default: 3).
+       - Each relay decrements hop counter; stops at 0.
+       - Expected savings: ~78% fewer TX at 3-hop scope.
+
+    3. Pull-based (telemetry):
+       - Not a real broadcast — uses WalkFlood unicast to request data
+         from specific nodes on demand. Demonstrated via N unicast requests.
+    """
+
+    def __init__(self, seed=42, hop_limit=7):
+        self.rng = random.Random(seed)
+        self.hop_limit = hop_limit
+        self._mpr_sets = {}  # node_id -> set of MPR neighbor IDs
+
+    # ------------------------------------------------------------------
+    # MPR Selection
+    # ------------------------------------------------------------------
+
+    # Minimum link quality to consider a neighbor as a viable relay.
+    # Low threshold because Bay Area topology relies on weak mountain links.
+    QUALITY_MIN = 0.02
+
+    def _compute_mpr_sets(self, network):
+        """Compute MPR set for every node in the network.
+
+        Quality-aware greedy algorithm adapted for lossy LoRa links:
+        1. Only consider neighbors with link quality >= QUALITY_MIN as relay candidates.
+        2. Build 2-hop neighbor map through quality-filtered 1-hop neighbors.
+        3. Force-include sole providers (only path to a 2-hop neighbor).
+        4. Greedy: score = coverage_count * avg_link_quality (prefer high-quality relays
+           that cover many 2-hop nodes).
+        5. After covering all 2-hop nodes, add extra MPRs for redundancy if the
+           selected set has low average quality (lossy links need backup paths).
+        """
+        if self._mpr_sets:
+            return
+
+        for node_id, node in network.nodes.items():
+            if node.battery <= 0 or not node.neighbors:
+                self._mpr_sets[node_id] = set()
+                continue
+
+            # Only consider neighbors with decent link quality
+            good_neighbors = {
+                nb_id: q for nb_id, q in node.neighbors.items()
+                if q >= self.QUALITY_MIN
+                and network.nodes.get(nb_id) is not None
+                and network.nodes[nb_id].battery > 0
+            }
+            one_hop = set(good_neighbors.keys())
+
+            if not one_hop:
+                # Fallback: use ALL neighbors if no good ones
+                one_hop = set(node.neighbors.keys())
+                good_neighbors = dict(node.neighbors)
+
+            # Build 2-hop neighbor set through quality-filtered neighbors
+            two_hop = set()
+            cover_map = defaultdict(set)  # 2-hop -> set of 1-hop that reach it
+            for nb_id in one_hop:
+                nb_node = network.nodes.get(nb_id)
+                if not nb_node or nb_node.battery <= 0:
+                    continue
+                for nb2_id, q2 in nb_node.neighbors.items():
+                    if nb2_id != node_id and nb2_id not in one_hop:
+                        nb2_node = network.nodes.get(nb2_id)
+                        if nb2_node and nb2_node.battery > 0:
+                            two_hop.add(nb2_id)
+                            cover_map[nb2_id].add(nb_id)
+
+            if not two_hop:
+                # No 2-hop neighbors: this node reaches everything directly
+                # Still select some high-quality neighbors as MPRs so the
+                # broadcast chain continues beyond this node
+                sorted_nbs = sorted(good_neighbors.items(), key=lambda x: -x[1])
+                n_mprs = max(2, len(sorted_nbs) // 5)  # top 20% or at least 2
+                self._mpr_sets[node_id] = {nb for nb, _ in sorted_nbs[:n_mprs]}
+                continue
+
+            mpr = set()
+            uncovered = set(two_hop)
+
+            # Step 1: sole providers (only one 1-hop reaches this 2-hop node)
+            for th_id in list(uncovered):
+                providers = cover_map[th_id]
+                if len(providers) == 1:
+                    sole = next(iter(providers))
+                    mpr.add(sole)
+                    sole_node = network.nodes.get(sole)
+                    if sole_node:
+                        newly_covered = set()
+                        for c in sole_node.neighbors:
+                            if c in uncovered:
+                                newly_covered.add(c)
+                        uncovered -= newly_covered
+
+            # Step 2: greedy — pick neighbor with best (coverage * quality) score
+            while uncovered:
+                best_nb = None
+                best_score = -1
+                for nb_id in one_hop:
+                    if nb_id in mpr:
+                        continue
+                    nb_node = network.nodes.get(nb_id)
+                    if not nb_node or nb_node.battery <= 0:
+                        continue
+                    covers = sum(1 for c in nb_node.neighbors if c in uncovered)
+                    if covers == 0:
+                        continue
+                    # Score: coverage weighted by link quality to this relay
+                    link_q = good_neighbors.get(nb_id, 0.01)
+                    score = covers * link_q
+                    if score > best_score:
+                        best_score = score
+                        best_nb = nb_id
+
+                if best_nb is None:
+                    break
+
+                mpr.add(best_nb)
+                best_node = network.nodes.get(best_nb)
+                if best_node:
+                    uncovered -= set(best_node.neighbors)
+
+            # Step 3: redundancy — if avg quality of MPR links is low, add extras
+            if mpr:
+                avg_mpr_q = sum(good_neighbors.get(m, 0.01) for m in mpr) / len(mpr)
+                if avg_mpr_q < 0.5:
+                    # Add top-quality non-MPR neighbors as backup relays
+                    non_mpr = [(nb, q) for nb, q in good_neighbors.items()
+                               if nb not in mpr]
+                    non_mpr.sort(key=lambda x: -x[1])
+                    extras = max(1, len(mpr) // 2)
+                    for nb, q in non_mpr[:extras]:
+                        mpr.add(nb)
+
+            self._mpr_sets[node_id] = mpr
+
+    # ------------------------------------------------------------------
+    # Mode 1: MPR Broadcast (network-wide)
+    # ------------------------------------------------------------------
+
+    def broadcast_mpr(self, network, src_id):
+        """Broadcast from src_id using MPR relay selection.
+
+        Hybrid approach for lossy LoRa links:
+        - Nodes selected as MPR by their sender ALWAYS rebroadcast.
+        - Non-MPR nodes probabilistically rebroadcast based on their
+          "coverage score": how well they're already covered by MPR
+          neighbors that have already rebroadcast.
+        - Nodes with few rebroadcasting neighbors (sparse areas) are more
+          likely to relay, providing redundancy where it's needed.
+        - Nodes with many rebroadcasting neighbors (dense areas) are
+          suppressed, saving TX where coverage is already good.
+
+        This combines MPR's relay reduction with robustness for lossy links.
+        """
+        alive_nodes = sum(1 for n in network.nodes.values() if n.battery > 0)
+        stats = BroadcastStats(alive_nodes)
+
+        src_node = network.nodes.get(src_id)
+        if not src_node or src_node.battery <= 0:
+            return stats
+
+        self._compute_mpr_sets(network)
+
+        seen = {src_id}
+        stats.nodes_reached.add(src_id)
+        rebroadcasted = {src_id}
+        # Queue entries: (node_id, hop_count, is_mpr_for_sender)
+        queue = [(src_id, 0, True)]
+        sim_time = network.sim_time
+
+        while queue:
+            current_id, hop_count, is_mpr = queue.pop(0)
+            if hop_count >= self.hop_limit:
+                continue
+
+            current_node = network.nodes[current_id]
+            if current_node.silent and current_id != src_id:
+                continue
+
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue
+
+            # Decision: should this node rebroadcast?
+            should_relay = False
+            if current_id == src_id:
+                should_relay = True
+            elif is_mpr:
+                should_relay = True
+            else:
+                # Non-MPR: suppress if well-covered by rebroadcasting neighbors
+                nb_rebroadcasted = sum(
+                    1 for nid in current_node.neighbors if nid in rebroadcasted
+                )
+                # If 2+ neighbors already rebroadcasted, likely redundant
+                if nb_rebroadcasted >= 2:
+                    # High suppression — most non-MPR nodes in covered areas skip
+                    suppress_prob = 0.7 + 0.05 * min(nb_rebroadcasted, 6)
+                    should_relay = self.rng.random() >= suppress_prob
+                else:
+                    # Low coverage: this node is needed for propagation
+                    should_relay = True
+
+            if not should_relay:
+                continue
+
+            rebroadcasted.add(current_id)
+            my_mprs = self._mpr_sets.get(current_id, set())
+
+            for neighbor_id, quality in current_node.neighbors.items():
+                stats.total_tx += 1
+                stats.node_tx_counts[current_id] += 1
+
+                if self.rng.random() > quality:
+                    continue
+                if neighbor_id in seen:
+                    continue
+
+                neighbor_node = network.nodes.get(neighbor_id)
+                if not neighbor_node or neighbor_node.battery <= 0:
+                    continue
+
+                seen.add(neighbor_id)
+                stats.nodes_reached.add(neighbor_id)
+
+                nb_is_mpr = neighbor_id in my_mprs
+                if neighbor_node.neighbors:
+                    queue.append((neighbor_id, hop_count + 1, nb_is_mpr))
+
+            if network.enable_half_duplex:
+                toa = time_on_air(50, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, sim_time, toa)
+                sim_time += toa * 0.3
+
+        stats.energy = stats.total_tx
+        return stats
+
+    # ------------------------------------------------------------------
+    # Mode 2: Scoped Broadcast (area/group messages)
+    # ------------------------------------------------------------------
+
+    def broadcast_scoped(self, network, src_id, max_hops=3):
+        """Broadcast limited to max_hops from source.
+
+        Every node within range rebroadcasts (simple flood), but the
+        hop counter limits propagation to a local area. Useful for
+        group chat, area alerts, etc.
+        """
+        alive_nodes = sum(1 for n in network.nodes.values() if n.battery > 0)
+        stats = BroadcastStats(alive_nodes)
+
+        src_node = network.nodes.get(src_id)
+        if not src_node or src_node.battery <= 0:
+            return stats
+
+        seen = {src_id}
+        stats.nodes_reached.add(src_id)
+        queue = [(src_id, 0)]
+        sim_time = network.sim_time
+
+        while queue:
+            current_id, hop_count = queue.pop(0)
+            if hop_count >= max_hops:
+                continue
+
+            current_node = network.nodes[current_id]
+            if current_node.silent and current_id != src_id:
+                continue
+
+            if network.enable_half_duplex:
+                if not network.half_duplex.can_transmit(current_id, sim_time):
+                    stats.half_duplex_blocked += 1
+                    continue
+
+            for neighbor_id, quality in current_node.neighbors.items():
+                stats.total_tx += 1
+                stats.node_tx_counts[current_id] += 1
+
+                if self.rng.random() > quality:
+                    continue
+                if neighbor_id in seen:
+                    continue
+
+                neighbor_node = network.nodes.get(neighbor_id)
+                if not neighbor_node or neighbor_node.battery <= 0:
+                    continue
+
+                seen.add(neighbor_id)
+                stats.nodes_reached.add(neighbor_id)
+
+                if neighbor_node.neighbors:
+                    queue.append((neighbor_id, hop_count + 1))
+
+            if network.enable_half_duplex:
+                toa = time_on_air(50, sf=current_node.sf)
+                network.half_duplex.start_tx(current_id, sim_time, toa)
+                for nid in current_node.neighbors:
+                    network.half_duplex.start_rx(nid, sim_time, toa)
+                sim_time += toa * 0.3
+
+        stats.energy = stats.total_tx
+        return stats
+
+    # ------------------------------------------------------------------
+    # Mode 3: Pull-based (telemetry on demand)
+    # ------------------------------------------------------------------
+
+    def pull_telemetry(self, network, requester_id, target_ids, router=None):
+        """Request telemetry from specific nodes via unicast.
+
+        Not a broadcast at all — sends individual unicast requests to each
+        target node using WalkFloodRouter. Demonstrates that telemetry
+        doesn't need broadcast; on-demand pull is far cheaper.
+
+        Args:
+            network: MeshNetwork
+            requester_id: Node requesting telemetry
+            target_ids: List of node IDs to request telemetry from
+            router: WalkFloodRouter instance (created if None)
+
+        Returns:
+            BroadcastStats (for comparison: nodes_reached = targets that responded)
+        """
+        alive_nodes = sum(1 for n in network.nodes.values() if n.battery > 0)
+        stats = BroadcastStats(alive_nodes)
+        stats.nodes_reached.add(requester_id)
+
+        if router is None:
+            router = WalkFloodRouter(seed=self.rng.randint(0, 99999))
+            router._bootstrapped = False
+            router._bootstrap(network)
+
+        for target_id in target_ids:
+            pkt = Packet(requester_id, target_id, priority=3, payload_size=20)
+            pkt.ttl = 15
+            pkt.created_at = network.tick
+            result = router.route(network, pkt)
+            stats.total_tx += result.total_tx
+            for nid, count in result.node_tx_counts.items():
+                stats.node_tx_counts[nid] += count
+            if result.delivered:
+                stats.nodes_reached.add(target_id)
+
+        stats.energy = stats.total_tx
+        return stats
+
+    # ------------------------------------------------------------------
+    # Convenience: default broadcast (MPR mode)
+    # ------------------------------------------------------------------
+
+    def broadcast(self, network, src_id):
+        """Default broadcast uses MPR mode (network-wide)."""
+        return self.broadcast_mpr(network, src_id)

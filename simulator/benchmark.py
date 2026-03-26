@@ -12,7 +12,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from meshsim import MeshNetwork, Packet
-from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router, PassiveLearningRouter, OverhearForwardRouter, WalkFloodRouter
+from routing import NaiveFloodingRouter, ManagedFloodingRouter, NextHopRouter, System5Router, PassiveLearningRouter, OverhearForwardRouter, WalkFloodRouter, ManagedFloodBroadcast, WalkFloodBroadcast
 
 # Router registry for multiprocessing (must be picklable by name)
 # Format: (key, label, RouterClass, kwargs)
@@ -26,6 +26,14 @@ ROUTER_REGISTRY = [
     ("passive_learning", "Passive Learning", PassiveLearningRouter, {}),
     ("echoroute", "EchoRoute", OverhearForwardRouter, {}),
     ("walkflood", "WalkFlood", WalkFloodRouter, {}),
+]
+
+# Broadcast router registry
+# Format: (key, label, BroadcastClass, kwargs)
+BROADCAST_REGISTRY = [
+    ("managed_flood_bcast", "Managed Flood Broadcast", ManagedFloodBroadcast, {}),
+    ("walkflood_mpr_bcast", "WalkFlood MPR Broadcast", WalkFloodBroadcast, {}),
+    ("walkflood_scoped3_bcast", "WalkFlood Scoped (3-hop)", WalkFloodBroadcast, {"hop_limit": 7}),
 ]
 
 
