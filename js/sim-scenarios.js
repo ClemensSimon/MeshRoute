@@ -31,4 +31,10 @@ const SCENARIOS = {
   // Broadcast Comparison
   bc_medium:    { nodes: 80,   area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0, kills:0,    degrade:0,   broadcastMode: true },
   bc_bayarea:   { nodes: 235,  area: 50000, range: 5000, terrain:'urban',       placement:'bay_area',  mobile:0, kills:0,    degrade:0,   broadcastMode: true },
+
+  // Cold Start: watch the mesh self-organize from zero knowledge
+  coldstart_small:  { nodes: 20,  area: 2000,  range: 1200, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, coldstart:true },
+  coldstart_medium: { nodes: 50,  area: 4000,  range: 1800, terrain:'urban',       placement:'clustered', mobile:0,   kills:0,   degrade:0, coldstart:true },
+  coldstart_large:  { nodes: 100, area: 8000,  range: 2500, terrain:'suburban',    placement:'random',    mobile:0,   kills:0,   degrade:0, coldstart:true },
+  coldstart_trail:  { nodes: 25,  area: 6000,  range: 2000, terrain:'rural',       placement:'linear',    mobile:0,   kills:0,   degrade:0, coldstart:true },
 };

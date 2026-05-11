@@ -206,13 +206,24 @@ function resetSim() {
   else if (typeof echoRouteReset === 'function') echoRouteReset();
 
   // Build full network immediately (visible from start)
+  const cfg = SCENARIOS[simState.scenario];
+  const isColdstart = cfg.coldstart === true;
   const netManaged = buildNetwork(simState.scenario, new RNG(42));
-  const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
   rendererManaged.setNetwork(netManaged);
-  rendererSystem5.setNetwork(netSystem5);
+
+  if (isColdstart) {
+    // Cold start: right panel starts bare (no links, no clusters)
+    const netSystem5 = buildBareNetwork(simState.scenario, new RNG(42));
+    rendererSystem5.setNetwork(netSystem5);
+    initColdstart();
+    const titleR = document.querySelector('.sim-panel-title.system5');
+    if (titleR) titleR.textContent = 'System 5 — Cold Start';
+  } else {
+    const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
+    rendererSystem5.setNetwork(netSystem5);
+  }
 
   // Pick random SRC/DST from alive nodes in different clusters for interesting paths
-  const cfg = SCENARIOS[simState.scenario];
   const isBroadcast = cfg.broadcastMode || false;
   const alive = netManaged.nodes.filter(n => n.battery > 0 && Object.keys(n.neighbors).length > 0);
   if (alive.length >= 2) {
@@ -242,15 +253,34 @@ function resetSim() {
     clusters[n.cluster] = (clusters[n.cluster] || 0) + 1;
   }
   const log = document.getElementById('sim-log');
-  const readyHint = isBroadcast
-    ? 'SRC randomly selected for broadcast — <b>click any node</b> to change it before starting.'
-    : 'SRC and DST randomly selected — <b>click any node</b> to change them before starting.';
-  log.innerHTML = `<div class="log-step">
-    <div class="log-header">Network Ready${isBroadcast ? ' (Broadcast Mode)' : ''}</div>
-    <div class="log-dim">${nAlive} nodes, ${nLinks} links, ${Object.keys(clusters).length} clusters, ${nBorder} border nodes.
-    Terrain: ${cfg.terrain}, Range: ${cfg.range}m, Area: ${(cfg.area/1000).toFixed(1)}km</div>
-    <div style="margin-top:0.3rem;color:var(--cyan);">${readyHint}</div>
-  </div>`;
+  if (isColdstart) {
+    log.innerHTML = `<div class="log-step">
+      <div class="log-header">Cold Start Mode</div>
+      <div class="log-columns">
+        <div class="log-col left">
+          <div class="log-col-title log-managed">Managed Flooding</div>
+          Ready immediately — no setup needed. Nodes flood blindly.
+          <br><span class="log-dim">${nAlive} nodes, ${nLinks} links.</span>
+        </div>
+        <div class="log-col right">
+          <div class="log-col-title log-system5">System 5 — Bootstrap</div>
+          Nodes start with <b>zero knowledge</b>. Must self-organize before routing.
+          <br><span class="log-dim">${nAlive} nodes visible, 0 links known, 0 routes.</span>
+        </div>
+      </div>
+      <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance through ${coldstartPhaseCount()} bootstrap phases. After self-organization completes, send a message to compare routing.</div>
+    </div>`;
+  } else {
+    const readyHint = isBroadcast
+      ? 'SRC randomly selected for broadcast — <b>click any node</b> to change it before starting.'
+      : 'SRC and DST randomly selected — <b>click any node</b> to change them before starting.';
+    log.innerHTML = `<div class="log-step">
+      <div class="log-header">Network Ready${isBroadcast ? ' (Broadcast Mode)' : ''}</div>
+      <div class="log-dim">${nAlive} nodes, ${nLinks} links, ${Object.keys(clusters).length} clusters, ${nBorder} border nodes.
+      Terrain: ${cfg.terrain}, Range: ${cfg.range}m, Area: ${(cfg.area/1000).toFixed(1)}km</div>
+      <div style="margin-top:0.3rem;color:var(--cyan);">${readyHint}</div>
+    </div>`;
+  }
 }
 
 function buildNetworkAnimated() {
@@ -812,6 +842,15 @@ function markFinishedBroadcast() {
 
 function toggleRun() {
   if (simState.finished) { resetSim(); return; }
+
+  // Cold start: allow running through bootstrap phases
+  const cfg = SCENARIOS[simState.scenario];
+  if (cfg.coldstart && coldstartState && !isColdstartBootstrapDone()) {
+    simState.running = !simState.running;
+    document.getElementById('btn-start').textContent = simState.running ? 'Pause' : 'Run';
+    return;
+  }
+
   if (!ensureStartable()) return;
   simState.running = !simState.running;
   const hp = simState.hopPlan;
@@ -821,12 +860,113 @@ function toggleRun() {
 
 function stepOne() {
   if (simState.finished) return;
+
+  // Cold start: handle bootstrap phases before normal routing
+  const cfg = SCENARIOS[simState.scenario];
+  if (cfg.coldstart && coldstartState && !isColdstartBootstrapDone()) {
+    advanceColdstartStep();
+    return;
+  }
+  // Cold start bootstrap done but routing not yet started — start it now
+  if (cfg.coldstart && coldstartState && isColdstartBootstrapDone() && !simState.started) {
+    if (!ensureStartable()) return;
+  }
+
   if (!ensureStartable()) return;
   const hp = simState.hopPlan;
   if (hp && hp.isBroadcast) {
     advanceOneHopBroadcast();
   } else {
     advanceOneHop();
+  }
+}
+
+function advanceColdstartStep() {
+  const net = rendererSystem5.net;
+  const result = advanceColdstartPhase(net, rendererSystem5);
+  if (!result) return;
+
+  const { phaseInfo, phaseIndex, events } = result;
+  const gen = simState.generation;
+  const log = document.getElementById('sim-log');
+
+  // Update right panel title
+  const titleR = document.querySelector('.sim-panel-title.system5');
+  if (titleR) titleR.textContent = `Phase ${phaseIndex + 1}: ${phaseInfo.title}`;
+
+  // Animate events on the right panel
+  rendererSystem5.clearReached();
+  for (const ev of events) {
+    rendererSystem5.addPacket(ev.from, ev.to, ev.color, () => {
+      if (simState.generation !== gen) return;
+      rendererSystem5.markReached(ev.to);
+      rendererSystem5.markEdgeReached(ev.from, ev.to);
+    });
+  }
+
+  // Recompute cluster bounds after cluster phase
+  if (phaseInfo.id === 'cluster') {
+    const clusterBounds = {};
+    for (const n of net.nodes) {
+      if (n.battery <= 0) continue;
+      if (!clusterBounds[n.cluster]) {
+        clusterBounds[n.cluster] = { minX: n.x, maxX: n.x, minY: n.y, maxY: n.y };
+      } else {
+        const b = clusterBounds[n.cluster];
+        b.minX = Math.min(b.minX, n.x); b.maxX = Math.max(b.maxX, n.x);
+        b.minY = Math.min(b.minY, n.y); b.maxY = Math.max(b.maxY, n.y);
+      }
+    }
+    net.clusterBounds = clusterBounds;
+  }
+
+  const knownLinks = net.links.filter(l => l.alive).length;
+  const knownBorders = net.nodes.filter(n => n.border).length;
+  const nClusters = net.clusterBounds ? Object.keys(net.clusterBounds).length : 0;
+
+  // Build log entry
+  let rightHtml = `<b>${phaseInfo.title}</b><br>${phaseInfo.desc}`;
+  if (phaseInfo.id === 'hello') {
+    rightHtml += `<br><span class="log-dim">${events.length} HELLO beacons exchanged.</span>`;
+  } else if (phaseInfo.id === 'links') {
+    rightHtml += `<br><span class="log-dim">${knownLinks} links established.</span>`;
+  } else if (phaseInfo.id === 'cluster') {
+    rightHtml += `<br><span class="log-dim">${nClusters} clusters formed.</span>`;
+  } else if (phaseInfo.id === 'border') {
+    rightHtml += `<br><span class="log-dim">${knownBorders} border nodes elected.</span>`;
+  } else if (phaseInfo.id === 'ogm') {
+    rightHtml += `<br><span class="log-dim">${events.length} OGM packets propagated. Route tables converging.</span>`;
+  } else if (phaseInfo.id === 'ready') {
+    rightHtml += `<br><span class="log-good">Self-organization complete! Press Step to send a message.</span>`;
+  }
+
+  let leftHtml = '';
+  if (phaseIndex === 0) {
+    leftHtml = `Managed Flooding needs <b>no setup</b>. It can send immediately by flooding to all neighbors.`
+      + `<br><span class="log-dim">No routing table, no cluster knowledge. Trade-off: O(n) TX per hop.</span>`;
+  } else if (phaseInfo.id === 'ready') {
+    leftHtml = `<span class="log-dim">Still ready. Waiting for message dispatch...</span>`;
+  } else {
+    leftHtml = `<span class="log-dim">Already operational — no bootstrap needed.</span>`;
+  }
+
+  const stepDiv = document.createElement('div');
+  stepDiv.className = 'log-step';
+  stepDiv.innerHTML = `<div class="log-header">Phase ${phaseIndex + 1} / ${COLDSTART_PHASES.length}</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>${leftHtml}
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">System 5 Bootstrap</div>${rightHtml}
+      </div>
+    </div>`;
+  log.appendChild(stepDiv);
+  log.scrollTop = log.scrollHeight;
+
+  if (isColdstartBootstrapDone()) {
+    const titleR2 = document.querySelector('.sim-panel-title.system5');
+    if (titleR2) titleR2.textContent = 'System 5 (MeshRoute)';
   }
 }
 
@@ -1059,14 +1199,28 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   // Auto-advance hops when running
-  if (simState.running && !simState.finished && simState.hopPlan) {
+  if (simState.running && !simState.finished) {
     autoDispatchTimer += dt * simState.speed;
-    const interval = 1.5; // seconds between hops — wait for wave to arrive before next hop
-    if (autoDispatchTimer >= interval) {
-      const hp = simState.hopPlan;
-      if (hp && hp.isBroadcast) advanceOneHopBroadcast();
-      else advanceOneHop();
-      autoDispatchTimer -= interval;
+    const interval = 1.5;
+
+    // Cold start: auto-advance through bootstrap phases
+    const cfg = SCENARIOS[simState.scenario];
+    if (cfg && cfg.coldstart && coldstartState && !isColdstartBootstrapDone()) {
+      if (autoDispatchTimer >= interval) {
+        advanceColdstartStep();
+        autoDispatchTimer -= interval;
+        if (isColdstartBootstrapDone()) {
+          simState.running = false;
+          document.getElementById('btn-start').textContent = 'Run';
+        }
+      }
+    } else if (simState.hopPlan) {
+      if (autoDispatchTimer >= interval) {
+        const hp = simState.hopPlan;
+        if (hp && hp.isBroadcast) advanceOneHopBroadcast();
+        else advanceOneHop();
+        autoDispatchTimer -= interval;
+      }
     }
   }
 
