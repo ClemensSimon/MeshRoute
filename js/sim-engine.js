@@ -208,6 +208,7 @@ function resetSim() {
   // Build full network immediately (visible from start)
   const cfg = SCENARIOS[simState.scenario];
   const isColdstart = cfg.coldstart === true;
+  const isConversion = cfg.conversion === true;
   const netManaged = buildNetwork(simState.scenario, new RNG(42));
   rendererManaged.setNetwork(netManaged);
 
@@ -218,6 +219,13 @@ function resetSim() {
     initColdstart();
     const titleR = document.querySelector('.sim-panel-title.system5');
     if (titleR) titleR.textContent = 'System 5 — Cold Start';
+  } else if (isConversion) {
+    // Conversion: same network, progressively upgrade nodes
+    const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
+    rendererSystem5.setNetwork(netSystem5);
+    initConversion();
+    const titleR = document.querySelector('.sim-panel-title.system5');
+    if (titleR) titleR.textContent = 'Conversion: 0% S5';
   } else {
     const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
     rendererSystem5.setNetwork(netSystem5);
@@ -253,7 +261,22 @@ function resetSim() {
     clusters[n.cluster] = (clusters[n.cluster] || 0) + 1;
   }
   const log = document.getElementById('sim-log');
-  if (isColdstart) {
+  if (isConversion) {
+    log.innerHTML = `<div class="log-step">
+      <div class="log-header">Conversion Mode — Legacy to S5 Migration</div>
+      <div class="log-columns">
+        <div class="log-col left">
+          <div class="log-col-title log-managed">Managed Flooding (Baseline)</div>
+          Always the same — pure flooding. ${nAlive} nodes, ${nLinks} links.
+        </div>
+        <div class="log-col right">
+          <div class="log-col-title log-system5">Dual-Mode (Progressive)</div>
+          Watch TX cost drop as more nodes upgrade from Legacy to S5.
+        </div>
+      </div>
+      <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance through ${conversionPhaseCount()} migration phases (0% → 90% S5). Same message, same network — only the S5 ratio changes.</div>
+    </div>`;
+  } else if (isColdstart) {
     log.innerHTML = `<div class="log-step">
       <div class="log-header">Cold Start Mode</div>
       <div class="log-columns">
@@ -843,9 +866,14 @@ function markFinishedBroadcast() {
 function toggleRun() {
   if (simState.finished) { resetSim(); return; }
 
-  // Cold start: allow running through bootstrap phases
+  // Cold start / Conversion: allow running through phases
   const cfg = SCENARIOS[simState.scenario];
   if (cfg.coldstart && coldstartState && !isColdstartBootstrapDone()) {
+    simState.running = !simState.running;
+    document.getElementById('btn-start').textContent = simState.running ? 'Pause' : 'Run';
+    return;
+  }
+  if (cfg.conversion && conversionState && !isConversionMigrationDone()) {
     simState.running = !simState.running;
     document.getElementById('btn-start').textContent = simState.running ? 'Pause' : 'Run';
     return;
@@ -867,9 +895,14 @@ function stepOne() {
     advanceColdstartStep();
     return;
   }
-  // Cold start bootstrap done but routing not yet started — start it now
   if (cfg.coldstart && coldstartState && isColdstartBootstrapDone() && !simState.started) {
     if (!ensureStartable()) return;
+  }
+
+  // Conversion: handle migration phases
+  if (cfg.conversion && conversionState && !isConversionMigrationDone()) {
+    advanceConversionStep();
+    return;
   }
 
   if (!ensureStartable()) return;
@@ -967,6 +1000,110 @@ function advanceColdstartStep() {
   if (isColdstartBootstrapDone()) {
     const titleR2 = document.querySelector('.sim-panel-title.system5');
     if (titleR2) titleR2.textContent = 'System 5 (MeshRoute)';
+  }
+}
+
+function advanceConversionStep() {
+  const net = rendererSystem5.net;
+  const src = simState.pickedSrc;
+  const dst = simState.pickedDst;
+
+  if (src < 0 || dst < 0) {
+    document.getElementById('endpoint-display').innerHTML =
+      '<span style="color:#f87171">Select SRC and DST nodes first!</span>';
+    return;
+  }
+
+  const result = advanceConversionPhase(net, src, dst);
+  if (!result) return;
+
+  const { phaseInfo, phaseIndex, ratio, nUpgraded, upgradedIds, mfResult, dualResult } = result;
+  const gen = simState.generation;
+  const log = document.getElementById('sim-log');
+
+  // Update right panel title
+  const titleR = document.querySelector('.sim-panel-title.system5');
+  if (titleR) titleR.textContent = phaseInfo.label;
+
+  // Visualize: animate dual-mode events on the right panel
+  rendererSystem5.clearReached();
+  rendererSystem5.deliveryNodes = new Set();
+  rendererSystem5.deliveryEdges = new Set();
+  for (const ev of dualResult.txEvents) {
+    const color = ev.mode === 's5' ? '#22d3ee' : '#fb923c';
+    rendererSystem5.addPacket(ev.from, ev.to, color, () => {
+      if (simState.generation !== gen) return;
+      rendererSystem5.markReached(ev.to);
+      rendererSystem5.markEdgeReached(ev.from, ev.to);
+    });
+  }
+
+  // Also flash on managed side for comparison
+  rendererManaged.clearReached();
+  for (const ev of mfResult.txEvents) {
+    rendererManaged.addPacket(ev.from, ev.to, '#fb923c', () => {
+      if (simState.generation !== gen) return;
+      rendererManaged.markReached(ev.to);
+      rendererManaged.markEdgeReached(ev.from, ev.to);
+    });
+  }
+
+  // Build log
+  const pct = Math.round(ratio * 100);
+  const savings = mfResult.totalTx > 0 ? ((1 - dualResult.totalTx / mfResult.totalTx) * 100).toFixed(0) : '0';
+
+  let rightHtml = `<b>${phaseInfo.label}</b><br>${phaseInfo.desc}`
+    + `<br><span class="log-dim">${nUpgraded} of ${net.nodes.filter(n => n.battery > 0).length} nodes upgraded.</span>`;
+
+  if (dualResult.mode === 'direct' && dualResult.path) {
+    rightHtml += `<br><span class="log-path">Direct S5 route: ${dualResult.path.join(' → ')} (${dualResult.path.length - 1} hops, ${dualResult.totalTx} TX)</span>`;
+  } else {
+    const s5Tx = result.s5TxCount;
+    const floodTx = result.floodTxCount;
+    rightHtml += `<br><span class="log-dim">${dualResult.totalTx} TX total`
+      + (s5Tx > 0 ? ` (<span class="log-path">${s5Tx} directed</span> + <span class="log-flood">${floodTx} flood</span>)` : '')
+      + `</span>`;
+  }
+
+  const stepDiv = document.createElement('div');
+  stepDiv.className = 'log-step';
+  stepDiv.innerHTML = `<div class="log-header">Migration Phase ${phaseIndex + 1} / ${CONVERSION_PHASES.length}: ${pct}% S5</div>
+    <div class="log-columns">
+      <div class="log-col left">
+        <div class="log-col-title log-managed">Managed Flooding</div>
+        ${mfResult.delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">Failed</span>'}
+        — <span class="log-flood">${mfResult.totalTx} TX</span>
+        <br><span class="log-dim">Same result every phase — flooding doesn't improve.</span>
+      </div>
+      <div class="log-col right">
+        <div class="log-col-title log-system5">Dual-Mode (${pct}% S5)</div>
+        ${dualResult.delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">Failed</span>'}
+        — <span class="log-path">${dualResult.totalTx} TX</span>
+        <br>${rightHtml}
+      </div>
+    </div>
+    ${+savings > 0 ? `<div class="log-comparison"><span class="log-savings">${savings}% fewer TX</span> than pure flooding.</div>` : ''}`;
+  log.appendChild(stepDiv);
+  log.scrollTop = log.scrollHeight;
+
+  // Update stats
+  rendererManaged.stats.tx = mfResult.totalTx;
+  rendererManaged.stats.sent = 1;
+  rendererManaged.stats.delivered = mfResult.delivered ? 1 : 0;
+  rendererSystem5.stats.tx = dualResult.totalTx;
+  rendererSystem5.stats.sent = 1;
+  rendererSystem5.stats.delivered = dualResult.delivered ? 1 : 0;
+
+  // After last phase: show summary table
+  if (isConversionMigrationDone()) {
+    const sumDiv = document.createElement('div');
+    sumDiv.className = 'log-step';
+    sumDiv.innerHTML = `<div class="log-header">Migration Summary</div>
+      ${buildConversionSummaryHtml()}
+      <div class="log-dim" style="margin-top:0.5rem;">Each row shows the same message on the same network — only the percentage of S5-capable nodes changes.</div>`;
+    log.appendChild(sumDiv);
+    log.scrollTop = log.scrollHeight;
+    markFinished();
   }
 }
 
@@ -1213,6 +1350,11 @@ function loop(timestamp) {
           simState.running = false;
           document.getElementById('btn-start').textContent = 'Run';
         }
+      }
+    } else if (cfg && cfg.conversion && conversionState && !isConversionMigrationDone()) {
+      if (autoDispatchTimer >= interval) {
+        advanceConversionStep();
+        autoDispatchTimer -= interval;
       }
     } else if (simState.hopPlan) {
       if (autoDispatchTimer >= interval) {

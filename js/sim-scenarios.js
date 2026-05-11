@@ -37,4 +37,9 @@ const SCENARIOS = {
   coldstart_medium: { nodes: 50,  area: 4000,  range: 1800, terrain:'urban',       placement:'clustered', mobile:0,   kills:0,   degrade:0, coldstart:true },
   coldstart_large:  { nodes: 100, area: 8000,  range: 2500, terrain:'suburban',    placement:'random',    mobile:0,   kills:0,   degrade:0, coldstart:true },
   coldstart_trail:  { nodes: 25,  area: 6000,  range: 2000, terrain:'rural',       placement:'linear',    mobile:0,   kills:0,   degrade:0, coldstart:true },
+
+  // Conversion: progressive migration from Legacy to S5
+  convert_medium:   { nodes: 80,  area: 5000,  range: 2000, terrain:'urban',       placement:'random',    mobile:0,   kills:0,   degrade:0, conversion:true },
+  convert_large:    { nodes: 150, area: 10000, range: 3000, terrain:'suburban',    placement:'random',    mobile:0,   kills:0,   degrade:0, conversion:true },
+  convert_community:{ nodes: 80,  area: 8000,  range: 2500, terrain:'suburban',    placement:'clustered', mobile:0,   kills:0,   degrade:0, conversion:true },
 };
