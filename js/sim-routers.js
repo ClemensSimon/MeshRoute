@@ -27,6 +27,8 @@ function bfsPath(nodes, links, src, dst, skipHidden = false) {
 
 // ---- Routing Simulators (return rich explanation data) ----
 function simulateManagedFlood(net, src, dst, rng, hopLimit = 7) {
+  if (src === dst) return { txEvents: [], delivered: true, totalTx: 0, suppressed: 0,
+    failedRx: 0, droppedByLimit: 0, nodesReached: 1, rebroadcasters: 0, hopLimit };
   const txEvents = []; // [{from, to, time, hop}]
   const seen = new Set([src]);
   const rebroadcast = new Set([src]);
@@ -91,6 +93,8 @@ function simulateManagedFlood(net, src, dst, rng, hopLimit = 7) {
 }
 
 function simulateSystem5(net, src, dst, rng) {
+  if (src === dst) return { txEvents: [], delivered: true, totalTx: 0, path: [src],
+    retries: 0, failHop: -1, fallback: false };
   // Try primary path first, then alternative, then scoped fallback flooding
   const MAX_RETRIES = 3;
 
@@ -635,7 +639,6 @@ function simulateWalkFlood(net, src, dst, rng) {
             _echoLearnFromPath(net, path, tick);
             return { txEvents, delivered: true, totalTx: txEvents.length, path,
                      retries: 0, failHop: -1, fallback: false, walkFlood: true, phase: 'walk+direct' };
-          _markWalkFloodNodes(net, sub_path);
           }
         }
       }

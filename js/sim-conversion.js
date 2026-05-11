@@ -78,16 +78,19 @@ function advanceConversionPhase(net, src, dst) {
   }
 
   // Simulate managed flooding (always the same — baseline)
+  // Use different RNG seeds so random suppression doesn't produce identical results
   const mfResult = simulateManagedFlood(net, src, dst, new RNG(42));
 
   // Simulate dual-mode with current S5 ratio
+  // Use a different RNG seed (99) so suppression randomness differs from managed flood,
+  // except at 0% where we want identical results for a fair baseline.
   let dualResult;
   if (phaseInfo.ratio === 0) {
-    // 0% S5 = pure managed flooding (same as left panel)
+    // 0% S5 = pure managed flooding — same seed as baseline for identical result
     dualResult = simulateManagedFlood(net, src, dst, new RNG(42));
     dualResult.mode = 'flood';
   } else {
-    dualResult = simulateDualMode(net, src, dst, new RNG(42));
+    dualResult = simulateDualMode(net, src, dst, new RNG(99));
   }
 
   // Group dual-mode events by hop for animation
