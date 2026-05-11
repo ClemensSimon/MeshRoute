@@ -643,7 +643,7 @@ function prepareHopByHop() {
           : `Node ${src} looks up Node ${dst} in its <b>routing table</b>.<br>${rightIntro}`}
       </div>
     </div>
-    <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance one hop at a time, or <b>Run</b> for auto-play.${isMixed ? '<br>Nodes with <b>white diamond</b> = S5-capable. Others = Legacy (flood only).' : ''}</div>`;
+    <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance one hop at a time, or <b>Run</b> for auto-play.${isMixed ? '<br>Nodes with <b>white diamond</b> = V6-capable. Others = Legacy (flood only).' : ''}</div>`;
   log.appendChild(introDiv);
   log.scrollTop = log.scrollHeight;
 }
@@ -1056,7 +1056,7 @@ function advanceConversionStep() {
     + `<br><span class="log-dim">${nUpgraded} of ${net.nodes.filter(n => n.battery > 0).length} nodes upgraded.</span>`;
 
   if (dualResult.mode === 'direct' && dualResult.path) {
-    rightHtml += `<br><span class="log-path">Direct S5 route: ${dualResult.path.join(' → ')} (${dualResult.path.length - 1} hops, ${dualResult.totalTx} TX)</span>`;
+    rightHtml += `<br><span class="log-path">Direct V6 route: ${dualResult.path.join(' → ')} (${dualResult.path.length - 1} hops, ${dualResult.totalTx} TX)</span>`;
   } else {
     const s5Tx = result.s5TxCount;
     const floodTx = result.floodTxCount;
@@ -1100,7 +1100,7 @@ function advanceConversionStep() {
     sumDiv.className = 'log-step';
     sumDiv.innerHTML = `<div class="log-header">Migration Summary</div>
       ${buildConversionSummaryHtml()}
-      <div class="log-dim" style="margin-top:0.5rem;">Each row shows the same message on the same network — only the percentage of S5-capable nodes changes.</div>`;
+      <div class="log-dim" style="margin-top:0.5rem;">Each row shows the same message on the same network — only the percentage of V6-capable nodes changes.</div>`;
     log.appendChild(sumDiv);
     log.scrollTop = log.scrollHeight;
     markFinished();
@@ -1189,14 +1189,14 @@ function advanceOneHop() {
     const floodTxs = dEvents.filter(e => e.mode === 'flood').length;
     s5Html = `<span class="log-flood">${s5TxThisHop} TX</span>`;
     if (s5Txs > 0 && floodTxs > 0) {
-      s5Html += ` (<span class="log-path">${s5Txs} S5-direct</span> + <span class="log-managed">${floodTxs} flood</span>)`;
+      s5Html += ` (<span class="log-path">${s5Txs} V6-direct</span> + <span class="log-managed">${floodTxs} flood</span>)`;
     } else if (s5Txs > 0) {
-      s5Html += ` (all <span class="log-path">S5-direct</span>)`;
+      s5Html += ` (all <span class="log-path">V6-direct</span>)`;
     } else {
-      s5Html += ` (all <span class="log-managed">flood</span> — no S5 nodes in this hop)`;
+      s5Html += ` (all <span class="log-managed">flood</span> — no V6 nodes in this hop)`;
     }
     if (dDelivered) s5Html += `<br><span class="log-good">DST reached!</span>`;
-    s5Html += `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. S5 nodes send directed (1 TX), Legacy nodes flood to all neighbors.</span>`;
+    s5Html += `<br><span class="log-dim">Total: ${hp.s5TotalTxSoFar} TX. V6 nodes send directed (1 TX), Legacy nodes flood to all neighbors.</span>`;
 
   } else if (hop < hp.s5Hops && hp.s5Path) {
     // Pure System 5 directed routing — 1 TX per hop

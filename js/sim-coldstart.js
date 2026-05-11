@@ -1,7 +1,7 @@
 // MeshRoute Simulator - Cold Start Self-Organization Mode
-// Shows how System 5 bootstraps from zero knowledge to directed routing.
+// Shows how System V6 bootstraps from zero knowledge to directed routing.
 // Left panel: Managed Flooding (works immediately, no setup).
-// Right panel: System 5 phases — network knowledge builds step by step.
+// Right panel: System V6 phases — network knowledge builds step by step.
 
 const COLDSTART_PHASES = [
   { id: 'poweron', title: 'Nodes Power On',
@@ -17,7 +17,7 @@ const COLDSTART_PHASES = [
   { id: 'ogm', title: 'Route Table Building (OGMs)',
     desc: 'Originator Messages (OGMs) propagate through the mesh. Each node learns the best next-hop to every destination. Watch routes converge.' },
   { id: 'ready', title: 'Self-Organization Complete',
-    desc: 'Every node now has a routing table. System 5 can route messages along directed paths — 1 TX per hop, no flooding. Select SRC/DST and press Step to compare.' },
+    desc: 'Every node now has a routing table. System V6 can route messages along directed paths — 1 TX per hop, no flooding. Select SRC/DST and press Step to compare.' },
 ];
 
 let coldstartState = null;

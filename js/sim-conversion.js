@@ -1,14 +1,14 @@
 // MeshRoute Simulator - Conversion Scenario
-// Shows progressive migration from 100% Legacy to 90% S5 on the same network.
+// Shows progressive migration from 100% Legacy to 90% V6 on the same network.
 // Each phase upgrades more nodes and re-routes the same message.
 
 const CONVERSION_PHASES = [
-  { ratio: 0,    label: '0% S5 — Pure Legacy',     desc: 'All nodes use managed flooding. This is today\'s Meshtastic. Every node rebroadcasts to all neighbors.' },
-  { ratio: 0.10, label: '10% S5 — Early Adopters',  desc: 'A few nodes upgraded. S5 islands form but can\'t connect to each other. Hybrid flooding may cost MORE than pure flooding — this is the migration tax.' },
-  { ratio: 0.30, label: '30% S5 — Islands Growing', desc: 'S5 islands grow but rarely connect end-to-end. Hybrid mode adds overhead until a full S5 path exists.' },
-  { ratio: 0.50, label: '50% S5 — Approaching Critical Mass',   desc: 'Half the network is S5. If a full S5 path exists, TX drops dramatically. If not, hybrid overhead persists.' },
-  { ratio: 0.70, label: '70% S5 — Near Tipping Point', desc: 'Most nodes are S5. The probability of a full S5 path is high. When it connects: 1 TX per hop.' },
-  { ratio: 0.90, label: '90% S5 — Directed Routing',  desc: 'Full S5 paths almost always exist. Directed routing delivers in ~5 TX what flooding needs ~800 for.' },
+  { ratio: 0,    label: '0% V6 — Pure Legacy',     desc: 'All nodes use managed flooding. This is today\'s Meshtastic. Every node rebroadcasts to all neighbors.' },
+  { ratio: 0.10, label: '10% V6 — Early Adopters',  desc: 'A few nodes upgraded. V6 islands form but can\'t connect to each other. Hybrid flooding may cost MORE than pure flooding — this is the migration tax.' },
+  { ratio: 0.30, label: '30% V6 — Islands Growing', desc: 'V6 islands grow but rarely connect end-to-end. Hybrid mode adds overhead until a full V6 path exists.' },
+  { ratio: 0.50, label: '50% V6 — Approaching Critical Mass',   desc: 'Half the network is V6. If a full V6 path exists, TX drops dramatically. If not, hybrid overhead persists.' },
+  { ratio: 0.70, label: '70% V6 — Near Tipping Point', desc: 'Most nodes are V6. The probability of a full V6 path is high. When it connects: 1 TX per hop.' },
+  { ratio: 0.90, label: '90% V6 — Directed Routing',  desc: 'Full V6 paths almost always exist. Directed routing delivers in ~5 TX what flooding needs ~800 for.' },
 ];
 
 let conversionState = null;
@@ -152,7 +152,7 @@ function buildConversionSummaryHtml() {
   }
   return `<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <tr style="border-bottom:1px solid var(--border);color:var(--text-dim);">
-      <th style="text-align:left;padding:0.3rem 0.5rem;">S5 %</th>
+      <th style="text-align:left;padding:0.3rem 0.5rem;">V6 %</th>
       <th style="text-align:right;padding:0.3rem 0.5rem;">Flood TX</th>
       <th style="text-align:right;padding:0.3rem 0.5rem;">Dual TX</th>
       <th style="text-align:right;padding:0.3rem 0.5rem;">Saved</th>
