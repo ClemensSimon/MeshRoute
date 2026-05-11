@@ -96,17 +96,28 @@ Route tables + position packets = movement tracking. V6's topology knowledge amp
 
 ## Part 3: Resilience Analysis
 
-**Node Failure Recovery**: MPR/ECHO backbone nodes dying causes temporary coverage gaps. V6 reconverges via passive learning from subsequent traffic. Worst case: falls back to managed flooding for affected routes. *Mitigation*: Redundant MPR (2-coverage), route expiry timeout forcing re-learn.
+**CRITICAL MISSING FEATURE: Route/Neighbor Expiry.** V6 currently never removes stale routes or neighbors. This single gap causes 5 of the resilience issues below. Adding a configurable TTL (e.g., 300s) to all route and neighbor entries is the highest-priority fix.
 
-**Network Partition & Merge**: Stale routes point to unreachable nodes after partition. When segments merge, conflicting route tables. *Mitigation*: Route expiry (5-10 minutes). On merge, ECHO mechanism naturally recalibrates backbone.
+**Node Failure Recovery (HIGH)**: MPR/ECHO backbone nodes dying causes silent packet loss until MPR recomputation triggers (every 50 observations). ECHO mechanism can make it worse by self-suppressing nodes that lost their relay. *Fix*: Neighbor timeout triggers immediate MPR recomputation. Redundant MPR (2-coverage).
 
-**Mobile Nodes**: V6 neighbor tables go stale when nodes move. MPR sets become invalid. *Mitigation*: Aggressive route expiry for mobile nodes (detect via position delta). Re-compute MPR on neighbor changes.
+**Network Partition & Merge (HIGH)**: Stale routes persist from before partition. After merge, conflicting route tables produce suboptimal paths. *Fix*: Route expiry (5 min). On merge: flush entries when many new NodeIDs suddenly appear.
 
-**Congestion Collapse**: V6 reduces TX by 57-61%, which delays congestion onset but doesn't prevent it. At extreme density (1000+ nodes), even suppressed traffic saturates the channel. *Mitigation*: Combine with Meshtastic's channel utilization gating (25% threshold). GPS-TDMA for deterministic scheduling.
+**Mobile Nodes (HIGH)**: V6 stores stale RSSI/relay data for moved nodes. A driving node exits cluster range in seconds. *Fix*: Age-out neighbors not heard within 2x position update interval. RSSI-based route validity check.
 
-**Graceful Degradation**: When V6 routes expire (no traffic for timeout period), node has empty route table = falls back to managed flooding behavior automatically. Transition is smooth — first packet floods, subsequent packets use learned routes.
+**Congestion Collapse (HIGH)**: V6 delays collapse but doesn't prevent it. At 50 nodes with 3-hop flooding, raw rebroadcast rate (7.5 pkt/s) exceeds channel capacity (2 pkt/s). V6 must achieve >75% suppression to avoid collapse. *Fix*: Channel utilization-aware suppression (already available via `channelUtilizationPercent()`). Backpressure signaling.
 
-**Byzantine Fault Tolerance**: With N% malicious nodes: at 10%, V6 still functions (routes around bad nodes via redundant MPRs). At 30%+, V6 degrades to flooding. Managed flooding is slightly more resilient here because it doesn't trust any specific relay — but it also can't detect or avoid malicious nodes.
+**Graceful Degradation (MEDIUM)**: Fresh start → clean flooding fallback (correct). Partially stale state → dangerous intermediate where old MPR/ECHO data causes packet loss. *Fix*: Confidence metric: bypass MPR/ECHO suppression when fewer than N fresh observations exist.
+
+**Byzantine Fault Tolerance (HIGH)**: V6 is LESS Byzantine-tolerant than managed flooding because MPR concentrates trust. At 10% malicious nodes: ~27% chance per node of having compromised MPR. At 20%: ~49%. *Fix*: Redundant MPR (2-coverage) + probabilistic forwarding fallback (non-MPR nodes forward at 10% probability).
+
+### Real-World Failure Incidents (Meshtastic)
+
+| Incident | Root Cause | V6 Impact |
+|---|---|---|
+| **Hamvention 2024** | Single MQTT bridge flooded network | V6 reduces amplification, but MQTT injection bypasses suppression |
+| **DEF CON 33 (2000+ nodes)** | NodeDB eviction (100 entry limit), NodeInfo spoofing | V6 neighbor tables equally vulnerable to eviction |
+| **CVE-2025-24798** | Crafted routing packet crashes firmware | V6 route learning code paths need fuzz-testing |
+| **v2.5 bidirectional failure** | HAM mode disabled PKC, breaking DM return path | V6 should validate bidirectional reachability |
 
 ---
 
@@ -126,11 +137,25 @@ Route tables + position packets = movement tracking. V6's topology knowledge amp
 
 ---
 
+## Top 5 Priority Fixes (Security + Resilience)
+
+These must be implemented before any further optimization:
+
+1. **Route/Neighbor Expiry** — Resolves 5 resilience issues (node failure, partition, mobile, degradation, privacy). Single highest-impact fix. Add TTL to all v6_routes and v6_neighbors entries.
+
+2. **Header Authentication (HMAC)** — Resolves route poisoning (CRITICAL), MPR manipulation, replay attacks. Derive HMAC key from channel PSK (zero-cost, PSK already available). Include in encrypted payload covering header fields.
+
+3. **Watchdog Mechanism** — Detects blackhole nodes and Byzantine MPRs. After forwarding, listen for next-hop's retransmission. Maintain per-neighbor reliability score. Demote unreliable relays.
+
+4. **Redundant MPR (2-coverage)** — Tolerate single MPR failure. Select 2 independent MPR sets. Probabilistic fallback: non-MPR nodes forward at 10% probability for baseline resilience.
+
+5. **Channel Utilization-Aware Suppression** — Prevent congestion collapse. Use existing `channelUtilizationPercent()` to dynamically increase suppression when channel is busy (>25% → strict MPR only, >40% → suppress all non-essential).
+
 ## Recommended Implementation Order
 
-1. **Now**: Gossip probability + NeighborInfo consumption (low effort, immediate TX reduction)
-2. **Next**: Network coding (XOR at relays) — biggest single improvement
-3. **Then**: Route authentication (HMAC) + watchdog — security hardening
+1. **Now**: Route expiry + gossip probability + NeighborInfo consumption
+2. **Next**: HMAC authentication + watchdog mechanism
+3. **Then**: Network coding (XOR at relays) — biggest TX optimization
 4. **Later**: GPS-TDMA, hierarchical clustering, SF optimization
 
 ---
