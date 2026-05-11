@@ -16,14 +16,14 @@ Thank you for the detailed feedback! Your questions about half-duplex blocking a
 | **Emergency Re-Route** | *"only one path works, 3 single points of failure"* | Fresh BFS excluding failed nodes before corridor flooding |
 | **Bay Area Topology** | *"mountaintop routers hear 10 rooftop nodes simultaneously"* | 3-tier simulation: 7 mountain + 35 hill + 193 valley nodes |
 
-For the technical deep-dive on each feature, see **[How System 5 Works](https://clemenssimon.github.io/MeshRoute/how-it-works.html)** — specifically the sections on [Node Silencing](https://clemenssimon.github.io/MeshRoute/how-it-works.html#silencing), [Half-Duplex](https://clemenssimon.github.io/MeshRoute/how-it-works.html#halfduplex), and [Sequence Numbers](https://clemenssimon.github.io/MeshRoute/how-it-works.html#seqnums).
+For the technical deep-dive on each feature, see **[How System V6 Works](https://clemenssimon.github.io/MeshRoute/how-it-works.html)** — specifically the sections on [Node Silencing](https://clemenssimon.github.io/MeshRoute/how-it-works.html#silencing), [Half-Duplex](https://clemenssimon.github.io/MeshRoute/how-it-works.html#halfduplex), and [Sequence Numbers](https://clemenssimon.github.io/MeshRoute/how-it-works.html#seqnums).
 
 ---
 
 ## Bay Area Results (235 nodes, half-duplex, averaged over 5 random seeds)
 
 ```
-                    Managed Flood    System 5    S5 + Silencing
+                    Managed Flood    System V6    S5 + Silencing
 Delivery Rate           ~6%          ~74%          ~70%
 Total TX               ~7K          ~516K         ~284K
 Under Stress           ~5%          ~55%          ~49%
@@ -31,7 +31,7 @@ Nodes Silenced            0             0        134 (57%)
 Fallback Floods           —           ~70           ~72
 ```
 
-**Key finding:** Half-duplex collapses managed flooding from ~87% to ~6% delivery — your SUNL problem exactly. Mountaintop stuck in RX from 10+ simultaneous rebroadcasts. System 5's directed routing holds at ~74%. Node Silencing halves TX cost (~516K to ~284K) by muting 128 of 193 valley nodes. All 7 mountain nodes stay active.
+**Key finding:** Half-duplex collapses managed flooding from ~87% to ~6% delivery — your SUNL problem exactly. Mountaintop stuck in RX from 10+ simultaneous rebroadcasts. System V6's directed routing holds at ~74%. Node Silencing halves TX cost (~516K to ~284K) by muting 128 of 193 valley nodes. All 7 mountain nodes stay active.
 
 ---
 

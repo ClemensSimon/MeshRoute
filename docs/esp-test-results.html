@@ -89,7 +89,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 <h2>Summary</h2>
 <div class="summary-grid">
   <div class="stat-box green"><div class="value" id="del-rate">-</div><div class="label">Delivery Rate</div></div>
-  <div class="stat-box cyan"><div class="value" id="s5-tx">-</div><div class="label">System 5 TX</div></div>
+  <div class="stat-box cyan"><div class="value" id="s5-tx">-</div><div class="label">System V6 TX</div></div>
   <div class="stat-box orange"><div class="value" id="flood-tx">-</div><div class="label">Flooding TX</div></div>
   <div class="stat-box green"><div class="value" id="savings">-</div><div class="label">TX Savings</div></div>
 </div>
@@ -133,7 +133,7 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
 <h2>Charts</h2>
 <div class="chart-row">
   <div class="chart-box">
-    <h3>TX per Message: System 5 vs Flooding</h3>
+    <h3>TX per Message: System V6 vs Flooding</h3>
     <canvas id="chart-tx" width="560" height="300"></canvas>
   </div>
   <div class="chart-box">
@@ -183,9 +183,9 @@ canvas { background: var(--bg-card); border: 1px solid var(--border); border-rad
     </div>
   </div>
   <p style="margin-top:1rem;font-size:0.85rem;">
-    <strong>Key difference:</strong> The Python simulator tests the <em>algorithm concept</em> (does System 5 routing work better than flooding?).
+    <strong>Key difference:</strong> The Python simulator tests the <em>algorithm concept</em> (does System V6 routing work better than flooding?).
     The ESP32 virtual network tests the <em>firmware implementation</em> (does the actual code that runs on hardware produce correct results?).
-    Both agree: System 5 saves ~89% of transmissions with 100% delivery on this 10-node network.
+    Both agree: System V6 saves ~89% of transmissions with 100% delivery on this 10-node network.
   </p>
 </div>
 
@@ -594,7 +594,7 @@ function drawTxChart(data) {
   ctx.fillStyle = COLORS.text; ctx.font = '10px monospace'; ctx.textAlign = 'left';
   ctx.fillText('Flooding', pad.left + 14, 17);
   ctx.fillStyle = COLORS.cyan; ctx.fillRect(pad.left + 80, 8, 10, 10);
-  ctx.fillStyle = COLORS.text; ctx.fillText('System 5', pad.left + 94, 17);
+  ctx.fillStyle = COLORS.text; ctx.fillText('System V6', pad.left + 94, 17);
 }
 
 function drawCumulativeChart(data) {
@@ -659,7 +659,7 @@ function drawCumulativeChart(data) {
   ctx.fillStyle = COLORS.text; ctx.font = '10px monospace'; ctx.textAlign = 'left';
   ctx.fillText('Flooding (cumulative)', pad.left + 14, 14);
   ctx.fillStyle = COLORS.cyan; ctx.fillRect(pad.left + 170, 8, 10, 3);
-  ctx.fillStyle = COLORS.text; ctx.fillText('System 5 (cumulative)', pad.left + 184, 14);
+  ctx.fillStyle = COLORS.text; ctx.fillText('System V6 (cumulative)', pad.left + 184, 14);
 }
 </script>
 </body>

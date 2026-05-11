@@ -129,7 +129,7 @@
       <li><a href="#abstract">Abstract</a></li>
       <li><a href="#problem">The Problem</a></li>
       <li><a href="#approaches">Approaches Evaluated</a></li>
-      <li><a href="#system5">System 5 — The Solution</a></li>
+      <li><a href="#system5">System V6 — The Solution</a></li>
       <li><a href="#math">Mathematical Evaluation</a></li>
       <li><a href="#resilience">Resilience &amp; Adaptive QoS</a></li>
       <li><a href="#results">Results</a></li>
@@ -142,8 +142,8 @@
 <div class="summary-section" id="abstract">
   <h2>1. Abstract</h2>
   <p>Meshtastic (v2.6/2.7) uses <strong>managed flooding</strong> with SNR-based suppression for broadcasts and <strong>next-hop routing</strong> for direct messages. These are clever optimizations over naive flooding — but both still scale as <strong>O(n)</strong> per message, requiring a hop limit (default 3–7) that caps network range.</p>
-  <p>This paper presents <strong>System 5</strong>, a routing protocol that achieves <strong>O(hops)</strong> cost for all message types. Simulated against Meshtastic's actual managed flooding with <strong>realistic hop limits (3, 5, 7)</strong> across 21 scenarios (20–1500 nodes, 6 routers each), System 5 delivers <strong>92–100% fewer transmissions</strong> in small-to-medium networks while achieving <strong>dramatically higher delivery rates</strong> (half-duplex collapses managed flooding to 0–87% delivery across all scenarios).</p>
-  <p>The most significant finding: <strong>Half-duplex radio physics — not just hop limits — collapse flooding delivery.</strong> At 500 nodes, managed flooding delivers only <strong>3%</strong> of messages. At 1000 nodes, <strong>0%</strong>. Even at 100 nodes, only <strong>27%</strong>. System 5 delivers <strong>46–100%</strong> in the same scenarios. Half-duplex and collisions are now enabled on ALL scenarios, revealing that managed flooding is fundamentally unreliable with realistic radio physics.</p>
+  <p>This paper presents <strong>System V6</strong>, a routing protocol that achieves <strong>O(hops)</strong> cost for all message types. Simulated against Meshtastic's actual managed flooding with <strong>realistic hop limits (3, 5, 7)</strong> across 21 scenarios (20–1500 nodes, 6 routers each), System V6 delivers <strong>92–100% fewer transmissions</strong> in small-to-medium networks while achieving <strong>dramatically higher delivery rates</strong> (half-duplex collapses managed flooding to 0–87% delivery across all scenarios).</p>
+  <p>The most significant finding: <strong>Half-duplex radio physics — not just hop limits — collapse flooding delivery.</strong> At 500 nodes, managed flooding delivers only <strong>3%</strong> of messages. At 1000 nodes, <strong>0%</strong>. Even at 100 nodes, only <strong>27%</strong>. System V6 delivers <strong>46–100%</strong> in the same scenarios. Half-duplex and collisions are now enabled on ALL scenarios, revealing that managed flooding is fundamentally unreliable with realistic radio physics.</p>
 </div>
 
 <!-- PROBLEM -->
@@ -179,15 +179,15 @@
   </div>
 
   <div class="highlight-box cyan">
-    <h4>System 5 — Adaptive Load-Balanced Mesh (Proposed)</h4>
+    <h4>System V6 — Adaptive Load-Balanced Mesh (Proposed)</h4>
     <p>Geo-clustering + multi-path + weighted load balancing + adaptive QoS + fallback. TX = hops for <strong>all message types</strong>. Score: <strong>9.2/10</strong> vs. 5.5 for managed flooding. Details in Section 4.</p>
   </div>
 </div>
 
 <!-- SYSTEM 5 -->
 <div class="summary-section" id="system5">
-  <h2>4. System 5 — The Solution</h2>
-  <p>System 5 combines six proven concepts, each borrowed from a different domain:</p>
+  <h2>4. System V6 — The Solution</h2>
+  <p>System V6 combines six proven concepts, each borrowed from a different domain:</p>
 
   <ul>
     <li><strong>OSPF Areas → Geo-Clusters</strong> — Nodes self-organize by geohash prefix. Full topology shared within clusters, only summarized routes between. Scales from 10 to 50,000+ nodes.</li>
@@ -220,7 +220,7 @@
           <th style="padding:0.5rem;color:var(--red)">Naive</th>
           <th style="padding:0.5rem;color:var(--yellow)">Managed</th>
           <th style="padding:0.5rem;color:var(--orange)">Next-Hop</th>
-          <th style="padding:0.5rem;color:var(--cyan)">System 5</th>
+          <th style="padding:0.5rem;color:var(--cyan)">System V6</th>
         </tr>
       </thead>
       <tbody style="color:var(--text-dim)">
@@ -246,7 +246,7 @@
 <!-- RESILIENCE -->
 <div class="summary-section" id="resilience">
   <h2>6. Resilience &amp; Adaptive QoS</h2>
-  <p>System 5 handles every critical failure mode with graceful degradation:</p>
+  <p>System V6 handles every critical failure mode with graceful degradation:</p>
 
   <ul>
     <li><strong>Node failure</strong> — Instant failover to cached backup route (0ms). If a border node dies, a second border node takes over. If all borders fail, the cluster falls back to local flooding.</li>
@@ -301,7 +301,7 @@
       </ul>
     </div>
     <div class="after">
-      <h4>System 5 (Proposed)</h4>
+      <h4>System V6 (Proposed)</h4>
       <ul>
         <li>Score: <strong>9.2 / 10</strong></li>
         <li><strong>TX = hops</strong> (not proportional to n)</li>
@@ -341,7 +341,7 @@
         <tr><td style="padding:0.3rem">Mountain Valley</td><td style="text-align:right">60</td><td style="text-align:right;color:var(--red);font-weight:700">2%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">4%</td><td style="text-align:right;color:var(--red);font-weight:700">5%</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:0.75rem;color:var(--red)"><strong>Half-duplex collapses flooding to 0–60% delivery in ALL scenarios.</strong> At 1000+ nodes, managed flooding delivers 0–1% of messages. Even at 100 nodes, only 27% arrive. System 5 maintains 46–100% delivery across all scales. Note: Mountain Valley (poor propagation, sparse nodes) is bad for both — directed routing cannot help when the physical network is too sparse.</p>
+    <p style="margin-top:0.75rem;color:var(--red)"><strong>Half-duplex collapses flooding to 0–60% delivery in ALL scenarios.</strong> At 1000+ nodes, managed flooding delivers 0–1% of messages. Even at 100 nodes, only 27% arrive. System V6 maintains 46–100% delivery across all scales. Note: Mountain Valley (poor propagation, sparse nodes) is bad for both — directed routing cannot help when the physical network is too sparse.</p>
   </div>
 
   <div class="highlight-box cyan" style="margin-top:1.5rem">
@@ -367,7 +367,7 @@
         <tr><td style="padding:0.3rem">20% Nodes Killed</td><td style="text-align:right">100</td><td style="text-align:right;color:var(--yellow)">132,780</td><td style="text-align:right;color:var(--cyan)">4,072</td><td style="text-align:right;color:var(--green)">96.9%</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:0.75rem">System 5 saves <strong>92–100% of transmissions</strong> in small-to-medium networks compared to managed flooding — while delivering <strong>dramatically higher</strong> message delivery rates (100% vs 27–87% for managed flooding). Half-duplex collapses flooding delivery in ALL scenarios, making System 5 the only viable approach for reliable communication.</p>
+    <p style="margin-top:0.75rem">System V6 saves <strong>92–100% of transmissions</strong> in small-to-medium networks compared to managed flooding — while delivering <strong>dramatically higher</strong> message delivery rates (100% vs 27–87% for managed flooding). Half-duplex collapses flooding delivery in ALL scenarios, making System V6 the only viable approach for reliable communication.</p>
   </div>
 
   <div class="highlight-box" style="margin-top:1.5rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.03)">
@@ -375,10 +375,10 @@
     <ul>
       <li><strong>Half-duplex is the real killer — not just hop limits.</strong> With half-duplex and collisions enabled on all scenarios, managed flooding collapses to 0–60% delivery everywhere. Raising the hop limit from 3 to 7 barely helps when the radio physics prevent rebroadcasts.</li>
       <li><strong>Flooding cannot scale at any size with realistic radio physics.</strong> At 1000+ nodes, managed flooding delivers 0–1% of messages. Even at 100 nodes (Medium City), only 27% arrive. The network spends enormous bandwidth to deliver almost nothing.</li>
-      <li><strong>System 5 is the only approach that maintains high delivery.</strong> At 1000 nodes, System 5 delivers 46% vs managed flooding's 0%. At 100 nodes, 100% vs 27%. Directed routing avoids the collision cascade that destroys flooding.</li>
-      <li><strong>Small-to-medium networks are the sweet spot.</strong> At 20–200 nodes, System 5 delivers 100% with 92–100% less bandwidth. This covers the vast majority of real-world Meshtastic deployments.</li>
-      <li><strong>Sparse networks remain challenging.</strong> Mountain Valley (60 nodes, poor propagation) shows 5% S5 vs 4% MF delivery — when the physical network is too sparse, no routing algorithm can help. System 5 is not magic.</li>
-      <li><strong>Stress scenarios devastate flooding.</strong> Under 30–50% link degradation, managed flooding delivers only 15–19% while System 5 delivers 73%. Under 20% node failure, MF delivers 16% vs S5's 80%. Directed routing with multi-path failover survives where flooding collapses.</li>
+      <li><strong>System V6 is the only approach that maintains high delivery.</strong> At 1000 nodes, System V6 delivers 46% vs managed flooding's 0%. At 100 nodes, 100% vs 27%. Directed routing avoids the collision cascade that destroys flooding.</li>
+      <li><strong>Small-to-medium networks are the sweet spot.</strong> At 20–200 nodes, System V6 delivers 100% with 92–100% less bandwidth. This covers the vast majority of real-world Meshtastic deployments.</li>
+      <li><strong>Sparse networks remain challenging.</strong> Mountain Valley (60 nodes, poor propagation) shows 5% S5 vs 4% MF delivery — when the physical network is too sparse, no routing algorithm can help. System V6 is not magic.</li>
+      <li><strong>Stress scenarios devastate flooding.</strong> Under 30–50% link degradation, managed flooding delivers only 15–19% while System V6 delivers 73%. Under 20% node failure, MF delivers 16% vs S5's 80%. Directed routing with multi-path failover survives where flooding collapses.</li>
       <li><strong>Spread-out and large networks need directed routing.</strong> Rural (25%), maritime (24%), disaster (19%), and 500+ node scenarios (0–3%) show flooding's delivery collapse most clearly. These are exactly the scenarios where Meshtastic is most needed.</li>
     </ul>
   </div>
@@ -386,9 +386,9 @@
   <p style="margin-top:1.5rem">Key advantages over Meshtastic's current routing:</p>
   <ul>
     <li><strong>O(hops) vs O(n)</strong> — cost depends on path length, not network size. The fundamental scaling improvement.</li>
-    <li><strong>Delivery rate</strong> — System 5 delivers dramatically more messages in all scenarios. At 1000 nodes: 46% vs 0%. At 100 nodes: 100% vs 27%.</li>
+    <li><strong>Delivery rate</strong> — System V6 delivers dramatically more messages in all scenarios. At 1000 nodes: 46% vs 0%. At 100 nodes: 100% vs 27%.</li>
     <li><strong>Hop limit eliminated</strong> — 20 hops cost less than managed flooding costs for 1. Unlocks range and preset freedom.</li>
-    <li><strong>All traffic types</strong> — unlike next-hop (DMs only), System 5 routes all messages including broadcasts.</li>
+    <li><strong>All traffic types</strong> — unlike next-hop (DMs only), System V6 routes all messages including broadcasts.</li>
     <li><strong>Multi-path resilience</strong> — 2 cached routes per destination (distance-vector) with instant failover + scoped corridor flooding as last resort.</li>
     <li><strong>Load balancing</strong> — proportional distribution prevents bottlenecks. Meshtastic has no load awareness.</li>
     <li><strong>Adaptive QoS</strong> — NHS per cluster with priority gate. SOS always gets through.</li>
@@ -398,7 +398,7 @@
     <h4 style="color:var(--cyan)">v2.0 — Real-World Improvements (Bay Area Mesh Feedback)</h4>
     <p style="margin-bottom:0.8rem">Feedback from Bay Area Mesh operators revealed that <strong>half-duplex radio physics</strong> — not routing algorithms — is the true scaling bottleneck at elevated nodes. Five features were built in response:</p>
     <ul>
-      <li><strong>Half-Duplex Radio Model</strong> — Simulator now models TX/RX exclusion on ALL scenarios. Flooding collapses from ~87% → ~6% delivery in Bay Area, and to 0–60% across all scenarios. System 5 holds at ~74% in Bay Area.</li>
+      <li><strong>Half-Duplex Radio Model</strong> — Simulator now models TX/RX exclusion on ALL scenarios. Flooding collapses from ~87% → ~6% delivery in Bay Area, and to 0–60% across all scenarios. System V6 holds at ~74% in Bay Area.</li>
       <li><strong>Node Silencing</strong> — Redundant nodes are muted (listen but don't rebroadcast). Battery-fair rotation every 10 min. In Bay Area: 128 of 193 valley nodes silenced, <strong>TX halved</strong> with only ~4% less delivery. All mountain nodes stay active.</li>
       <li><strong>Sequence Numbers</strong> — 2-byte per-(src,dst) counter in packet header for out-of-order and gap detection. Zero extra TX cost.</li>
       <li><strong>Emergency Re-Route</strong> — Failover to backup route (from distance-vector table), then corridor flooding as last resort.</li>
@@ -450,7 +450,7 @@
         <div class="concl-phase-marker"></div>
         <div class="concl-phase-content">
           <h4>Phase 3 — ESP32 Firmware Prototype</h4>
-          <p>Standalone firmware for Heltec V3, T-Beam, RAK4631. System 5 routing core (14 functions), OGM discovery, OLED display, serial CLI. Wire protocol v2.0 with sequence numbers and node silencing control. <strong>Complete — <a href="firmware/README.md" style="color:var(--cyan)">installation guide</a>.</strong></p>
+          <p>Standalone firmware for Heltec V3, T-Beam, RAK4631. System V6 routing core (14 functions), OGM discovery, OLED display, serial CLI. Wire protocol v2.0 with sequence numbers and node silencing control. <strong>Complete — <a href="firmware/README.md" style="color:var(--cyan)">installation guide</a>.</strong></p>
         </div>
       </div>
       <div class="concl-phase">

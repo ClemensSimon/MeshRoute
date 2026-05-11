@@ -5,7 +5,7 @@
 #include "wire_protocol.h"
 #include <string.h>
 
-_Static_assert(sizeof(s5_wire_header_t) == 22, "wire header must be 22 bytes packed");
+_Static_assert(sizeof(s5_wire_header_t) == 24, "wire header must be 24 bytes packed");
 
 static uint32_t _next_packet_id = 0;
 

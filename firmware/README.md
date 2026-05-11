@@ -1,6 +1,6 @@
-# MeshRoute System 5 — ESP32 Firmware
+# MeshRoute System V6 — ESP32 Firmware
 
-Standalone LoRa mesh routing firmware for testing System 5 geo-clustered multi-path routing on real hardware.
+Standalone LoRa mesh routing firmware implementing System V6 (WalkFlood) routing on real hardware. System V6 uses passive route learning from overheard packets — no OGM beacons, no geo-clustering overhead.
 
 ## Supported Boards
 
@@ -97,7 +97,7 @@ pio device monitor -b 115200
 
 You should see:
 ```
-=== MeshRoute System 5 v0.1.0 ===
+=== MeshRoute System V6 v0.1.0 ===
 Board: Heltec V3
 [WDT] Watchdog enabled (30s)
 Node ID: A1B2C3D4
@@ -140,7 +140,7 @@ send A1B2C3D4 Hello from my node!
 
 Replace `A1B2C3D4` with the Node ID of your target (shown in the `status` output).
 
-If System 5 has a route, it sends **directed** (1 TX):
+If System V6 has a route, it sends **directed** (1 TX):
 ```
 [TX] Sent to A1B2C3D4 via DIRECT (42 bytes)
 ```
@@ -180,7 +180,7 @@ Watch incoming packets and routing decisions:
 
 ### Cross-Cluster Test: 3+ Nodes
 
-For System 5 routing to show its advantage, you need nodes in **different clusters**:
+For System V6 routing to show its advantage, you need nodes in **different clusters**:
 
 1. Place Node A at location X (e.g. your home)
 2. Place Node B 500m-2km away (e.g. a friend's house)

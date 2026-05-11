@@ -10,7 +10,7 @@ GEOHASH_BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 S5_MAGIC = 0x55
 PKT_OGM = 0x01
 PKT_DATA = 0x02
-WIRE_FMT = '<BBIIIBBIBB'
+WIRE_FMT = '<BBIIIBBIBHB'
 WIRE_SIZE = struct.calcsize(WIRE_FMT)
 
 def geohash_encode(lat, lon, precision=4):
@@ -34,16 +34,16 @@ def geohash_to_cluster(gh):
     for ch in gh: cid = (cid * 31 + ord(ch)) & 0xFF
     return cid
 
-def wire_pack(ptype, src, dst, pkt_id, hops, ttl, nhop, pri, payload=b''):
-    hdr = struct.pack(WIRE_FMT, S5_MAGIC, ptype, src, dst, pkt_id, hops, ttl, nhop, pri, len(payload))
+def wire_pack(ptype, src, dst, pkt_id, hops, ttl, nhop, pri, payload=b'', seq=0):
+    hdr = struct.pack(WIRE_FMT, S5_MAGIC, ptype, src, dst, pkt_id, hops, ttl, nhop, pri, seq, len(payload))
     return hdr + payload
 
 def wire_unpack(data):
     if len(data) < WIRE_SIZE: return None
     f = struct.unpack(WIRE_FMT, data[:WIRE_SIZE])
     if f[0] != S5_MAGIC: return None
-    pl = data[WIRE_SIZE:WIRE_SIZE+f[9]]
-    return {'type':f[1],'src':f[2],'dst':f[3],'id':f[4],'hops':f[5],'ttl':f[6],'nhop':f[7],'pri':f[8],'plen':f[9],'payload':pl}
+    pl = data[WIRE_SIZE:WIRE_SIZE+f[10]]
+    return {'type':f[1],'src':f[2],'dst':f[3],'id':f[4],'hops':f[5],'ttl':f[6],'nhop':f[7],'pri':f[8],'seq':f[9],'plen':f[10],'payload':pl}
 
 class VNode:
     def __init__(self, nid, lat, lon, batt=90):

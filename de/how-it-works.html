@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MeshRoute — Wie System 5 funktioniert (Schritt für Schritt)</title>
+<title>MeshRoute — Wie System V6 funktioniert (Schritt für Schritt)</title>
 <link rel="stylesheet" href="../css/styles.css">
 <style>
   .hw-hero {
@@ -142,7 +142,7 @@
 <div class="hw-hero">
   <div>
     <div class="hero-tag">Deep Dive — Jede Schicht erklärt</div>
-    <h1 class="hero-title">Wie System 5 <span class="accent">funktioniert</span></h1>
+    <h1 class="hero-title">Wie System V6 <span class="accent">funktioniert</span></h1>
     <p class="hero-sub">Eine vollständige technische Erklärung von MeshRoutes geo-geclustertem, Multi-Pfad, lastverteiltem Routing-Protokoll — vom Start bis zur Zustellung.</p>
     <div class="hw-nav">
       <a href="#overview">Überblick</a>
@@ -172,13 +172,13 @@
 
 <p>Das aktuelle Meshtastic verwendet <strong>Managed Flooding</strong>: Jeder Knoten sendet jede Nachricht weiter, in der Hoffnung, dass sie das Ziel erreicht. Das funktioniert für kleine Netzwerke, erzeugt aber eine Bandbreitenexplosion bei Skalierung — 100 Knoten bedeuten ~100 Übertragungen pro Nachricht.</p>
 
-<p>System 5 verfolgt einen grundlegend anderen Ansatz: <strong>Knoten organisieren sich selbst in geografische Cluster, entdecken Multi-Hop-Routen und senden jede Nachricht über einen spezifisch berechneten Pfad.</strong> Die Kosten pro Nachricht sind proportional zur Anzahl der Hops, nicht zur Anzahl der Knoten.</p>
+<p>System V6 verfolgt einen grundlegend anderen Ansatz: <strong>Knoten organisieren sich selbst in geografische Cluster, entdecken Multi-Hop-Routen und senden jede Nachricht über einen spezifisch berechneten Pfad.</strong> Die Kosten pro Nachricht sind proportional zur Anzahl der Hops, nicht zur Anzahl der Knoten.</p>
 
 <div class="diagram"><span class="flood">Managed Flooding (Meshtastic heute)</span>
 A sendet → <span class="flood">jeder Knoten sendet weiter</span> → Z empfängt (irgendwann)
 Kosten: O(n) Übertragungen pro Nachricht — skaliert mit Netzwerkgröße
 
-<span class="path">System 5 (MeshRoute-Vorschlag)</span>
+<span class="path">System V6 (MeshRoute-Vorschlag)</span>
 A sendet → <span class="path">B → D → G → Z</span> (berechneter Pfad)
 Kosten: O(Hops) Übertragungen pro Nachricht — skaliert mit Entfernung, nicht Größe</div>
 
@@ -187,7 +187,7 @@ Kosten: O(Hops) Übertragungen pro Nachricht — skaliert mit Entfernung, nicht 
 <!-- ============================================================ -->
 <h2 id="step1">Schritt 1: Start — Was passiert, wenn ein Knoten eingeschaltet wird</h2>
 
-<p>Wenn ein System 5-Knoten hochfährt, weiß er noch nichts über das Netzwerk. Hier ist die genaue Abfolge:</p>
+<p>Wenn ein System V6-Knoten hochfährt, weiß er noch nichts über das Netzwerk. Hier ist die genaue Abfolge:</p>
 
 <ol>
   <li><strong>Hardware-Initialisierung</strong>: Das LoRa-Funkmodul beginnt auf der konfigurierten Frequenz zu lauschen (EU 868MHz). Das GPS-Modul beginnt mit der Satellitenerfassung (falls vorhanden).</li>
@@ -236,12 +236,12 @@ Kosten: O(Hops) Übertragungen pro Nachricht — skaliert mit Entfernung, nicht 
 
 <h3>Verbindungsqualität ist asymmetrisch</h3>
 
-<p>Ein kritisches Detail: <strong>Die Verbindung von A→B kann eine andere Qualität haben als B→A.</strong> Ein Berggipfel-Knoten mit freier Sichtlinie sendet möglicherweise mit Qualität 0,95 zum Talknoten, aber der Talknoten (umgeben von Gebäuden) kann nur mit Qualität 0,3 zurücksenden. System 5 verfolgt beide Richtungen unabhängig.</p>
+<p>Ein kritisches Detail: <strong>Die Verbindung von A→B kann eine andere Qualität haben als B→A.</strong> Ein Berggipfel-Knoten mit freier Sichtlinie sendet möglicherweise mit Qualität 0,95 zum Talknoten, aber der Talknoten (umgeben von Gebäuden) kann nur mit Qualität 0,3 zurücksenden. System V6 verfolgt beide Richtungen unabhängig.</p>
 
 <div class="diagram"><span class="node">Berggipfel (600m, Freiraum)</span>  ——— Qualität 0,95 ———→  <span class="node">Tal (50m, urban)</span>
 <span class="node">Berggipfel</span>  ←—— Qualität 0,30 ——————  <span class="node">Tal</span>
 
-System 5 kennt beide Werte. Beim Routing ZUM Tal wird die 0,95-Verbindung genutzt.
+System V6 kennt beide Werte. Beim Routing ZUM Tal wird die 0,95-Verbindung genutzt.
 Beim Routing VOM Tal wird ein anderer Pfad gefunden (vielleicht über einen Hügelknoten).</div>
 
 <!-- ============================================================ -->
@@ -275,7 +275,7 @@ Beim Routing VOM Tal wird ein anderer Pfad gefunden (vielleicht über einen Hüg
 Um von A nach H zu senden: A → D → <span class="node">E</span> → <span class="node">J</span> → G → H
                       (innerhalb u33d) (Brücke) (innerhalb u33e)</div>
 
-<p>System 5 begrenzt Brückenverbindungen auf <strong>2 pro Clusterpaar</strong>, um eine Routenexplosion zu verhindern. Die zwei stärksten Verbindungen zwischen jedem Paar benachbarter Cluster werden ausgewählt.</p>
+<p>System V6 begrenzt Brückenverbindungen auf <strong>2 pro Clusterpaar</strong>, um eine Routenexplosion zu verhindern. Die zwei stärksten Verbindungen zwischen jedem Paar benachbarter Cluster werden ausgewählt.</p>
 
 <h3>Warum das skaliert</h3>
 
@@ -375,7 +375,7 @@ Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
 
 <div class="step-title"><span class="step-num">5</span><h3>Proportionale Auswahl (nicht nur die Beste!)</h3></div>
 
-<p>Dies ist eine kritische Designentscheidung. System 5 wählt <strong>nicht</strong> immer die beste Route. Es wählt Routen <strong>probabilistisch, proportional zu ihrem Gewicht</strong>:</p>
+<p>Dies ist eine kritische Designentscheidung. System V6 wählt <strong>nicht</strong> immer die beste Route. Es wählt Routen <strong>probabilistisch, proportional zu ihrem Gewicht</strong>:</p>
 
 <div class="formula-box">
   <span class="label">Auswahlwahrscheinlichkeit</span>
@@ -409,7 +409,7 @@ Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
 
 <h3>Backpressure — Automatische Stau-Vermeidung</h3>
 
-<p>Wenn die Warteschlange eines Zwischenknotens sich füllt, wendet System 5 <strong>graduellen Gegendruck</strong> an:</p>
+<p>Wenn die Warteschlange eines Zwischenknotens sich füllt, wendet System V6 <strong>graduellen Gegendruck</strong> an:</p>
 
 <table class="compare-table">
   <tr><th>Warteschlangenlast</th><th>Aktion</th></tr>
@@ -423,7 +423,7 @@ Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
 <!-- ============================================================ -->
 <h2 id="step6">Schritt 6: QoS — Priorisierung unter Druck</h2>
 
-<p>Nicht alle Nachrichten sind gleich. System 5 verwendet einen <strong>Network Health Score (NHS)</strong> pro Cluster, um niedrig priorisierten Verkehr zu drosseln, wenn das Netzwerk belastet ist.</p>
+<p>Nicht alle Nachrichten sind gleich. System V6 verwendet einen <strong>Network Health Score (NHS)</strong> pro Cluster, um niedrig priorisierten Verkehr zu drosseln, wenn das Netzwerk belastet ist.</p>
 
 <h3>NHS-Berechnung</h3>
 <p>NHS ist ein Wert von 0,0 bis 1,0, der den Gesundheitszustand des Clusters repräsentiert, basierend auf:</p>
@@ -449,7 +449,7 @@ Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
 <!-- ============================================================ -->
 <h2 id="step7">Schritt 7: Fallback — Wenn alle Routen versagen</h2>
 
-<p>Wenn alle 5 gecachten Routen versagen (nach Wiederholungen auf jeder einzelnen), gibt System 5 nicht auf. Es fällt zurück auf <strong>begrenztes Cluster-Flooding</strong> — eine gezielte Mini-Flut entlang des Korridors zwischen Quelle und Ziel.</p>
+<p>Wenn alle 5 gecachten Routen versagen (nach Wiederholungen auf jeder einzelnen), gibt System V6 nicht auf. Es fällt zurück auf <strong>begrenztes Cluster-Flooding</strong> — eine gezielte Mini-Flut entlang des Korridors zwischen Quelle und Ziel.</p>
 
 <h3>Wie begrenztes Flooding funktioniert</h3>
 
@@ -467,7 +467,7 @@ Ergebnis: 3 gecachte Routen mit unabhängigen Ausfalldomänen.</div>
 Quelle in C1, Ziel in C4.
 Cluster-Pfad: C1 → C2 → C3 → C4
 
-<span class="path">Begrenzter Flood-Korridor (System 5 Fallback):</span>
+<span class="path">Begrenzter Flood-Korridor (System V6 Fallback):</span>
 ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
 │<span class="path"> C1 </span> │──│ <span class="node">B2</span>  │──│ <span class="node">B3</span>  │──│<span class="path"> C4 </span> │   C5 wird NICHT geflutet
 └─────┘  └─────┘  └─────┘  └─────┘
@@ -485,7 +485,7 @@ Cluster-Pfad: C1 → C2 → C3 → C4
 <!-- ============================================================ -->
 <h2 id="step8">Schritt 8: Selbstwartung — Routen aktuell halten</h2>
 
-<p>Netzwerke ändern sich ständig: Knoten bewegen sich, Batterien entleeren sich, Verbindungen verschlechtern sich. System 5 wartet sich durch mehrere Mechanismen selbst:</p>
+<p>Netzwerke ändern sich ständig: Knoten bewegen sich, Batterien entleeren sich, Verbindungen verschlechtern sich. System V6 wartet sich durch mehrere Mechanismen selbst:</p>
 
 <h3>Routenqualitäts-Abklingung (Pheromon-Modell)</h3>
 <p>Inspiriert von der Ameisenkolonie-Optimierung: Alle 30 Sekunden klingen alle gecachten Routenqualitäten um 5% ab:</p>
@@ -508,7 +508,7 @@ Cluster-Pfad: C1 → C2 → C3 → C4
 <p>Wenn ein Knoten einen neuen Nachbarn entdeckt, aber seine Tabelle voll ist (16 Einträge), wird der Nachbar mit der niedrigsten Verbindungsqualität verdrängt. Das stellt sicher, dass die Routing-Tabelle immer die <strong>besten verfügbaren</strong> Verbindungen enthält.</p>
 
 <h3>Dynamisches Hop-Limit</h3>
-<p>Anders als Meshtastics festes 3–7 Hop-Limit verwendet System 5 ein dynamisches Limit, das mit der Netzwerkgröße skaliert:</p>
+<p>Anders als Meshtastics festes 3–7 Hop-Limit verwendet System V6 ein dynamisches Limit, das mit der Netzwerkgröße skaliert:</p>
 
 <div class="formula-box">
   <span class="label">Dynamisches Max-Hops</span>
@@ -536,7 +536,7 @@ Cluster-Pfad: C1 → C2 → C3 → C4
 
 <p>Ergebnis: 5% tatsächliche Nutzung wird zu <strong>50% Kanalauslastung</strong> am Berggipfel, und Nachrichten schaffen es nicht über den ersten Hop hinaus.</p>
 
-<h3>Warum System 5 Half-Duplex überlebt</h3>
+<h3>Warum System V6 Half-Duplex überlebt</h3>
 
 <p>Mit gerichtetem Routing empfängt der Berggipfel-Knoten <strong>ein gezieltes Paket</strong> (nicht 14 gleichzeitige Weitersendungen). Er verarbeitet es, wartet auf ein freies TX-Fenster und leitet an den nächsten Hop weiter. Die Funk-Zustandsmaschine ist einfach:</p>
 
@@ -544,7 +544,7 @@ Cluster-Pfad: C1 → C2 → C3 → C4
   RX(A) → RX(B) → RX(C) → ... → RX(N) → <span class="bad">TX-Fenster? ALLES BLOCKIERT</span>
   Dauer: 10–20 Sekunden kontinuierlicher Empfang → Nachricht stirbt
 
-System 5 gerichtetes Routing:
+System V6 gerichtetes Routing:
   RX(Paket für uns) → <span class="path">TX(Weiterleitung an nächsten Hop)</span> → IDLE
   Dauer: ~2 Sekunden gesamt → Nachricht geht weiter</div>
 
@@ -556,13 +556,13 @@ System 5 gerichtetes Routing:
   <tr><th>Szenario</th><th>Router</th><th>Zustellung</th><th>Gesamt-TX</th></tr>
   <tr><td rowspan="2">Bay Area <strong>ohne</strong> Half-Duplex</td>
     <td>Managed Flood</td><td>87,5%</td><td>908.785</td></tr>
-  <tr><td class="highlight">System 5</td><td class="highlight">80,5%</td><td class="highlight">47.094</td></tr>
+  <tr><td class="highlight">System V6</td><td class="highlight">80,5%</td><td class="highlight">47.094</td></tr>
   <tr><td rowspan="2">Bay Area <strong>mit</strong> Half-Duplex</td>
     <td>Managed Flood</td><td class="bad">6,0%</td><td>6.752</td></tr>
-  <tr><td class="highlight">System 5</td><td class="highlight">77,5%</td><td>540.780</td></tr>
+  <tr><td class="highlight">System V6</td><td class="highlight">77,5%</td><td>540.780</td></tr>
 </table>
 
-<p>Half-Duplex lässt Flooding von 87,5% → 6% Zustellung zusammenbrechen. System 5 hält bei 77,5%. <a href="../simulator.html">Probiere das Bay Area-Szenario im Live-Simulator →</a></p>
+<p>Half-Duplex lässt Flooding von 87,5% → 6% Zustellung zusammenbrechen. System V6 hält bei 77,5%. <a href="../simulator.html">Probiere das Bay Area-Szenario im Live-Simulator →</a></p>
 
 <!-- ============================================================ -->
 <h2 id="memory">Speicherbedarf — Läuft das auf dem nRF52?</h2>
@@ -665,7 +665,7 @@ System 5 gerichtetes Routing:
 
 <h3>Batteriefaire Rotation</h3>
 
-<p>Dieselben Knoten können nicht für immer stummgeschaltet sein — ihre Batterien würden länger halten, aber die aktiven Knoten würden schneller entladen. System 5 <strong>rotiert die stille Gruppe alle 10 Minuten</strong>:</p>
+<p>Dieselben Knoten können nicht für immer stummgeschaltet sein — ihre Batterien würden länger halten, aber die aktiven Knoten würden schneller entladen. System V6 <strong>rotiert die stille Gruppe alle 10 Minuten</strong>:</p>
 
 <ol>
   <li>Alle abgelaufenen Stummschaltungen werden aufgehoben</li>
@@ -687,7 +687,7 @@ System 5 gerichtetes Routing:
 <!-- ============================================================ -->
 <h2 id="emergency">Notfall-Umleitung — Letzter Ausweg vor Flooding</h2>
 
-<p>Wenn alle 5 gecachten Routen versagen (jeder Hop wurde mit Wiederholungen versucht), löste das ursprüngliche System 5 sofort begrenztes Korridor-Flooding aus. Das war teuer — im Bay Area-Szenario lösten 73 von 200 Nachrichten Fallback-Floods aus.</p>
+<p>Wenn alle 5 gecachten Routen versagen (jeder Hop wurde mit Wiederholungen versucht), löste das ursprüngliche System V6 sofort begrenztes Korridor-Flooding aus. Das war teuer — im Bay Area-Szenario lösten 73 von 200 Nachrichten Fallback-Floods aus.</p>
 
 <p>Die v2.0-Verbesserung fügt einen weiteren Schritt vor dem Flooding hinzu:</p>
 
@@ -724,7 +724,7 @@ System 5 gerichtetes Routing:
 <!-- ============================================================ -->
 <h2 id="packet">Paketformat — Was über den Äther geht</h2>
 
-<p>Jedes System 5-Paket hat einen 22-Byte-Header:</p>
+<p>Jedes System V6-Paket hat einen 22-Byte-Header:</p>
 
 <table class="compare-table">
   <tr><th>Offset</th><th>Feld</th><th>Größe</th><th>Beschreibung</th></tr>
@@ -743,10 +743,10 @@ System 5 gerichtetes Routing:
 </table>
 
 <!-- ============================================================ -->
-<h2 id="comparison">System 5 vs. alles andere</h2>
+<h2 id="comparison">System V6 vs. alles andere</h2>
 
 <table class="compare-table">
-  <tr><th>Eigenschaft</th><th>Naives Flooding</th><th>Managed Flooding</th><th>Next-Hop</th><th class="highlight">System 5</th></tr>
+  <tr><th>Eigenschaft</th><th>Naives Flooding</th><th>Managed Flooding</th><th>Next-Hop</th><th class="highlight">System V6</th></tr>
   <tr><td>TX-Kosten pro Nachricht</td><td class="bad">O(n)</td><td class="bad">O(n) × 0,5</td><td>O(Hops)*</td><td class="highlight">O(Hops)</td></tr>
   <tr><td>Funktioniert für Broadcasts</td><td>Ja</td><td>Ja</td><td class="bad">Nein</td><td class="highlight">Ja</td></tr>
   <tr><td>Hop-Limit nötig</td><td>Ja (3–7)</td><td>Ja (3–7)</td><td>Teilweise</td><td class="highlight">Nein (dynamisch)</td></tr>

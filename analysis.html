@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WalkFlood — Performance Analysis</title>
+<title>System V6 — Performance Analysis</title>
 <link rel="stylesheet" href="css/styles.css">
 <style>
 .an-hero {
@@ -78,7 +78,7 @@
 
 <nav id="navbar">
   <div class="nav-inner">
-    <a href="index.html" class="logo">WALK<span>FLOOD</span></a>
+    <a href="index.html" class="logo">MESH<span>ROUTE</span></a>
     <ul id="nav-menu">
       <li><a href="index.html">Presentation</a></li>
       <li><a href="simulator.html" style="color:var(--cyan)">Simulator</a></li>
@@ -94,7 +94,7 @@
     <div class="hero-tag" style="opacity:1;animation:none">Data-Driven &mdash; Every Claim Measured</div>
     <h1 class="hero-title" style="opacity:1;animation:none;font-size:clamp(1.8rem,4vw,3rem)">Performance <span class="accent">Analysis</span></h1>
     <p class="hero-sub" style="opacity:1;animation:none;max-width:640px;margin:0.5rem auto">
-      WalkFlood vs Managed Flooding across 6 scenarios. Half-duplex radio, collisions, realistic LoRa EU868.
+      System V6 vs Managed Flooding across 6 scenarios. Half-duplex radio, collisions, realistic LoRa EU868.
     </p>
   </div>
 </div>
@@ -107,16 +107,16 @@
 
   <div class="chart-box">
     <h3>Delivery Rate by Scenario</h3>
-    <div class="sub">Managed Flooding vs WalkFlood &mdash; higher is better</div>
+    <div class="sub">Managed Flooding vs System V6 &mdash; higher is better</div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System V6</div>
     </div>
     <canvas id="chart-delivery" height="340"></canvas>
   </div>
 
   <div class="insight">
-    <strong>Key finding:</strong> WalkFlood delivers <span class="n">3.7x&ndash;22x</span> more messages than managed flooding. In small/medium networks, WalkFlood achieves <span class="n">99&ndash;100%</span> delivery while flooding collapses to <span class="n">16&ndash;87%</span> under half-duplex.
+    <strong>Key finding:</strong> System V6 delivers <span class="n">3.7x&ndash;22x</span> more messages than managed flooding. In small/medium networks, System V6 achieves <span class="n">99&ndash;100%</span> delivery while flooding collapses to <span class="n">16&ndash;87%</span> under half-duplex.
   </div>
 
   <!-- 2. TX Efficiency -->
@@ -128,13 +128,13 @@
     <div class="sub">Lower is better &mdash; less airtime consumed, more capacity for other traffic</div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System V6</div>
     </div>
     <canvas id="chart-tx" height="340"></canvas>
   </div>
 
   <div class="insight">
-    At Bay Area 1200-node scale, WalkFlood uses <span class="n">6.5x fewer TX</span> than managed flooding while delivering <span class="n">22x more messages</span>. In small networks, the TX savings are <span class="n">10x</span>.
+    At Bay Area 1200-node scale, System V6 uses <span class="n">6.5x fewer TX</span> than managed flooding while delivering <span class="n">22x more messages</span>. In small networks, the TX savings are <span class="n">10x</span>.
   </div>
 
   <!-- 3. Half-Duplex Cascade -->
@@ -148,7 +148,7 @@
       <p>234 neighbors all blocked simultaneously.<br>Massive collision cascade.</p>
     </div>
     <div class="hd-card good">
-      <h4>WalkFlood: Directed TX</h4>
+      <h4>System V6: Directed TX</h4>
       <canvas id="canvas-hd-direct" height="200"></canvas>
       <p>1 neighbor receives. 233 others remain free.<br>Minimal channel impact.</p>
     </div>
@@ -187,20 +187,20 @@
 
   <!-- 5. Scaling Behavior -->
   <h2>5. Scaling Behavior</h2>
-  <p>The most surprising result: WalkFlood <strong>improves</strong> with more nodes while flooding <strong>degrades</strong>.</p>
+  <p>The most surprising result: System V6 <strong>improves</strong> with more nodes while flooding <strong>degrades</strong>.</p>
 
   <div class="chart-box">
     <h3>Delivery Rate vs Network Size</h3>
     <div class="sub">Bay Area topology: 235 nodes vs 1,200 nodes</div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>WalkFlood</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System V6</div>
     </div>
     <canvas id="chart-scaling" height="280"></canvas>
   </div>
 
   <div class="insight">
-    More nodes = more flooding collisions (6% &rarr; 4% delivery). But more nodes also = more overhearing = richer route tables. WalkFlood goes from <span class="n">84%</span> to <span class="n">88%</span> delivery. <strong>Density helps WalkFlood, hurts flooding.</strong>
+    More nodes = more flooding collisions (6% &rarr; 4% delivery). But more nodes also = more overhearing = richer route tables. System V6 goes from <span class="n">84%</span> to <span class="n">88%</span> delivery. <strong>Density helps System V6, hurts flooding.</strong>
   </div>
 
   <!-- 6. Phase Breakdown -->
@@ -209,7 +209,7 @@
 
   <div class="chart-box">
     <h3>Message Delivery by Phase (Bay Area 235n, 200 messages)</h3>
-    <div class="sub">WalkFlood&rsquo;s four-phase fallback in action</div>
+    <div class="sub">System V6&rsquo;s four-phase fallback in action</div>
     <canvas id="chart-phases" height="260"></canvas>
   </div>
 
@@ -220,7 +220,7 @@
 </div>
 
 <footer>
-  <p>WalkFlood &mdash; Performance Analysis</p>
+  <p>System V6 &mdash; Performance Analysis</p>
   <p style="margin-top:0.3rem;font-size:0.75rem">By <strong style="color:var(--cyan)">Clemens Simon</strong> &middot; 2026 &middot; Data from Python simulator with half-duplex radio model</p>
 </footer>
 
@@ -619,7 +619,7 @@
     // Legend labels
     ctx.font = '10px monospace';
     ctx.fillStyle = C.cyan; ctx.textAlign = 'right';
-    ctx.fillText('WalkFlood', W - pad.right, pad.top + 15);
+    ctx.fillText('System V6', W - pad.right, pad.top + 15);
     ctx.fillStyle = C.red;
     ctx.fillText('Managed Flood', W - pad.right, pad.top + 30);
   }

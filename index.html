@@ -56,7 +56,7 @@
 <section id="tldr">
   <div class="section-tag reveal">00 — TL;DR</div>
   <div class="tldr-card reveal">
-    <p class="tldr-text">Half-duplex radio physics collapse managed flooding to <strong>0–60% delivery</strong> in ALL scenarios — not just Bay Area. <strong>System 5</strong> combines geo-clustering, multi-path routing, and adaptive QoS into one self-healing protocol. For networks up to ~200 nodes: <strong>100% delivery with 92–99.9% less bandwidth</strong> (vs flooding's 27–87%). At 500+ nodes: <strong>dramatically higher delivery</strong> (76% vs 3% at 500 nodes). The hop limit — today's biggest scaling bottleneck — becomes irrelevant: each hop costs <strong>~1 transmission</strong> instead of <em>n</em>.</p>
+    <p class="tldr-text">Half-duplex radio physics collapse managed flooding to <strong>0–60% delivery</strong> in ALL scenarios — not just Bay Area. <strong>System V6</strong> combines geo-clustering, multi-path routing, and adaptive QoS into one self-healing protocol. For networks up to ~200 nodes: <strong>100% delivery with 92–99.9% less bandwidth</strong> (vs flooding's 27–87%). At 500+ nodes: <strong>dramatically higher delivery</strong> (76% vs 3% at 500 nodes). The hop limit — today's biggest scaling bottleneck — becomes irrelevant: each hop costs <strong>~1 transmission</strong> instead of <em>n</em>.</p>
     <div class="tldr-stats">
       <div class="tldr-stat"><span class="tldr-num">100%</span><span class="tldr-label">Del. &le;200</span></div>
       <div class="tldr-stat"><span class="tldr-num">99.9%</span><span class="tldr-label">BW Saved</span></div>
@@ -105,7 +105,7 @@
 <section id="approaches">
   <div class="section-tag reveal">02 — Routing Approaches</div>
   <h2 class="section-title reveal">State of the Art vs. New Proposal</h2>
-  <p class="section-desc reveal">Below we compare four routing strategies on the same 15-node network topology. Each animation runs live in your browser — watch the <strong>TX counter</strong> in each panel. It counts how many radio transmissions are needed to deliver a single message. Fewer TX = less airtime, fewer collisions, longer battery life. The difference is dramatic: from ~100 TX (naive flooding) to ~2 TX (System 5).</p>
+  <p class="section-desc reveal">Below we compare four routing strategies on the same 15-node network topology. Each animation runs live in your browser — watch the <strong>TX counter</strong> in each panel. It counts how many radio transmissions are needed to deliver a single message. Fewer TX = less airtime, fewer collisions, longer battery life. The difference is dramatic: from ~100 TX (naive flooding) to ~2 TX (System V6).</p>
 
   <!-- STATE OF THE ART DIVIDER -->
   <div class="approach-divider reveal">
@@ -195,14 +195,14 @@
 
   <!-- NEW PROPOSAL DIVIDER -->
   <div class="approach-divider reveal" style="margin-top:2rem">
-    <span class="divider-label proposal-label">NEW PROPOSAL — System 5</span>
+    <span class="divider-label proposal-label">NEW PROPOSAL — System V6</span>
   </div>
 
   <!-- SYSTEM 5 -->
   <div class="algo-section winner reveal" id="algo-winner">
     <div class="algo-header">
       <span class="algo-number proposal-badge">PROPOSED</span>
-      <h3 class="algo-name">System 5 — Adaptive Load-Balanced Mesh</h3>
+      <h3 class="algo-name">System V6 — Adaptive Load-Balanced Mesh</h3>
     </div>
     <p class="algo-subtitle">Our proposal: a fundamentally different approach that combines proven networking concepts into one protocol. Nodes self-organize into geographic clusters using GPS geohashes. Within a cluster, every node knows its neighbors via OGMs. Between clusters, border nodes act as bridges. Routes are built incrementally via distance-vector (like B.A.T.M.A.N.), not by running graph algorithms on-device. For unicast: 2 cached routes per destination with weighted selection. For broadcast (~98% of Meshtastic traffic): elected cluster-distributors propagate messages via local mini-floods, not network-wide flooding. All metrics (load, battery) are next-hop only, locally observable from OGMs. OGM intervals adapt to network density (30-180s) for EU868 duty-cycle compliance. The result: <strong>~1 TX per hop</strong> for unicast, <strong>88-99% fewer TX</strong> for broadcast.</p>
     <div class="algo-body">
@@ -227,11 +227,11 @@
         </ul>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.04);border-radius:8px">
           <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--cyan);margin-bottom:0.4rem">vs. Managed Flooding</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Managed flooding suppresses ~50% of rebroadcasts but still scales as O(n). System 5 routes along <strong>specific paths</strong> — cost scales with <strong>hop count</strong>, not network size. At 100 nodes: managed flood = ~1,500 TX per message, System 5 = ~2 TX.</p>
+          <p style="font-size:0.9rem;line-height:1.6">Managed flooding suppresses ~50% of rebroadcasts but still scales as O(n). System V6 routes along <strong>specific paths</strong> — cost scales with <strong>hop count</strong>, not network size. At 100 nodes: managed flood = ~1,500 TX per message, System V6 = ~2 TX.</p>
         </div>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--teal,var(--cyan-dim));background:rgba(20,184,166,0.04);border-radius:8px">
           <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--teal);margin-bottom:0.4rem">vs. Next-Hop Routing</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Next-hop learns a single relay node for direct messages. System 5 maintains <strong>2-3 full paths</strong> with weighted load distribution for <strong>all traffic types</strong>. When a path fails, the next cached path activates instantly — no flooding fallback needed.</p>
+          <p style="font-size:0.9rem;line-height:1.6">Next-hop learns a single relay node for direct messages. System V6 maintains <strong>2-3 full paths</strong> with weighted load distribution for <strong>all traffic types</strong>. When a path fails, the next cached path activates instantly — no flooding fallback needed.</p>
         </div>
         <div class="pro-con">
           <div class="pro"><h5>+ Strengths</h5><ul><li>~1 TX/hop unicast (not ~n)</li><li>88-99% broadcast TX savings</li><li>No hop limit needed</li><li>~1.5 KB RAM for routing table</li><li>Adaptive OGM (EU868 compliant)</li></ul></div>
@@ -284,9 +284,9 @@
   </div>
 
   <div class="formula-card reveal" style="border-color:var(--cyan-dim)">
-    <h4>System 5 — Multi-Path Directed Routing</h4>
+    <h4>System V6 — Multi-Path Directed Routing</h4>
     <div class="formula">
-      <span class="var">TX</span><sub>sys5</sub> <span class="op">=</span> <span class="var">d</span>
+      <span class="var">TX</span><sub>v6</sub> <span class="op">=</span> <span class="var">d</span>
       <span style="color:var(--text-muted);font-size:0.9rem">&nbsp; (hop count, always)</span>
     </div>
     <p class="formula-desc">
@@ -295,7 +295,7 @@
   </div>
 
   <div class="formula-card reveal" style="border-color:var(--cyan-dim)">
-    <h4>Route Weight Function — System 5 Load Balancing</h4>
+    <h4>Route Weight Function — System V6 Load Balancing</h4>
     <div class="formula">
       <span class="var">W</span>(<span class="var">r</span>) <span class="op">=</span>
       <span class="var">&alpha;</span> · <span class="var">Q</span>(<span class="var">r</span>)
@@ -321,7 +321,7 @@
           <th style="color:var(--red)">Naive Flood</th>
           <th style="color:var(--yellow)">Managed Flood</th>
           <th style="color:var(--orange)">Next-Hop</th>
-          <th style="color:var(--cyan)">System 5</th>
+          <th style="color:var(--cyan)">System V6</th>
         </tr>
       </thead>
       <tbody>
@@ -359,16 +359,16 @@
     </div>
     <div class="bar-col">
       <div class="bar" data-score="9.2" style="height:0;background:var(--cyan)"><span class="bar-value" style="color:var(--cyan)">9.2</span></div>
-      <span class="bar-label">System 5</span>
+      <span class="bar-label">System V6</span>
     </div>
   </div>
 </section>
 
 <!-- WINNER ARCHITECTURE -->
 <section id="winner">
-  <div class="section-tag reveal">04 — System 5 Architecture</div>
-  <h2 class="section-title reveal">What System 5 Adds Beyond Managed Flooding</h2>
-  <p class="section-desc reveal">Meshtastic's managed flooding is clever — but still O(n). We didn't invent new theory. Instead, System 5 borrows six <strong>proven, battle-tested concepts</strong> from decades of networking research and adapts them to LoRa's unique constraints (low bandwidth, half-duplex, 1% duty cycle, limited RAM). Each concept solves a specific piece of the puzzle:</p>
+  <div class="section-tag reveal">04 — System V6 Architecture</div>
+  <h2 class="section-title reveal">What System V6 Adds Beyond Managed Flooding</h2>
+  <p class="section-desc reveal">Meshtastic's managed flooding is clever — but still O(n). We didn't invent new theory. Instead, System V6 borrows six <strong>proven, battle-tested concepts</strong> from decades of networking research and adapts them to LoRa's unique constraints (low bandwidth, half-duplex, 1% duty cycle, limited RAM). Each concept solves a specific piece of the puzzle:</p>
   <div class="arch-grid">
     <div class="arch-card reveal">
       <div class="source">from Internet Routing</div>
@@ -418,7 +418,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
       <h4>Half-Duplex Radio Model <span class="arrow">&rarr;</span> Realistic Simulation</h4>
-      <p>LoRa radios are half-duplex: a node <strong>cannot TX while receiving</strong>. When a mountaintop hears 10 rebroadcasts, it's blocked from forwarding for 10-20 seconds. Our simulator now models this per-node radio state (IDLE/TX/RX) on <strong>ALL scenarios</strong>. Result: flooding collapses to <strong>0–60% delivery</strong> across all scenarios (~87% → ~6% in Bay Area). System 5 holds at <strong>~74%</strong> in Bay Area and maintains high delivery everywhere.</p>
+      <p>LoRa radios are half-duplex: a node <strong>cannot TX while receiving</strong>. When a mountaintop hears 10 rebroadcasts, it's blocked from forwarding for 10-20 seconds. Our simulator now models this per-node radio state (IDLE/TX/RX) on <strong>ALL scenarios</strong>. Result: flooding collapses to <strong>0–60% delivery</strong> across all scenarios (~87% → ~6% in Bay Area). System V6 holds at <strong>~74%</strong> in Bay Area and maintains high delivery everywhere.</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
@@ -428,7 +428,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
       <h4>Emergency Re-Route <span class="arrow">&rarr;</span> Fewer Fallback Floods</h4>
-      <p>When both cached routes fail, System 5 falls back to <strong>scoped corridor flooding</strong> (source + destination clusters + border nodes only). Routes are built via distance-vector from OGM data — no BFS computation on-device needed.</p>
+      <p>When both cached routes fail, System V6 falls back to <strong>scoped corridor flooding</strong> (source + destination clusters + border nodes only). Routes are built via distance-vector from OGM data — no BFS computation on-device needed.</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">from Bay Area Feedback</div>
@@ -484,7 +484,7 @@
         <td style="text-align:right;color:var(--cyan)">57%</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Key insight:</strong> Half-duplex destroys flooding in Bay Area (~87% → ~6%) and across ALL scenarios (0–60% delivery). System 5 holds at ~74% in Bay Area and is the only approach maintaining high delivery. Node Silencing halves TX cost (~516K → ~284K) with only ~4% less delivery. 128 of 193 valley nodes are muted — all 7 mountain nodes stay active. Results averaged over 5 random seeds for statistical reliability.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Key insight:</strong> Half-duplex destroys flooding in Bay Area (~87% → ~6%) and across ALL scenarios (0–60% delivery). System V6 holds at ~74% in Bay Area and is the only approach maintaining high delivery. Node Silencing halves TX cost (~516K → ~284K) with only ~4% less delivery. 128 of 193 valley nodes are muted — all 7 mountain nodes stay active. Results averaged over 5 random seeds for statistical reliability.</p>
   </div>
 </section>
 
@@ -492,7 +492,7 @@
 <section id="hop-cost" class="hop-cost-section">
   <div class="section-tag reveal">06 — The Killer Argument</div>
   <h2 class="section-title reveal">Why Hop Limits Become Irrelevant</h2>
-  <p class="section-desc reveal">In flooding, every hop multiplies transmissions across the <em>entire</em> network. In System 5, every hop costs exactly <strong>one transmission</strong>. This single change unlocks everything.</p>
+  <p class="section-desc reveal">In flooding, every hop multiplies transmissions across the <em>entire</em> network. In System V6, every hop costs exactly <strong>one transmission</strong>. This single change unlocks everything.</p>
 
   <div class="hop-comparison reveal">
     <div class="hop-card hop-flooding">
@@ -507,7 +507,7 @@
       </div>
     </div>
     <div class="hop-card hop-system5">
-      <h4 style="color:var(--cyan)">System 5: Cost per Hop = <em>1</em></h4>
+      <h4 style="color:var(--cyan)">System V6: Cost per Hop = <em>1</em></h4>
       <div class="hop-formula" style="color:var(--cyan)">TX<sub>total</sub> = hops</div>
       <p>Only the forwarding node transmits. At 100 nodes and 5 hops, a single message generates <strong>5 transmissions</strong>. No hop limit needed — 20 hops cost the same as flooding costs for 1.</p>
       <div class="hop-example">
@@ -581,8 +581,8 @@
         <td style="text-align:right;color:var(--orange)">197k*</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* At 1000+ nodes, System 5 uses <strong>more total TX</strong> than managed flooding — but delivers <strong>46% vs 0%</strong>. Managed flooding is effectively dead at this scale with half-duplex enabled.</p>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Critical finding:</strong> With half-duplex and collisions enabled on ALL scenarios, managed flooding's delivery rate <strong>collapses everywhere</strong>. At 1000 nodes, <strong>0%</strong> of messages arrive. Even at 100 nodes, only <strong>27%</strong>. System 5 delivers <strong>100% at 100 nodes and 46% at 1000 nodes</strong>. Half-duplex radio physics — not just hop limits — make flooding <strong>fundamentally unreliable</strong>.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* At 1000+ nodes, System V6 uses <strong>more total TX</strong> than managed flooding — but delivers <strong>46% vs 0%</strong>. Managed flooding is effectively dead at this scale with half-duplex enabled.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Critical finding:</strong> With half-duplex and collisions enabled on ALL scenarios, managed flooding's delivery rate <strong>collapses everywhere</strong>. At 1000 nodes, <strong>0%</strong> of messages arrive. Even at 100 nodes, only <strong>27%</strong>. System V6 delivers <strong>100% at 100 nodes and 46% at 1000 nodes</strong>. Half-duplex radio physics — not just hop limits — make flooding <strong>fundamentally unreliable</strong>.</p>
   </div>
 
   <div class="problem-grid" style="margin-top:2rem">
@@ -607,7 +607,7 @@
 <!-- METRICS -->
 <section id="metrics">
   <div class="section-tag reveal">07 — Key Metrics</div>
-  <h2 class="section-title reveal">System 5 by the Numbers</h2>
+  <h2 class="section-title reveal">System V6 by the Numbers</h2>
   <div class="metrics-row">
     <div class="metric-card reveal">
       <div class="metric-value"><span id="counter-reliability">0</span><span class="unit">%</span></div>
@@ -650,7 +650,7 @@
       <div class="formation-step-info">
         <div class="formation-step-num" id="form-step-num">Step 0 / 9</div>
         <h4 class="formation-step-title" id="form-step-title">Press "Next Step" to begin</h4>
-        <p class="formation-step-desc" id="form-step-desc">This animation shows how a System 5 mesh network self-organizes from powered-on nodes to a fully routed, load-balanced mesh.</p>
+        <p class="formation-step-desc" id="form-step-desc">This animation shows how a System V6 mesh network self-organizes from powered-on nodes to a fully routed, load-balanced mesh.</p>
       </div>
       <div class="formation-btns">
         <button id="form-btn-prev" class="form-btn" disabled>&#x25C0; Back</button>
@@ -666,7 +666,7 @@
 <section id="scenarios" class="scale-scenarios">
   <div class="section-tag reveal">09 — Real-World Scale</div>
   <h2 class="section-title reveal">From Neighborhood to Worldwide</h2>
-  <p class="section-desc reveal">Mesh networks don't exist in a vacuum — they range from a dozen handhelds in a neighborhood to thousands of devices spanning continents. System 5's geo-clustering architecture naturally adapts: a single cluster handles local traffic efficiently, while inter-cluster routing via border nodes scales to arbitrarily large networks. The three live simulations below show how the same protocol handles neighborhood, continental, and global scale. Watch the node activity logs on the right — they show real-time routing decisions, OGM beacons, and failover events.</p>
+  <p class="section-desc reveal">Mesh networks don't exist in a vacuum — they range from a dozen handhelds in a neighborhood to thousands of devices spanning continents. System V6's geo-clustering architecture naturally adapts: a single cluster handles local traffic efficiently, while inter-cluster routing via border nodes scales to arbitrarily large networks. The three live simulations below show how the same protocol handles neighborhood, continental, and global scale. Watch the node activity logs on the right — they show real-time routing decisions, OGM beacons, and failover events.</p>
 
   <!-- LOCAL -->
   <div class="scenario reveal" id="scn-local">
@@ -763,14 +763,14 @@
 <section id="resilience" class="resilience-section">
   <div class="section-tag reveal">10 — Resilience &amp; Adaptive QoS</div>
   <h2 class="section-title reveal">When Things Go Wrong</h2>
-  <p class="section-desc reveal">A routing protocol that only works in perfect conditions is worthless. In the real world, nodes die (batteries, hardware), GPS signals drop, internet links fail, and entire regions go dark. System 5 is designed to degrade gracefully: multi-path routing provides instant failover (0ms — the next cached route is already known), scoped corridor flooding is the safety net, and the adaptive QoS gate ensures emergency messages always get through even when the network is collapsing. Click on nodes or links below to simulate failures and watch the network adapt in real-time.</p>
+  <p class="section-desc reveal">A routing protocol that only works in perfect conditions is worthless. In the real world, nodes die (batteries, hardware), GPS signals drop, internet links fail, and entire regions go dark. System V6 is designed to degrade gracefully: multi-path routing provides instant failover (0ms — the next cached route is already known), scoped corridor flooding is the safety net, and the adaptive QoS gate ensures emergency messages always get through even when the network is collapsing. Click on nodes or links below to simulate failures and watch the network adapt in real-time.</p>
 
   <!-- Failure case explanation cards -->
   <div class="problem-grid" style="margin-bottom:2.5rem">
     <div class="problem-card reveal" style="border-color:var(--red-dim)">
       <div class="icon" style="background:rgba(248,113,113,0.1);color:var(--red)">&#x26A0;</div>
       <h3>Node Failure</h3>
-      <p>A node dies (battery, hardware). Its routes break instantly. System 5 switches to <strong>cached backup routes in 0ms</strong>. If a border node dies, the second border node takes over. If all borders die, the cluster falls back to flooding.</p>
+      <p>A node dies (battery, hardware). Its routes break instantly. System V6 switches to <strong>cached backup routes in 0ms</strong>. If a border node dies, the second border node takes over. If all borders die, the cluster falls back to flooding.</p>
     </div>
     <div class="problem-card reveal" style="border-color:var(--orange-dim)">
       <div class="icon" style="background:rgba(251,146,60,0.1);color:var(--orange)">&#x1F4E1;</div>
@@ -839,7 +839,7 @@
 <section id="sim-results" class="sim-results-section">
   <div class="section-tag reveal">11 — Simulation Results</div>
   <h2 class="section-title reveal">Real Numbers from the Simulator</h2>
-  <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System 5. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 26 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
+  <p class="section-desc reveal">Claims are only as good as their evidence. We built a <strong>Python simulator</strong> that models EU 868MHz LoRa physics (path loss, terrain, duty cycle, collisions, half-duplex radio) and runs 6 routers on identical networks: Naive Flood, Managed Flood at 3/5/7 hop limits, Next-Hop, and System V6. Each scenario runs 100–300 random messages and measures delivery rate, total transmissions, and per-node load. The results below are from 26 scenarios covering 20–1500 nodes — including realistic environments (rural, maritime, indoor, highway convoy) and stress tests (node failure, link degradation, duty cycle enforcement). <a href="simulator.html" style="color:var(--cyan)">Try the interactive simulator →</a></p>
 
   <!-- Category Filter -->
   <div class="sim-filter reveal" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.2rem;justify-content:center">
@@ -874,7 +874,7 @@
   <!-- Charts Grid -->
   <div class="sim-charts-grid">
     <div class="sim-chart-card reveal">
-      <h4>Transmissions: Flooding vs System 5 <button id="btn-scale-toggle" class="scale-toggle-btn">Switch to Linear</button></h4>
+      <h4>Transmissions: Flooding vs System V6 <button id="btn-scale-toggle" class="scale-toggle-btn">Switch to Linear</button></h4>
       <p class="chart-subtitle">Click button to toggle between log and linear scale</p>
       <div class="sim-chart-wrap">
         <canvas id="chart-bandwidth"></canvas>
@@ -882,7 +882,7 @@
     </div>
     <div class="sim-chart-card reveal">
       <h4>Delivery Rate Under Stress</h4>
-      <p class="chart-subtitle">System 5 maintains high delivery even under failures</p>
+      <p class="chart-subtitle">System V6 maintains high delivery even under failures</p>
       <div class="sim-chart-wrap">
         <canvas id="chart-delivery"></canvas>
       </div>
@@ -905,7 +905,7 @@
 
   <!-- Key insight -->
   <div class="tldr-card reveal" style="margin-top:2rem">
-    <p class="tldr-text">With <strong>realistic hop limits (3–7)</strong>, managed flooding not only wastes bandwidth — it <strong>fails to deliver</strong>. At 500 nodes with hop limit 7, only <strong>51%</strong> of messages arrive. At 1000 nodes, only <strong>6%</strong>. System 5 delivers <strong>7.5x more messages</strong> in the same scenarios, using fewer total transmissions per delivered message. The hop limit is not a safety net — it is the <strong>primary scaling barrier</strong> that makes large mesh networks fundamentally unreliable.</p>
+    <p class="tldr-text">With <strong>realistic hop limits (3–7)</strong>, managed flooding not only wastes bandwidth — it <strong>fails to deliver</strong>. At 500 nodes with hop limit 7, only <strong>51%</strong> of messages arrive. At 1000 nodes, only <strong>6%</strong>. System V6 delivers <strong>7.5x more messages</strong> in the same scenarios, using fewer total transmissions per delivered message. The hop limit is not a safety net — it is the <strong>primary scaling barrier</strong> that makes large mesh networks fundamentally unreliable.</p>
   </div>
 </section>
 
@@ -913,7 +913,7 @@
 <section id="glossary">
   <div class="section-tag reveal">12 — Glossary</div>
   <h2 class="section-title reveal">Key Terms Explained</h2>
-  <p class="section-desc reveal">Mesh networking spans radio engineering, graph theory, and protocol design. Here's a quick reference for the technical terms used throughout this presentation — from LoRa basics to the protocol-specific concepts introduced by System 5.</p>
+  <p class="section-desc reveal">Mesh networking spans radio engineering, graph theory, and protocol design. Here's a quick reference for the technical terms used throughout this presentation — from LoRa basics to the protocol-specific concepts introduced by System V6.</p>
   <div class="glossary-grid">
     <div class="glossary-card reveal"><dt>LoRa</dt><dd>Long Range radio modulation technique enabling low-power, long-distance communication (1-15 km).</dd></div>
     <div class="glossary-card reveal"><dt>Meshtastic</dt><dd>Open source LoRa mesh firmware for off-grid communication on ESP32 devices.</dd></div>
@@ -927,12 +927,12 @@
     <div class="glossary-card reveal"><dt>QoS</dt><dd>Quality of Service — traffic prioritization ensuring critical messages (SOS) always get through.</dd></div>
     <div class="glossary-card reveal"><dt>MQTT</dt><dd>Message queue protocol used as an internet bridge between geographically separated mesh clusters.</dd></div>
     <div class="glossary-card reveal"><dt>DTN</dt><dd>Delay Tolerant Networking — store-and-forward approach for networks with intermittent connectivity.</dd></div>
-    <div class="glossary-card reveal"><dt>Distance-Vector</dt><dd>Routing protocol where nodes learn routes from neighbor advertisements (OGMs) rather than computing full graph traversals. Used in RIP, B.A.T.M.A.N., and System 5.</dd></div>
+    <div class="glossary-card reveal"><dt>Distance-Vector</dt><dd>Routing protocol where nodes learn routes from neighbor advertisements (OGMs) rather than computing full graph traversals. Used in RIP, B.A.T.M.A.N., and System V6.</dd></div>
     <div class="glossary-card reveal"><dt>RSSI</dt><dd>Received Signal Strength Indicator — measures how strongly a radio signal is received (in dBm).</dd></div>
     <div class="glossary-card reveal"><dt>SNR</dt><dd>Signal-to-Noise Ratio — measures signal quality relative to background noise (in dB).</dd></div>
     <div class="glossary-card reveal"><dt>Half-Duplex</dt><dd>A radio that cannot transmit and receive at the same time. All LoRa radios are half-duplex — a node hearing a transmission is blocked from sending until the packet ends.</dd></div>
     <div class="glossary-card reveal"><dt>Backpressure</dt><dd>Congestion signal: when a node's queue fills up, routes through it get penalized. Traffic naturally shifts to less-loaded paths — like water flowing around rocks.</dd></div>
-    <div class="glossary-card reveal"><dt>Border Node</dt><dd>A System 5 node that has neighbors in a different geographic cluster. Border nodes are the bridges for inter-cluster routing — each cluster pair has 2 border links.</dd></div>
+    <div class="glossary-card reveal"><dt>Border Node</dt><dd>A System V6 node that has neighbors in a different geographic cluster. Border nodes are the bridges for inter-cluster routing — each cluster pair has 2 border links.</dd></div>
     <div class="glossary-card reveal"><dt>Capture Effect</dt><dd>In LoRa, if two packets collide but one is &ge;6dB stronger, the stronger signal "captures" the receiver and is decoded successfully. The weaker packet is lost.</dd></div>
   </div>
 </section>
@@ -941,7 +941,7 @@
 <section id="conclusion">
   <div class="section-tag reveal">13 — Conclusion</div>
   <h2 class="section-title reveal">The Path Forward</h2>
-  <p class="section-desc reveal">Half-duplex radio physics collapse managed flooding to <strong>0–60% delivery</strong> in ALL scenarios — not just Bay Area. At 100 nodes, only 27% of messages arrive. At 1000 nodes, 0%. System 5 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 26 scenarios (all with half-duplex and collisions enabled), System 5 is the only approach that maintains high delivery — 100% at up to 200 nodes, 46% at 1000 nodes where flooding delivers nothing. Very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
+  <p class="section-desc reveal">Half-duplex radio physics collapse managed flooding to <strong>0–60% delivery</strong> in ALL scenarios — not just Bay Area. At 100 nodes, only 27% of messages arrive. At 1000 nodes, 0%. System V6 breaks through these barriers with directed routing at ~1 TX per hop, surviving both the hop limit wall and the half-duplex collision cascade. Across 26 scenarios (all with half-duplex and collisions enabled), System V6 is the only approach that maintains high delivery — 100% at up to 200 nodes, 46% at 1000 nodes where flooding delivers nothing. Very large sparse networks remain challenging for any protocol. The protocol is fully specified, a working ESP32 firmware prototype exists for three board types, and the complete source code is open under MIT license.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">

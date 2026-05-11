@@ -218,14 +218,14 @@ function resetSim() {
     rendererSystem5.setNetwork(netSystem5);
     initColdstart();
     const titleR = document.querySelector('.sim-panel-title.system5');
-    if (titleR) titleR.textContent = 'System 5 — Cold Start';
+    if (titleR) titleR.textContent = 'System V6 — Cold Start';
   } else if (isConversion) {
     // Conversion: same network, progressively upgrade nodes
     const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
     rendererSystem5.setNetwork(netSystem5);
     initConversion();
     const titleR = document.querySelector('.sim-panel-title.system5');
-    if (titleR) titleR.textContent = 'Conversion: 0% S5';
+    if (titleR) titleR.textContent = 'Conversion: 0% V6';
   } else {
     const netSystem5 = buildNetwork(simState.scenario, new RNG(42));
     rendererSystem5.setNetwork(netSystem5);
@@ -263,7 +263,7 @@ function resetSim() {
   const log = document.getElementById('sim-log');
   if (isConversion) {
     log.innerHTML = `<div class="log-step">
-      <div class="log-header">Conversion Mode — Legacy to S5 Migration</div>
+      <div class="log-header">Conversion Mode — Legacy to V6 Migration</div>
       <div class="log-columns">
         <div class="log-col left">
           <div class="log-col-title log-managed">Managed Flooding (Baseline)</div>
@@ -271,10 +271,10 @@ function resetSim() {
         </div>
         <div class="log-col right">
           <div class="log-col-title log-system5">Dual-Mode (Progressive)</div>
-          Watch TX cost drop as more nodes upgrade from Legacy to S5.
+          Watch TX cost drop as more nodes upgrade from Legacy to V6.
         </div>
       </div>
-      <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance through ${conversionPhaseCount()} migration phases (0% → 90% S5). Same message, same network — only the S5 ratio changes.</div>
+      <div class="log-dim" style="margin-top:0.3rem;">Press <b>Step</b> to advance through ${conversionPhaseCount()} migration phases (0% → 90% V6). Same message, same network — only the V6 ratio changes.</div>
     </div>`;
   } else if (isColdstart) {
     log.innerHTML = `<div class="log-step">
@@ -286,7 +286,7 @@ function resetSim() {
           <br><span class="log-dim">${nAlive} nodes, ${nLinks} links.</span>
         </div>
         <div class="log-col right">
-          <div class="log-col-title log-system5">System 5 — Bootstrap</div>
+          <div class="log-col-title log-system5">System V6 — Bootstrap</div>
           Nodes start with <b>zero knowledge</b>. Must self-organize before routing.
           <br><span class="log-dim">${nAlive} nodes visible, 0 links known, 0 routes.</span>
         </div>
@@ -355,14 +355,14 @@ function buildNetworkAnimated() {
     title: 'Step 3: Geo-Clustering (Quadrant Split)',
     html: `Nodes grouped into <span class="log-good">${Object.keys(clusters).length} clusters</span> by geographic quadrant.`
       + `<br>${clusterList}`
-      + `<br><span class="log-dim">In System 5, messages are routed cluster-by-cluster. In Managed Flooding, clusters are ignored — everything floods.</span>`,
+      + `<br><span class="log-dim">In directed routing, messages are routed cluster-by-cluster. In Managed Flooding, clusters are ignored — everything floods.</span>`,
   });
 
   // Step 4: Border nodes
   steps.push({
     title: 'Step 4: Border Node Election',
     html: `<span class="log-good">${nBorder} border nodes</span> detected (nodes with neighbors in other clusters).`
-      + `<br><span class="log-dim">Border nodes are the gateways between clusters — System 5 routes inter-cluster traffic through them. `
+      + `<br><span class="log-dim">Border nodes are the gateways between clusters — directed routing sends inter-cluster traffic through them. `
       + `Shown with white rings on the map.</span>`,
   });
 
@@ -372,7 +372,7 @@ function buildNetworkAnimated() {
     html: `<span class="log-managed">Meshtastic limits messages to <b>3-7 hops</b></span> to prevent broadcast storms.`
       + `<br>Each hop triggers <b>O(n)</b> transmissions (every reachable node rebroadcasts).`
       + `<br>Without hop limit, a single message would flood the entire network repeatedly.`
-      + `<br><br><span class="log-system5">System 5 has <b>no hop limit</b></span> — each hop costs only <b>1 TX</b> (directed routing), `
+      + `<br><br><span class="log-system5">System V6 has <b>no hop limit</b></span> — each hop costs only <b>1 TX</b> (directed routing), `
       + `so 20 hops cost less than Managed Flooding costs for 1 hop.`
       + `<br><br><span class="log-dim">Select SRC and DST to see this difference live. `
       + `On the left panel, dashed orange rings show where Meshtastic's hop limit cuts off.</span>`,
@@ -440,22 +440,22 @@ function prepareHopByHop() {
 
   // --- RIGHT SIDE: System 5 (pure) or Dual-Mode (mixed) ---
   let s5Path = null, dualResult = null, s5Hops = 0;
-  let rightTitle = 'System 5', rightIntro = '';
+  let rightTitle = 'System V5', rightIntro = '';
 
   if (isMixed) {
     // Dual-mode simulation
     dualResult = simulateDualMode(rendererSystem5.net, src, dst, new RNG(42));
-    rightTitle = `Dual-Mode (${Math.round(cfg.s5ratio*100)}% S5)`;
+    rightTitle = `Dual-Mode (${Math.round(cfg.s5ratio*100)}% V6)`;
 
     if (dualResult.mode === 'direct' && dualResult.path) {
       s5Path = dualResult.path;
       s5Hops = dualResult.s5Hops;
-      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'S5' : 'Legacy';
-      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'S5' : 'Legacy';
-      rightIntro = `Both nodes are S5-capable. Direct S5 route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).<br>`
-        + `<span class="log-dim">All intermediate nodes are S5 — no flooding needed. Pure directed routing.</span>`;
+      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'V6' : 'Legacy';
+      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'V6' : 'Legacy';
+      rightIntro = `Both nodes are V6-capable. Direct V6 route found: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops).<br>`
+        + `<span class="log-dim">All intermediate nodes are V6 — no flooding needed. Pure directed routing.</span>`;
     } else {
-      // Mixed flooding with S5 suppression
+      // Mixed flooding with V6 suppression
       // Group dual-mode events by hop for animation
       const dHopGroups = {};
       let dMaxHop = 0;
@@ -469,12 +469,12 @@ function prepareHopByHop() {
       dualResult._maxHop = dMaxHop;
       s5Hops = dMaxHop + 1;
 
-      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'S5' : 'Legacy';
-      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'S5' : 'Legacy';
+      const srcS5 = rendererSystem5.net.nodes[src].isS5 ? 'V6' : 'Legacy';
+      const dstS5 = rendererSystem5.net.nodes[dst].isS5 ? 'V6' : 'Legacy';
       const nS5 = rendererSystem5.net.nodes.filter(n => n.isS5).length;
-      rightIntro = `SRC is <b>${srcS5}</b>, DST is <b>${dstS5}</b>. No all-S5 path exists.<br>`
-        + `Falling back to <b>hybrid flooding</b>: ${nS5} S5 nodes send <b>directed</b> (1 TX) where they know the next hop, Legacy nodes flood normally.<br>`
-        + `<span class="log-dim">S5 nodes use their routing table to skip broadcasting — they send only to the next hop on the path. Legacy nodes still flood to ALL neighbors. Same suppression rate (40%) for full backward compatibility.</span>`;
+      rightIntro = `SRC is <b>${srcS5}</b>, DST is <b>${dstS5}</b>. No all-V6 path exists.<br>`
+        + `Falling back to <b>hybrid flooding</b>: ${nS5} V6 nodes send <b>directed</b> (1 TX) where they know the next hop, Legacy nodes flood normally.<br>`
+        + `<span class="log-dim">V6 nodes use their routing table to skip broadcasting — they send only to the next hop on the path. Legacy nodes still flood to ALL neighbors. Same suppression rate (40%) for full backward compatibility.</span>`;
     }
   } else {
     // Check which right-panel router is selected
@@ -485,7 +485,7 @@ function prepareHopByHop() {
       // WalkFlood — Passive Learning + Walk + Mini-Flood
       const wfResult = simulateWalkFlood(rendererSystem5.net, src, dst, new RNG(42));
       const phase = wfResult.phase || 'unknown';
-      rightTitle = 'WalkFlood';
+      rightTitle = 'System V6';
 
       if (phase === 'flood (learning)') {
         // FLOOD-LEARNING mode: animate like managed flood (hop groups)
@@ -505,11 +505,11 @@ function prepareHopByHop() {
         s5Hops = wfMaxHop + 1;
 
         if (wfResult.delivered) {
-          rightTitle = 'WalkFlood (learning — flooding)';
+          rightTitle = 'System V6 (learning — flooding)';
           rightIntro = `<b>Learning phase</b>: using managed flooding (same as left panel). ${wfResult.totalTx} TX.`
-            + `<br><span class="log-dim">WalkFlood is still learning routes from traffic. After ~10 messages it switches to directed routing with dramatically fewer TX.</span>`;
+            + `<br><span class="log-dim">System V6 is still learning routes from traffic. After ~10 messages it switches to directed routing with dramatically fewer TX.</span>`;
         } else {
-          rightTitle = 'WalkFlood (learning — flooding)';
+          rightTitle = 'System V6 (learning — flooding)';
           rightIntro = `<span class="log-bad">Managed flood failed in learning phase — ${wfResult.totalTx} TX.</span><br>`
             + `<span class="log-dim">Still learning. Both panels behave identically during this phase.</span>`;
         }
@@ -522,9 +522,9 @@ function prepareHopByHop() {
           : phase === 'walk' ? 'Walk (exploration)'
           : phase === 'walk+direct' ? 'Walk then Directed'
           : 'Mini-Flood (last resort)';
-        rightTitle = `WalkFlood (${phaseLabel})`;
+        rightTitle = `System V6 (${phaseLabel})`;
         rightIntro = `<b>${phaseLabel}</b>: <span class="log-path">${s5Path.join(' → ')}</span> (${s5Hops} hops, ${wfResult.totalTx} TX).`
-          + `<br><span class="log-dim">Routes learned passively — no flooding needed. <span style="color:#a78bfa">Purple</span> = WalkFlood node.</span>`;
+          + `<br><span class="log-dim">Routes learned passively — no flooding needed. <span style="color:#a78bfa">Purple</span> = System V6 node.</span>`;
       } else {
         // DROPPED
         s5Path = null;
@@ -566,7 +566,7 @@ function prepareHopByHop() {
                        txEvents: s5Result.txEvents, delivered: s5Result.delivered,
                        totalTx: s5Result.totalTx };
         s5Hops = s5MaxHop + 1;
-        rightTitle = 'System 5 (fallback flood)';
+        rightTitle = 'System V5 (fallback flood)';
         rightIntro = `All direct routes failed — using <b>scoped cluster flooding</b> as fallback.<br>`
           + `<span class="log-dim">Flooding only in SRC + DST clusters + border nodes. Much less TX than full-network flooding.</span>`;
       } else if (s5Path) {
@@ -597,7 +597,7 @@ function prepareHopByHop() {
   };
 
   // Set right panel colors based on router type and phase
-  const isWalkFloodDirected = rightTitle && rightTitle.includes('WalkFlood') && !rightTitle.includes('learning');
+  const isWalkFloodDirected = rightTitle && rightTitle.includes('System V6') && !rightTitle.includes('learning');
   if (isWalkFloodDirected) {
     // Purple for WalkFlood directed/walk/mini-flood phases
     rendererSystem5.deliveryColor = 'rgba(167,139,250,0.9)';
@@ -618,7 +618,7 @@ function prepareHopByHop() {
 
   // Update right panel title
   const titleEl = document.querySelector('.sim-panel-title.system5');
-  if (titleEl) titleEl.textContent = rightTitle || (isMixed ? rightTitle : 'System 5 (MeshRoute)');
+  if (titleEl) titleEl.textContent = rightTitle || (isMixed ? rightTitle : 'System V6 (MeshRoute)');
 
   // Write initial log
   const srcNode = rendererManaged.net.nodes[src];
@@ -639,7 +639,7 @@ function prepareHopByHop() {
       <div class="log-col right">
         <div class="log-col-title log-system5">${rightTitle}</div>
         ${isMixed
-          ? `Node ${src} checks: am I S5-capable? ${rendererSystem5.net.nodes[src].isS5 ? 'Yes' : 'No'}.<br>${rightIntro}`
+          ? `Node ${src} checks: am I V6-capable? ${rendererSystem5.net.nodes[src].isS5 ? 'Yes' : 'No'}.<br>${rightIntro}`
           : `Node ${src} looks up Node ${dst} in its <b>routing table</b>.<br>${rightIntro}`}
       </div>
     </div>
@@ -662,10 +662,10 @@ function prepareHopByHopBroadcast() {
 
   if (useWalkFloodBroadcast) {
     rightResult = simulateWalkFloodBroadcast(rendererSystem5.net, src, new RNG(42));
-    rightTitle = 'WalkFlood MPR (Broadcast)';
+    rightTitle = 'System V6 MPR (Broadcast)';
     rightLimitLabel = 'MPR relay';
     const nMPR = rightResult.mprRelayNodes ? rightResult.mprRelayNodes.size : 0;
-    rightIntroHtml = `<div class="log-col-title log-system5">WalkFlood MPR Broadcast</div>
+    rightIntroHtml = `<div class="log-col-title log-system5">System V6 MPR Broadcast</div>
         Node ${src} selects <b>MPR relay nodes</b> (purple rings). Only MPR nodes rebroadcast — others receive silently.<br>
         <span class="log-dim">${nMPR} MPR relay nodes elected. Non-MPR nodes save battery by not retransmitting.</span>`;
   } else {
@@ -836,7 +836,7 @@ function markFinishedBroadcast() {
   const mReach = hp.mResult.reachPct.toFixed(1);
   const cdReach = hp.cdResult.reachPct.toFixed(1);
   const savings = ((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0);
-  const rightLabel = hp.rightTitle || (hp.useWalkFloodBroadcast ? 'WalkFlood MPR' : 'Cluster-Distributor');
+  const rightLabel = hp.rightTitle || (hp.useWalkFloodBroadcast ? 'System V6 MPR' : 'Cluster-Distributor');
 
   const sumDiv = document.createElement('div');
   sumDiv.className = 'log-step';
@@ -991,7 +991,7 @@ function advanceColdstartStep() {
         <div class="log-col-title log-managed">Managed Flooding</div>${leftHtml}
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">System 5 Bootstrap</div>${rightHtml}
+        <div class="log-col-title log-system5">System V6 Bootstrap</div>${rightHtml}
       </div>
     </div>`;
   log.appendChild(stepDiv);
@@ -999,7 +999,7 @@ function advanceColdstartStep() {
 
   if (isColdstartBootstrapDone()) {
     const titleR2 = document.querySelector('.sim-panel-title.system5');
-    if (titleR2) titleR2.textContent = 'System 5 (MeshRoute)';
+    if (titleR2) titleR2.textContent = 'System V6 (MeshRoute)';
   }
 }
 
@@ -1067,7 +1067,7 @@ function advanceConversionStep() {
 
   const stepDiv = document.createElement('div');
   stepDiv.className = 'log-step';
-  stepDiv.innerHTML = `<div class="log-header">Migration Phase ${phaseIndex + 1} / ${CONVERSION_PHASES.length}: ${pct}% S5</div>
+  stepDiv.innerHTML = `<div class="log-header">Migration Phase ${phaseIndex + 1} / ${CONVERSION_PHASES.length}: ${pct}% V6</div>
     <div class="log-columns">
       <div class="log-col left">
         <div class="log-col-title log-managed">Managed Flooding</div>
@@ -1076,7 +1076,7 @@ function advanceConversionStep() {
         <br><span class="log-dim">Same result every phase — flooding doesn't improve.</span>
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">Dual-Mode (${pct}% S5)</div>
+        <div class="log-col-title log-system5">Dual-Mode (${pct}% V6)</div>
         ${dualResult.delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">Failed</span>'}
         — <span class="log-path">${dualResult.totalTx} TX</span>
         <br>${rightHtml}
@@ -1205,8 +1205,8 @@ function advanceOneHop() {
     s5TxThisHop = 1;
     hp.s5TotalTxSoFar += 1;
     rendererSystem5.markReached(from);
-    // Purple for WalkFlood directed, cyan for System 5
-    const directedColor = (hp.rightTitle || '').includes('WalkFlood') ? '#a78bfa' : '#22d3ee';
+    // Purple for System V6 directed, cyan for System V5
+    const directedColor = (hp.rightTitle || '').includes('System V6') ? '#a78bfa' : '#22d3ee';
     rendererSystem5.addPacket(from, to, directedColor, () => {
       if (simState.generation !== gen) return;
       rendererSystem5.markReached(to);
@@ -1263,11 +1263,11 @@ function advanceOneHop() {
         <div class="log-col-title log-managed">Managed Flooding</div>${mHtml}
       </div>
       <div class="log-col right">
-        <div class="log-col-title log-system5">System 5</div>${s5Html}
+        <div class="log-col-title log-system5">${hp.rightTitle || 'System V6'}</div>${s5Html}
       </div>
     </div>
     ${(hp.mTotalTxSoFar > 0 && hp.s5TotalTxSoFar > 0) ?
-      `<div class="log-comparison">After hop ${hop + 1}: Managed <span class="log-flood">${hp.mTotalTxSoFar} TX</span> vs System 5 <span class="log-path">${hp.s5TotalTxSoFar} TX</span> — <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
+      `<div class="log-comparison">After hop ${hop + 1}: Managed <span class="log-flood">${hp.mTotalTxSoFar} TX</span> vs ${hp.rightTitle || 'System V6'} <span class="log-path">${hp.s5TotalTxSoFar} TX</span> — <span class="log-savings">${((1 - hp.s5TotalTxSoFar / hp.mTotalTxSoFar) * 100).toFixed(0)}% saved</span></div>` : ''}`;
   log.appendChild(stepDiv);
   log.scrollTop = log.scrollHeight;
 
@@ -1301,15 +1301,15 @@ function advanceOneHop() {
             after ${hp.mMaxHop + 1} hop levels, <b>${hp.mTotalTxSoFar} total TX</b>.
           </div>
           <div class="log-col right">
-            <div class="log-col-title log-system5">${hp.rightTitle || 'WalkFlood'}</div>
+            <div class="log-col-title log-system5">${hp.rightTitle || 'System V6'}</div>
             ${hp.s5Delivered ? '<span class="log-good">Delivered</span>' : '<span class="log-bad">FAILED</span>'}
             in ${hp.s5Hops} hops, <b>${hp.s5TotalTxSoFar} total TX</b>.
           </div>
         </div>
         ${hp.s5TotalTxSoFar < hp.mTotalTxSoFar
-          ? `<div class="log-comparison"><b>${hp.rightTitle || 'WalkFlood'} used ${((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0)}% fewer transmissions</b> (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)</div>`
+          ? `<div class="log-comparison"><b>${hp.rightTitle || 'System V6'} used ${((1 - hp.s5TotalTxSoFar / Math.max(hp.mTotalTxSoFar, 1)) * 100).toFixed(0)}% fewer transmissions</b> (${(hp.mTotalTxSoFar / Math.max(hp.s5TotalTxSoFar, 1)).toFixed(1)}x more efficient)</div>`
           : hp.s5TotalTxSoFar === hp.mTotalTxSoFar
-          ? `<div class="log-comparison">Both panels used the same number of TX (learning phase — WalkFlood floods identically to Managed Flood)</div>`
+          ? `<div class="log-comparison">Both panels used the same number of TX (learning phase — System V6 floods identically to Managed Flood)</div>`
           : `<div class="log-comparison">Managed Flood used fewer TX this time (${hp.mTotalTxSoFar} vs ${hp.s5TotalTxSoFar})</div>`
         }`;
       log.appendChild(sumDiv);
@@ -1375,20 +1375,20 @@ function loop(timestamp) {
 }
 
 // ============================================================================
-// DEMO MODE — Auto-play showing the WalkFlood migration in phases
+// DEMO MODE — Auto-play showing the System V6 migration in phases
 // ============================================================================
 
 const DEMO_PHASES = [
   { from: 1, to: 4, num: '1', title: 'Learning Phase — Identical to Managed Flood',
-    desc: 'WalkFlood has no routes yet. Both panels flood identically. But WalkFlood is listening — every delivered message teaches new routes.' },
+    desc: 'System V6 has no routes yet. Both panels flood identically. But System V6 is listening — every delivered message teaches new routes.' },
   { from: 5, to: 7, num: '2', title: 'Route Knowledge Growing',
-    desc: 'WalkFlood now knows 2-hop routes from overheard traffic. Some messages may already use directed routing (fewer TX on the right panel).' },
+    desc: 'System V6 now knows 2-hop routes from overheard traffic. Some messages may already use directed routing (fewer TX on the right panel).' },
   { from: 8, to: 10, num: '3', title: 'Dijkstra Bootstrap Complete',
-    desc: 'After enough traffic, WalkFlood computes the most reliable paths using Dijkstra. Watch the TX counter — right panel starts to diverge from left.' },
+    desc: 'After enough traffic, System V6 computes the most reliable paths using Dijkstra. Watch the TX counter — right panel starts to diverge from left.' },
   { from: 11, to: 15, num: '4', title: 'Directed Routing Dominates',
-    desc: 'Most messages now use directed routing: 1 TX per hop instead of flooding the entire network. Purple rings show nodes that have switched to WalkFlood.' },
-  { from: 16, to: 20, num: '5', title: 'Full WalkFlood — The Sweep',
-    desc: 'The network has learned. Directed routing handles most traffic at a fraction of the TX cost. Compare the TX counters: WalkFlood uses 10-100x fewer transmissions.' },
+    desc: 'Most messages now use directed routing: 1 TX per hop instead of flooding the entire network. Purple rings show nodes that have switched to System V6.' },
+  { from: 16, to: 20, num: '5', title: 'Full System V6 — The Sweep',
+    desc: 'The network has learned. Directed routing handles most traffic at a fraction of the TX cost. Compare the TX counters: System V6 uses 10-100x fewer transmissions.' },
 ];
 
 let demoRunning = false;
@@ -1495,10 +1495,10 @@ async function startDemo() {
     document.getElementById('demo-phase-num').textContent = '✓';
     document.getElementById('demo-phase-title').textContent = 'Demo Complete';
     document.getElementById('demo-phase-desc').textContent =
-      `Managed Flood: ${txM} TX total. WalkFlood: ${txW} TX total. ` +
+      `Managed Flood: ${txM} TX total. System V6: ${txW} TX total. ` +
       (parseInt(txW) < parseInt(txM)
-        ? `WalkFlood saved ${((1 - parseInt(txW)/Math.max(parseInt(txM),1)) * 100).toFixed(0)}% of transmissions by learning to route directly.`
-        : `WalkFlood is still in learning phase — run more messages to see the difference.`);
+        ? `System V6 saved ${((1 - parseInt(txW)/Math.max(parseInt(txM),1)) * 100).toFixed(0)}% of transmissions by learning to route directly.`
+        : `System V6 is still in learning phase — run more messages to see the difference.`);
   }
 }
 

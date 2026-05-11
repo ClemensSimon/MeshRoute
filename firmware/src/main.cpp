@@ -406,7 +406,7 @@ static void updateDisplay(void) {
 
     // Line 1: Node ID
     char line[32];
-    snprintf(line, sizeof(line), "WF %08X", nodeState.my_id);
+    snprintf(line, sizeof(line), "V6 %08X", nodeState.my_id);
     display.drawStr(0, 10, line);
     display.drawStr(90, 10, BOARD_NAME);
 
@@ -440,7 +440,7 @@ static void updateDisplay(void) {
 void setup() {
     Serial.begin(115200);
     delay(1000);
-    Serial.printf("\n\n=== MeshRoute WalkFlood v%s ===\n", S5_FIRMWARE_VERSION);
+    Serial.printf("\n\n=== MeshRoute System V6 v%s ===\n", S5_FIRMWARE_VERSION);
     Serial.printf("Board: %s\n", BOARD_NAME);
 
     // Watchdog (30s timeout, reboot on hang)
@@ -494,7 +494,7 @@ void setup() {
     display.begin();
     display.setFont(u8g2_font_6x10_tr);
     display.clearBuffer();
-    display.drawStr(0, 30, "MeshRoute WF");
+    display.drawStr(0, 30, "MeshRoute V6");
     display.drawStr(0, 45, BOARD_NAME);
     display.sendBuffer();
     delay(1000);

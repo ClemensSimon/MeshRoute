@@ -203,7 +203,7 @@
             <option value="coldstart_large">Cold Start: Large (100 nodes)</option>
             <option value="coldstart_trail">Cold Start: Trail (25 nodes, linear)</option>
           </optgroup>
-          <optgroup label="Conversion (Legacy → S5 Migration)">
+          <optgroup label="Conversion (Legacy → V6 Migration)">
             <option value="convert_medium">Conversion: Medium (80 nodes)</option>
             <option value="convert_large">Conversion: Large (150 nodes)</option>
             <option value="convert_community">Conversion: Community (80 nodes, clustered)</option>
@@ -223,9 +223,9 @@
       <div style="flex-shrink:0;">
         <label>Right Panel</label><br>
         <select id="right-router" style="min-width:120px">
-          <option value="system5">System 5</option>
+          <option value="system5">System V5</option>
           <option value="echoroute">EchoRoute</option>
-          <option value="walkflood" selected>WalkFlood</option>
+          <option value="walkflood" selected>System V6</option>
         </select>
       </div>
       <div style="display:flex; gap:0.5rem; flex-shrink:0; align-self:flex-end;">
@@ -261,7 +261,7 @@
     </div>
     <div class="sim-panel">
       <div class="sim-panel-header">
-        <span class="sim-panel-title system5">WalkFlood</span>
+        <span class="sim-panel-title system5">System V6</span>
         <div class="sim-stats" id="stats-system5">
           <span>TX: <span class="stat-val" id="tx-system5">0</span></span>
           <span>Hops: <span class="stat-val" id="hops-system5">-</span></span>
@@ -281,7 +281,7 @@
         <span id="demo-phase-num" style="background:var(--purple);color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;">1</span>
         <div>
           <div id="demo-phase-title" style="color:var(--purple);font-weight:700;font-size:1rem;">Learning Phase</div>
-          <div id="demo-phase-desc" style="color:var(--text-dim);margin-top:0.2rem;">Both panels flood identically. WalkFlood is listening and building its routing table...</div>
+          <div id="demo-phase-desc" style="color:var(--text-dim);margin-top:0.2rem;">Both panels flood identically. System V6 is listening and building its routing table...</div>
         </div>
         <span id="demo-msg-counter" style="margin-left:auto;color:var(--text-muted);flex-shrink:0;">Msg 1/20</span>
       </div>
@@ -307,7 +307,7 @@
       <span><span class="dot" style="background:#4ade80"></span> Delivery Path</span>
       <span><span class="dot" style="background:#4ade80"></span> SRC</span>
       <span><span class="dot" style="background:#f87171"></span> DST</span>
-      <span><span class="dot" style="background:transparent;border:2px solid #a78bfa;width:6px;height:6px"></span> WalkFlood / MPR Relay</span>
+      <span><span class="dot" style="background:transparent;border:2px solid #a78bfa;width:6px;height:6px"></span> System V6 / MPR Relay</span>
     </div>
     <a href="index.html" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--cyan);text-decoration:none;margin-left:auto;">Back to Presentation</a>
   </div>

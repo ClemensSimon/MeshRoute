@@ -55,7 +55,7 @@
 <section id="tldr">
   <div class="section-tag reveal">00 &mdash; TL;DR</div>
   <div class="tldr-card reveal">
-    <p class="tldr-text">Das aktuelle Meshtastic-Flooding verschwendet <strong>92&ndash;100% der Bandbreite</strong> in kleinen bis mittleren Netzwerken und <strong>scheitert bei der Zustellung</strong> bereits ab 100 Knoten (nur 27% mit Halbduplex). <strong>System 5</strong> kombiniert Geo-Clustering, Multi-Pfad-Routing und adaptives QoS zu einem selbstheilenden Protokoll. F&uuml;r kleine Netzwerke (20 Knoten): <strong>100% Zustellung bei 99%+ weniger Bandbreite</strong>. Ab 500+ Knoten: <strong>76% vs. 3%</strong> f&uuml;r Managed Flooding, bei 1000 Knoten <strong>46% vs. 0%</strong>. Halbduplex-Kollisionen und Hop-Limits &mdash; die gr&ouml;&szlig;ten Skalierungsengp&auml;sse &mdash; werden irrelevant: Jeder Hop kostet <strong>~1 &Uuml;bertragung</strong> statt <em>n</em>.</p>
+    <p class="tldr-text">Das aktuelle Meshtastic-Flooding verschwendet <strong>92&ndash;100% der Bandbreite</strong> in kleinen bis mittleren Netzwerken und <strong>scheitert bei der Zustellung</strong> bereits ab 100 Knoten (nur 27% mit Halbduplex). <strong>System V6</strong> kombiniert Geo-Clustering, Multi-Pfad-Routing und adaptives QoS zu einem selbstheilenden Protokoll. F&uuml;r kleine Netzwerke (20 Knoten): <strong>100% Zustellung bei 99%+ weniger Bandbreite</strong>. Ab 500+ Knoten: <strong>76% vs. 3%</strong> f&uuml;r Managed Flooding, bei 1000 Knoten <strong>46% vs. 0%</strong>. Halbduplex-Kollisionen und Hop-Limits &mdash; die gr&ouml;&szlig;ten Skalierungsengp&auml;sse &mdash; werden irrelevant: Jeder Hop kostet <strong>~1 &Uuml;bertragung</strong> statt <em>n</em>.</p>
     <div class="tldr-stats">
       <div class="tldr-stat"><span class="tldr-num">100%</span><span class="tldr-label">Zust. &le;200</span></div>
       <div class="tldr-stat"><span class="tldr-num">99,9%</span><span class="tldr-label">BW gespart</span></div>
@@ -104,7 +104,7 @@
 <section id="approaches">
   <div class="section-tag reveal">02 &mdash; Routing-Ans&auml;tze</div>
   <h2 class="section-title reveal">Stand der Technik vs. Neuer Vorschlag</h2>
-  <p class="section-desc reveal">Im Folgenden vergleichen wir vier Routing-Strategien auf derselben 15-Knoten-Netzwerktopologie. Jede Animation l&auml;uft live in Ihrem Browser &mdash; beachten Sie den <strong>TX-Z&auml;hler</strong> in jedem Panel. Er z&auml;hlt, wie viele Funk&uuml;bertragungen f&uuml;r die Zustellung einer einzelnen Nachricht ben&ouml;tigt werden. Weniger TX = weniger Sendezeit, weniger Kollisionen, l&auml;ngere Batterielebensdauer. Der Unterschied ist dramatisch: von ~100 TX (Naives Flooding) zu ~2 TX (System 5).</p>
+  <p class="section-desc reveal">Im Folgenden vergleichen wir vier Routing-Strategien auf derselben 15-Knoten-Netzwerktopologie. Jede Animation l&auml;uft live in Ihrem Browser &mdash; beachten Sie den <strong>TX-Z&auml;hler</strong> in jedem Panel. Er z&auml;hlt, wie viele Funk&uuml;bertragungen f&uuml;r die Zustellung einer einzelnen Nachricht ben&ouml;tigt werden. Weniger TX = weniger Sendezeit, weniger Kollisionen, l&auml;ngere Batterielebensdauer. Der Unterschied ist dramatisch: von ~100 TX (Naives Flooding) zu ~2 TX (System V6).</p>
 
   <!-- STATE OF THE ART DIVIDER -->
   <div class="approach-divider reveal">
@@ -194,14 +194,14 @@
 
   <!-- NEW PROPOSAL DIVIDER -->
   <div class="approach-divider reveal" style="margin-top:2rem">
-    <span class="divider-label proposal-label">NEUER VORSCHLAG &mdash; System 5</span>
+    <span class="divider-label proposal-label">NEUER VORSCHLAG &mdash; System V6</span>
   </div>
 
   <!-- SYSTEM 5 -->
   <div class="algo-section winner reveal" id="algo-winner">
     <div class="algo-header">
       <span class="algo-number proposal-badge">VORGESCHLAGEN</span>
-      <h3 class="algo-name">System 5 &mdash; Adaptives lastverteiltes Mesh</h3>
+      <h3 class="algo-name">System V6 &mdash; Adaptives lastverteiltes Mesh</h3>
     </div>
     <p class="algo-subtitle">Unser Vorschlag: ein fundamental anderer Ansatz, der sechs bew&auml;hrte Netzwerk-Konzepte in einem Protokoll vereint. Knoten organisieren sich selbst in geografische Cluster anhand von GPS-Geohashes. Innerhalb eines Clusters kennt jeder Knoten die vollst&auml;ndige Topologie. Zwischen Clustern fungieren Grenzknoten als Br&uuml;cken. F&uuml;r jedes Ziel werden bis zu 5 unabh&auml;ngige Routen vorberechnet und gecacht. Der Verkehr wird proportional zu einer Gewichtungsfunktion &uuml;ber diese Routen verteilt, die Linkqualit&auml;t, Knotenlast und Batteriestand ber&uuml;cksichtigt. Wenn das Netzwerk unter Stress steht, drosselt ein adaptives QoS-Gate niederprioren Verkehr, um Notfallnachrichten zu sch&uuml;tzen. Das Ergebnis: <strong>~1 TX pro Hop</strong> f&uuml;r alle Nachrichtentypen &mdash; Unicast und Broadcast.</p>
     <div class="algo-body">
@@ -225,11 +225,11 @@
         </ul>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--cyan-dim);background:rgba(34,211,238,0.04);border-radius:8px">
           <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--cyan);margin-bottom:0.4rem">vs. Managed Flooding</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Managed Flooding unterdr&uuml;ckt ~50% der Weiterleitungen, skaliert aber weiterhin mit O(n). System 5 routet entlang <strong>spezifischer Pfade</strong> &mdash; Kosten skalieren mit der <strong>Hop-Anzahl</strong>, nicht der Netzwerkgr&ouml;&szlig;e. Bei 100 Knoten: Managed Flood = ~1.500 TX pro Nachricht, System 5 = ~2 TX.</p>
+          <p style="font-size:0.9rem;line-height:1.6">Managed Flooding unterdr&uuml;ckt ~50% der Weiterleitungen, skaliert aber weiterhin mit O(n). System V6 routet entlang <strong>spezifischer Pfade</strong> &mdash; Kosten skalieren mit der <strong>Hop-Anzahl</strong>, nicht der Netzwerkgr&ouml;&szlig;e. Bei 100 Knoten: Managed Flood = ~1.500 TX pro Nachricht, System V6 = ~2 TX.</p>
         </div>
         <div class="highlight-box" style="margin:1rem 0;padding:1rem 1.2rem;border-color:var(--teal,var(--cyan-dim));background:rgba(20,184,166,0.04);border-radius:8px">
           <h4 style="font-family:var(--font-mono);font-size:0.8rem;color:var(--teal);margin-bottom:0.4rem">vs. Next-Hop-Routing</h4>
-          <p style="font-size:0.9rem;line-height:1.6">Next-Hop lernt einen einzelnen Relay-Knoten f&uuml;r Direktnachrichten. System 5 pflegt <strong>2&ndash;3 vollst&auml;ndige Pfade</strong> mit gewichteter Lastverteilung f&uuml;r <strong>alle Verkehrsarten</strong>. Wenn ein Pfad ausf&auml;llt, aktiviert sich der n&auml;chste gecachte Pfad sofort &mdash; kein Flooding-Fallback n&ouml;tig.</p>
+          <p style="font-size:0.9rem;line-height:1.6">Next-Hop lernt einen einzelnen Relay-Knoten f&uuml;r Direktnachrichten. System V6 pflegt <strong>2&ndash;3 vollst&auml;ndige Pfade</strong> mit gewichteter Lastverteilung f&uuml;r <strong>alle Verkehrsarten</strong>. Wenn ein Pfad ausf&auml;llt, aktiviert sich der n&auml;chste gecachte Pfad sofort &mdash; kein Flooding-Fallback n&ouml;tig.</p>
         </div>
         <div class="pro-con">
           <div class="pro"><h5>+ St&auml;rken</h5><ul><li>~1 TX/Hop (nicht ~n)</li><li>Kein Hop-Limit n&ouml;tig</li><li>Selbstoptimierende Lastverteilung</li><li>Funktioniert f&uuml;r alle Verkehrsarten</li></ul></div>
@@ -282,7 +282,7 @@
   </div>
 
   <div class="formula-card reveal" style="border-color:var(--cyan-dim)">
-    <h4>System 5 &mdash; Multi-Pfad gerichtetes Routing</h4>
+    <h4>System V6 &mdash; Multi-Pfad gerichtetes Routing</h4>
     <div class="formula">
       <span class="var">TX</span><sub>sys5</sub> <span class="op">=</span> <span class="var">d</span>
       <span style="color:var(--text-muted);font-size:0.9rem">&nbsp; (Hop-Anzahl, immer)</span>
@@ -293,7 +293,7 @@
   </div>
 
   <div class="formula-card reveal" style="border-color:var(--cyan-dim)">
-    <h4>Routen-Gewichtungsfunktion &mdash; System 5 Lastverteilung</h4>
+    <h4>Routen-Gewichtungsfunktion &mdash; System V6 Lastverteilung</h4>
     <div class="formula">
       <span class="var">W</span>(<span class="var">r</span>) <span class="op">=</span>
       <span class="var">&alpha;</span> &middot; <span class="var">Q</span>(<span class="var">r</span>)
@@ -319,7 +319,7 @@
           <th style="color:var(--red)">Naives Flood</th>
           <th style="color:var(--yellow)">Managed Flood</th>
           <th style="color:var(--orange)">Next-Hop</th>
-          <th style="color:var(--cyan)">System 5</th>
+          <th style="color:var(--cyan)">System V6</th>
         </tr>
       </thead>
       <tbody>
@@ -357,16 +357,16 @@
     </div>
     <div class="bar-col">
       <div class="bar" data-score="9.2" style="height:0;background:var(--cyan)"><span class="bar-value" style="color:var(--cyan)">9,2</span></div>
-      <span class="bar-label">System 5</span>
+      <span class="bar-label">System V6</span>
     </div>
   </div>
 </section>
 
 <!-- WINNER ARCHITECTURE -->
 <section id="winner">
-  <div class="section-tag reveal">04 &mdash; System 5 Architektur</div>
-  <h2 class="section-title reveal">Was System 5 &uuml;ber Managed Flooding hinaus bietet</h2>
-  <p class="section-desc reveal">Meshtastics Managed Flooding ist clever &mdash; aber weiterhin O(n). Wir haben keine neue Theorie erfunden. Stattdessen &uuml;bernimmt System 5 sechs <strong>bew&auml;hrte, praxiserprobte Konzepte</strong> aus Jahrzehnten der Netzwerkforschung und passt sie an die einzigartigen Einschr&auml;nkungen von LoRa an (geringe Bandbreite, Halbduplex, 1% Duty Cycle, begrenzter RAM). Jedes Konzept l&ouml;st ein bestimmtes Teilproblem:</p>
+  <div class="section-tag reveal">04 &mdash; System V6 Architektur</div>
+  <h2 class="section-title reveal">Was System V6 &uuml;ber Managed Flooding hinaus bietet</h2>
+  <p class="section-desc reveal">Meshtastics Managed Flooding ist clever &mdash; aber weiterhin O(n). Wir haben keine neue Theorie erfunden. Stattdessen &uuml;bernimmt System V6 sechs <strong>bew&auml;hrte, praxiserprobte Konzepte</strong> aus Jahrzehnten der Netzwerkforschung und passt sie an die einzigartigen Einschr&auml;nkungen von LoRa an (geringe Bandbreite, Halbduplex, 1% Duty Cycle, begrenzter RAM). Jedes Konzept l&ouml;st ein bestimmtes Teilproblem:</p>
   <div class="arch-grid">
     <div class="arch-card reveal">
       <div class="source">aus dem Internet-Routing</div>
@@ -416,7 +416,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">aus Bay Area Feedback</div>
       <h4>Halbduplex-Funkmodell <span class="arrow">&rarr;</span> Realistische Simulation</h4>
-      <p>LoRa-Funkger&auml;te sind Halbduplex: Ein Knoten <strong>kann nicht senden w&auml;hrend er empf&auml;ngt</strong>. Wenn ein Berggipfel 10 Weiterleitungen h&ouml;rt, ist er 10&ndash;20 Sekunden lang am Weiterleiten blockiert. Unser Simulator modelliert jetzt diesen pro-Knoten Funkzustand (IDLE/TX/RX). Ergebnis: Flooding bricht von <strong>87,5% &rarr; 6%</strong> Zustellung ein. System 5 h&auml;lt bei <strong>77,5%</strong>.</p>
+      <p>LoRa-Funkger&auml;te sind Halbduplex: Ein Knoten <strong>kann nicht senden w&auml;hrend er empf&auml;ngt</strong>. Wenn ein Berggipfel 10 Weiterleitungen h&ouml;rt, ist er 10&ndash;20 Sekunden lang am Weiterleiten blockiert. Unser Simulator modelliert jetzt diesen pro-Knoten Funkzustand (IDLE/TX/RX). Ergebnis: Flooding bricht von <strong>87,5% &rarr; 6%</strong> Zustellung ein. System V6 h&auml;lt bei <strong>77,5%</strong>.</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">aus Bay Area Feedback</div>
@@ -426,7 +426,7 @@
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">aus Bay Area Feedback</div>
       <h4>Notfall-Umleitung <span class="arrow">&rarr;</span> Weniger Fallback-Floods</h4>
-      <p>Wenn alle 5 gecachten Routen fehlschlagen, berechnet System 5 jetzt einen <strong>frischen BFS-Pfad unter Ausschluss fehlgeschlagener Knoten</strong>, bevor es Korridor-Flooding ausl&ouml;st. Das gibt dem Protokoll einen weiteren gerichteten Versuch &mdash; und reduziert die teuren Fallback-Floods erheblich, die im Bay Area-Szenario dominierten.</p>
+      <p>Wenn alle 5 gecachten Routen fehlschlagen, berechnet System V6 jetzt einen <strong>frischen BFS-Pfad unter Ausschluss fehlgeschlagener Knoten</strong>, bevor es Korridor-Flooding ausl&ouml;st. Das gibt dem Protokoll einen weiteren gerichteten Versuch &mdash; und reduziert die teuren Fallback-Floods erheblich, die im Bay Area-Szenario dominierten.</p>
     </div>
     <div class="arch-card reveal" style="border-color:var(--cyan-dim)">
       <div class="source">aus Bay Area Feedback</div>
@@ -482,7 +482,7 @@
         <td style="text-align:right;color:var(--cyan)">57%</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Kernerkenntniss:</strong> Halbduplex zerst&ouml;rt Flooding (87,5% &rarr; 6%), aber System 5 h&auml;lt bei 77,5%. Node Silencing halbiert die TX-Kosten (541K &rarr; 268K) bei nur 3% weniger Zustellung. 128 von 193 Tal-Knoten werden stummgeschaltet &mdash; alle 7 Berggipfel-Knoten bleiben aktiv.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--cyan)">Kernerkenntniss:</strong> Halbduplex zerst&ouml;rt Flooding (87,5% &rarr; 6%), aber System V6 h&auml;lt bei 77,5%. Node Silencing halbiert die TX-Kosten (541K &rarr; 268K) bei nur 3% weniger Zustellung. 128 von 193 Tal-Knoten werden stummgeschaltet &mdash; alle 7 Berggipfel-Knoten bleiben aktiv.</p>
   </div>
 </section>
 
@@ -490,7 +490,7 @@
 <section id="hop-cost" class="hop-cost-section">
   <div class="section-tag reveal">06 &mdash; Das Killerargument</div>
   <h2 class="section-title reveal">Warum Hop-Limits irrelevant werden</h2>
-  <p class="section-desc reveal">Beim Flooding multipliziert jeder Hop die &Uuml;bertragungen &uuml;ber das <em>gesamte</em> Netzwerk. Bei System 5 kostet jeder Hop genau <strong>eine &Uuml;bertragung</strong>. Diese einzige &Auml;nderung erm&ouml;glicht alles.</p>
+  <p class="section-desc reveal">Beim Flooding multipliziert jeder Hop die &Uuml;bertragungen &uuml;ber das <em>gesamte</em> Netzwerk. Bei System V6 kostet jeder Hop genau <strong>eine &Uuml;bertragung</strong>. Diese einzige &Auml;nderung erm&ouml;glicht alles.</p>
 
   <div class="hop-comparison reveal">
     <div class="hop-card hop-flooding">
@@ -505,7 +505,7 @@
       </div>
     </div>
     <div class="hop-card hop-system5">
-      <h4 style="color:var(--cyan)">System 5: Kosten pro Hop = <em>1</em></h4>
+      <h4 style="color:var(--cyan)">System V6: Kosten pro Hop = <em>1</em></h4>
       <div class="hop-formula" style="color:var(--cyan)">TX<sub>gesamt</sub> = Hops</div>
       <p>Nur der weiterleitende Knoten sendet. Bei 100 Knoten und 5 Hops erzeugt eine einzelne Nachricht <strong>5 &Uuml;bertragungen</strong>. Kein Hop-Limit n&ouml;tig &mdash; 20 Hops kosten dasselbe wie Flooding f&uuml;r 1 Hop.</p>
       <div class="hop-example">
@@ -579,8 +579,8 @@
         <td style="text-align:right;color:var(--orange)">197k*</td>
       </tr>
     </table>
-    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* Bei 1000+ Knoten verbraucht System 5 <strong>mehr Gesamt-TX</strong> als Managed Flooding &mdash; liefert aber als einziges Protokoll &uuml;berhaupt Nachrichten aus (46% vs. 0% bei 1000 Knoten). Managed Flooding liefert mit Halbduplex bei dieser Gr&ouml;&szlig;e keine einzige Nachricht.</p>
-    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Kritische Erkenntnis:</strong> Mit Halbduplex und Kollisionen zerst&ouml;rt Managed Flooding die Zustellung bei Skalierung <strong>vollst&auml;ndig</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> an, bei 1000 Knoten <strong>0%</strong> &mdash; unabh&auml;ngig vom Hop-Limit. System 5 liefert <strong>46%</strong> bei 1000 Knoten. Das Hop-Limit und die Halbduplex-Kollisionen machen gro&szlig;e Netzwerke <strong>grunds&auml;tzlich unzuverl&auml;ssig</strong>.</p>
+    <p style="margin-top:0.6rem;font-size:0.75rem;color:var(--text-muted)">* Bei 1000+ Knoten verbraucht System V6 <strong>mehr Gesamt-TX</strong> als Managed Flooding &mdash; liefert aber als einziges Protokoll &uuml;berhaupt Nachrichten aus (46% vs. 0% bei 1000 Knoten). Managed Flooding liefert mit Halbduplex bei dieser Gr&ouml;&szlig;e keine einzige Nachricht.</p>
+    <p style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-dim);line-height:1.6"><strong style="color:var(--red)">Kritische Erkenntnis:</strong> Mit Halbduplex und Kollisionen zerst&ouml;rt Managed Flooding die Zustellung bei Skalierung <strong>vollst&auml;ndig</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> an, bei 1000 Knoten <strong>0%</strong> &mdash; unabh&auml;ngig vom Hop-Limit. System V6 liefert <strong>46%</strong> bei 1000 Knoten. Das Hop-Limit und die Halbduplex-Kollisionen machen gro&szlig;e Netzwerke <strong>grunds&auml;tzlich unzuverl&auml;ssig</strong>.</p>
   </div>
 
   <div class="problem-grid" style="margin-top:2rem">
@@ -605,7 +605,7 @@
 <!-- METRICS -->
 <section id="metrics">
   <div class="section-tag reveal">07 &mdash; Kernmetriken</div>
-  <h2 class="section-title reveal">System 5 in Zahlen</h2>
+  <h2 class="section-title reveal">System V6 in Zahlen</h2>
   <div class="metrics-row">
     <div class="metric-card reveal">
       <div class="metric-value"><span id="counter-reliability">0</span><span class="unit">%</span></div>
@@ -648,7 +648,7 @@
       <div class="formation-step-info">
         <div class="formation-step-num" id="form-step-num">Schritt 0 / 9</div>
         <h4 class="formation-step-title" id="form-step-title">Dr&uuml;cken Sie &bdquo;N&auml;chster Schritt&ldquo; zum Starten</h4>
-        <p class="formation-step-desc" id="form-step-desc">Diese Animation zeigt, wie sich ein System 5 Mesh-Netzwerk von eingeschalteten Knoten zu einem vollst&auml;ndig gerouteten, lastverteilten Mesh selbst organisiert.</p>
+        <p class="formation-step-desc" id="form-step-desc">Diese Animation zeigt, wie sich ein System V6 Mesh-Netzwerk von eingeschalteten Knoten zu einem vollst&auml;ndig gerouteten, lastverteilten Mesh selbst organisiert.</p>
       </div>
       <div class="formation-btns">
         <button id="form-btn-prev" class="form-btn" disabled>&#x25C0; Zur&uuml;ck</button>
@@ -664,7 +664,7 @@
 <section id="scenarios" class="scale-scenarios">
   <div class="section-tag reveal">09 &mdash; Reale Skalierung</div>
   <h2 class="section-title reveal">Vom Stadtviertel bis weltweit</h2>
-  <p class="section-desc reveal">Mesh-Netzwerke existieren nicht im Vakuum &mdash; sie reichen von einem Dutzend Handfunkger&auml;ten in einer Nachbarschaft bis zu Tausenden von Ger&auml;ten &uuml;ber Kontinente hinweg. Die Geo-Clustering-Architektur von System 5 passt sich nat&uuml;rlich an: Ein einzelner Cluster verarbeitet lokalen Verkehr effizient, w&auml;hrend Inter-Cluster-Routing &uuml;ber Grenzknoten auf beliebig gro&szlig;e Netzwerke skaliert. Die drei Live-Simulationen unten zeigen, wie dasselbe Protokoll Nachbarschafts-, Kontinental- und globale Skalierung bew&auml;ltigt. Beachten Sie die Knoten-Aktivit&auml;tslogs rechts &mdash; sie zeigen Echtzeit-Routing-Entscheidungen, OGM-Beacons und Failover-Ereignisse.</p>
+  <p class="section-desc reveal">Mesh-Netzwerke existieren nicht im Vakuum &mdash; sie reichen von einem Dutzend Handfunkger&auml;ten in einer Nachbarschaft bis zu Tausenden von Ger&auml;ten &uuml;ber Kontinente hinweg. Die Geo-Clustering-Architektur von System V6 passt sich nat&uuml;rlich an: Ein einzelner Cluster verarbeitet lokalen Verkehr effizient, w&auml;hrend Inter-Cluster-Routing &uuml;ber Grenzknoten auf beliebig gro&szlig;e Netzwerke skaliert. Die drei Live-Simulationen unten zeigen, wie dasselbe Protokoll Nachbarschafts-, Kontinental- und globale Skalierung bew&auml;ltigt. Beachten Sie die Knoten-Aktivit&auml;tslogs rechts &mdash; sie zeigen Echtzeit-Routing-Entscheidungen, OGM-Beacons und Failover-Ereignisse.</p>
 
   <!-- LOCAL -->
   <div class="scenario reveal" id="scn-local">
@@ -761,14 +761,14 @@
 <section id="resilience" class="resilience-section">
   <div class="section-tag reveal">10 &mdash; Resilienz &amp; Adaptives QoS</div>
   <h2 class="section-title reveal">Wenn etwas schiefgeht</h2>
-  <p class="section-desc reveal">Ein Routing-Protokoll, das nur unter perfekten Bedingungen funktioniert, ist wertlos. In der realen Welt fallen Knoten aus (Batterien, Hardware), GPS-Signale brechen ab, Internet-Verbindungen fallen aus, und ganze Regionen werden dunkel. System 5 ist darauf ausgelegt, sich elegant zu verschlechtern: Multi-Pfad-Routing bietet sofortiges Failover (0ms &mdash; die n&auml;chste gecachte Route ist bereits bekannt), begrenztes Korridor-Flooding ist das Sicherheitsnetz, und das adaptive QoS-Gate stellt sicher, dass Notfallnachrichten auch bei einem kollabierenden Netzwerk immer durchkommen. Klicken Sie unten auf Knoten oder Verbindungen, um Ausf&auml;lle zu simulieren und das Netzwerk in Echtzeit reagieren zu sehen.</p>
+  <p class="section-desc reveal">Ein Routing-Protokoll, das nur unter perfekten Bedingungen funktioniert, ist wertlos. In der realen Welt fallen Knoten aus (Batterien, Hardware), GPS-Signale brechen ab, Internet-Verbindungen fallen aus, und ganze Regionen werden dunkel. System V6 ist darauf ausgelegt, sich elegant zu verschlechtern: Multi-Pfad-Routing bietet sofortiges Failover (0ms &mdash; die n&auml;chste gecachte Route ist bereits bekannt), begrenztes Korridor-Flooding ist das Sicherheitsnetz, und das adaptive QoS-Gate stellt sicher, dass Notfallnachrichten auch bei einem kollabierenden Netzwerk immer durchkommen. Klicken Sie unten auf Knoten oder Verbindungen, um Ausf&auml;lle zu simulieren und das Netzwerk in Echtzeit reagieren zu sehen.</p>
 
   <!-- Failure case explanation cards -->
   <div class="problem-grid" style="margin-bottom:2.5rem">
     <div class="problem-card reveal" style="border-color:var(--red-dim)">
       <div class="icon" style="background:rgba(248,113,113,0.1);color:var(--red)">&#x26A0;</div>
       <h3>Knotenausfall</h3>
-      <p>Ein Knoten f&auml;llt aus (Batterie, Hardware). Seine Routen brechen sofort. System 5 wechselt zu <strong>gecachten Backup-Routen in 0ms</strong>. F&auml;llt ein Grenzknoten aus, &uuml;bernimmt der zweite Grenzknoten. Fallen alle Grenzknoten aus, f&auml;llt der Cluster auf Flooding zur&uuml;ck.</p>
+      <p>Ein Knoten f&auml;llt aus (Batterie, Hardware). Seine Routen brechen sofort. System V6 wechselt zu <strong>gecachten Backup-Routen in 0ms</strong>. F&auml;llt ein Grenzknoten aus, &uuml;bernimmt der zweite Grenzknoten. Fallen alle Grenzknoten aus, f&auml;llt der Cluster auf Flooding zur&uuml;ck.</p>
     </div>
     <div class="problem-card reveal" style="border-color:var(--orange-dim)">
       <div class="icon" style="background:rgba(251,146,60,0.1);color:var(--orange)">&#x1F4E1;</div>
@@ -837,7 +837,7 @@
 <section id="sim-results" class="sim-results-section">
   <div class="section-tag reveal">11 &mdash; Simulationsergebnisse</div>
   <h2 class="section-title reveal">Echte Zahlen aus dem Simulator</h2>
-  <p class="section-desc reveal">Behauptungen sind nur so gut wie ihre Beweise. Wir haben einen <strong>Python-Simulator</strong> gebaut, der EU 868MHz LoRa-Physik modelliert (Pfadverlust, Gel&auml;nde, Duty Cycle, Kollisionen, Halbduplex-Funk) und 6 Router auf identischen Netzwerken betreibt: Naives Flood, Managed Flood bei 3/5/7 Hop-Limits, Next-Hop und System 5. Jedes Szenario sendet 100&ndash;300 zuf&auml;llige Nachrichten und misst Zustellrate, Gesamt&uuml;bertragungen und Pro-Knoten-Last. Die folgenden Ergebnisse stammen aus 26 Szenarien mit 20&ndash;1500 Knoten &mdash; einschlie&szlig;lich realistischer Umgebungen (l&auml;ndlich, maritim, indoor, Autobahn-Konvoi) und Stresstests (Knotenausfall, Verbindungsverschlechterung, Duty-Cycle-Durchsetzung). <a href="../simulator.html" style="color:var(--cyan)">Den interaktiven Simulator ausprobieren &rarr;</a></p>
+  <p class="section-desc reveal">Behauptungen sind nur so gut wie ihre Beweise. Wir haben einen <strong>Python-Simulator</strong> gebaut, der EU 868MHz LoRa-Physik modelliert (Pfadverlust, Gel&auml;nde, Duty Cycle, Kollisionen, Halbduplex-Funk) und 6 Router auf identischen Netzwerken betreibt: Naives Flood, Managed Flood bei 3/5/7 Hop-Limits, Next-Hop und System V6. Jedes Szenario sendet 100&ndash;300 zuf&auml;llige Nachrichten und misst Zustellrate, Gesamt&uuml;bertragungen und Pro-Knoten-Last. Die folgenden Ergebnisse stammen aus 26 Szenarien mit 20&ndash;1500 Knoten &mdash; einschlie&szlig;lich realistischer Umgebungen (l&auml;ndlich, maritim, indoor, Autobahn-Konvoi) und Stresstests (Knotenausfall, Verbindungsverschlechterung, Duty-Cycle-Durchsetzung). <a href="../simulator.html" style="color:var(--cyan)">Den interaktiven Simulator ausprobieren &rarr;</a></p>
 
   <!-- Category Filter -->
   <div class="sim-filter reveal" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.2rem;justify-content:center">
@@ -872,7 +872,7 @@
   <!-- Charts Grid -->
   <div class="sim-charts-grid">
     <div class="sim-chart-card reveal">
-      <h4>&Uuml;bertragungen: Flooding vs. System 5 <button id="btn-scale-toggle" class="scale-toggle-btn">Auf Linear umschalten</button></h4>
+      <h4>&Uuml;bertragungen: Flooding vs. System V6 <button id="btn-scale-toggle" class="scale-toggle-btn">Auf Linear umschalten</button></h4>
       <p class="chart-subtitle">Klicken Sie auf den Button, um zwischen Log- und Linearskala umzuschalten</p>
       <div class="sim-chart-wrap">
         <canvas id="chart-bandwidth"></canvas>
@@ -880,7 +880,7 @@
     </div>
     <div class="sim-chart-card reveal">
       <h4>Zustellrate unter Stress</h4>
-      <p class="chart-subtitle">System 5 h&auml;lt hohe Zustellung auch unter Ausf&auml;llen aufrecht</p>
+      <p class="chart-subtitle">System V6 h&auml;lt hohe Zustellung auch unter Ausf&auml;llen aufrecht</p>
       <div class="sim-chart-wrap">
         <canvas id="chart-delivery"></canvas>
       </div>
@@ -903,7 +903,7 @@
 
   <!-- Key insight -->
   <div class="tldr-card reveal" style="margin-top:2rem">
-    <p class="tldr-text">Mit <strong>Halbduplex-Funk und Kollisionen</strong> verschwendet Managed Flooding nicht nur Bandbreite &mdash; es <strong>scheitert bei der Zustellung</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> der Nachrichten an. Bei 500 Knoten nur <strong>3%</strong>, bei 1000 Knoten <strong>0%</strong>. System 5 liefert <strong>76%</strong> bei 500 Knoten und <strong>46%</strong> bei 1000 Knoten. Halbduplex-Kollisionen und Hop-Limits sind die <strong>prim&auml;ren Skalierungsbarrieren</strong>, die gro&szlig;e Mesh-Netzwerke grunds&auml;tzlich unzuverl&auml;ssig machen.</p>
+    <p class="tldr-text">Mit <strong>Halbduplex-Funk und Kollisionen</strong> verschwendet Managed Flooding nicht nur Bandbreite &mdash; es <strong>scheitert bei der Zustellung</strong>. Bei 100 Knoten kommen nur <strong>27%</strong> der Nachrichten an. Bei 500 Knoten nur <strong>3%</strong>, bei 1000 Knoten <strong>0%</strong>. System V6 liefert <strong>76%</strong> bei 500 Knoten und <strong>46%</strong> bei 1000 Knoten. Halbduplex-Kollisionen und Hop-Limits sind die <strong>prim&auml;ren Skalierungsbarrieren</strong>, die gro&szlig;e Mesh-Netzwerke grunds&auml;tzlich unzuverl&auml;ssig machen.</p>
   </div>
 </section>
 
@@ -911,7 +911,7 @@
 <section id="glossary">
   <div class="section-tag reveal">12 &mdash; Glossar</div>
   <h2 class="section-title reveal">Wichtige Begriffe erkl&auml;rt</h2>
-  <p class="section-desc reveal">Mesh-Netzwerke umfassen Funktechnik, Graphentheorie und Protokolldesign. Hier ist eine Kurzreferenz f&uuml;r die in dieser Pr&auml;sentation verwendeten Fachbegriffe &mdash; von LoRa-Grundlagen bis zu den protokollspezifischen Konzepten, die System 5 einf&uuml;hrt.</p>
+  <p class="section-desc reveal">Mesh-Netzwerke umfassen Funktechnik, Graphentheorie und Protokolldesign. Hier ist eine Kurzreferenz f&uuml;r die in dieser Pr&auml;sentation verwendeten Fachbegriffe &mdash; von LoRa-Grundlagen bis zu den protokollspezifischen Konzepten, die System V6 einf&uuml;hrt.</p>
   <div class="glossary-grid">
     <div class="glossary-card reveal"><dt>LoRa</dt><dd>Long Range Funkmodulationstechnik f&uuml;r stromsparende Langstreckenkommunikation (1&ndash;15 km).</dd></div>
     <div class="glossary-card reveal"><dt>Meshtastic</dt><dd>Open-Source LoRa-Mesh-Firmware f&uuml;r netzunabh&auml;ngige Kommunikation auf ESP32-Ger&auml;ten.</dd></div>
@@ -930,7 +930,7 @@
     <div class="glossary-card reveal"><dt>SNR</dt><dd>Signal-to-Noise Ratio (Signal-Rausch-Verh&auml;ltnis) &mdash; misst die Signalqualit&auml;t relativ zum Hintergrundrauschen (in dB).</dd></div>
     <div class="glossary-card reveal"><dt>Half-Duplex</dt><dd>Ein Funkger&auml;t, das nicht gleichzeitig senden und empfangen kann. Alle LoRa-Funkger&auml;te sind Halbduplex &mdash; ein Knoten, der eine &Uuml;bertragung h&ouml;rt, kann nicht senden, bis das Paket endet.</dd></div>
     <div class="glossary-card reveal"><dt>Backpressure</dt><dd>Stausignal: Wenn die Warteschlange eines Knotens voll wird, werden Routen durch ihn bestraft. Verkehr verlagert sich nat&uuml;rlich auf weniger belastete Pfade &mdash; wie Wasser, das um Steine flie&szlig;t.</dd></div>
-    <div class="glossary-card reveal"><dt>Border Node</dt><dd>Ein System 5-Knoten (Grenzknoten), der Nachbarn in einem anderen geografischen Cluster hat. Grenzknoten sind die Br&uuml;cken f&uuml;r Inter-Cluster-Routing &mdash; jedes Cluster-Paar hat 2 Grenzverbindungen.</dd></div>
+    <div class="glossary-card reveal"><dt>Border Node</dt><dd>Ein System V6-Knoten (Grenzknoten), der Nachbarn in einem anderen geografischen Cluster hat. Grenzknoten sind die Br&uuml;cken f&uuml;r Inter-Cluster-Routing &mdash; jedes Cluster-Paar hat 2 Grenzverbindungen.</dd></div>
     <div class="glossary-card reveal"><dt>Capture Effect</dt><dd>Bei LoRa: Wenn zwei Pakete kollidieren, aber eines &ge;6dB st&auml;rker ist, &bdquo;f&auml;ngt&ldquo; das st&auml;rkere Signal den Empf&auml;nger ein und wird erfolgreich dekodiert. Das schw&auml;chere Paket geht verloren.</dd></div>
   </div>
 </section>
@@ -939,7 +939,7 @@
 <section id="conclusion">
   <div class="section-tag reveal">13 &mdash; Fazit</div>
   <h2 class="section-title reveal">Der Weg nach vorn</h2>
-  <p class="section-desc reveal">Halbduplex-Funk und Kollisionen zerst&ouml;ren Managed Flooding bereits bei mittleren Netzwerken &mdash; bei 100 Knoten nur 27% Zustellung, bei 500 Knoten 3%, bei 1000 Knoten 0%. Die Bay Area Mesh-Erfahrung best&auml;tigt dies: Halbduplex-Einschr&auml;nkungen lassen Flooding auf nur 6% Zustellung zusammenbrechen. System 5 durchbricht diese Barrieren mit gerichtetem Routing bei ~1 TX pro Hop und &uuml;bersteht sowohl die Halbduplex-Kollisionskaskade als auch die Hop-Limit-Mauer. &Uuml;ber 26 Szenarien hinweg (alle mit Halbduplex und Kollisionen) dominiert System 5 kleine bis mittlere Netzwerke und liefert bei Skalierung deutlich mehr &mdash; obwohl sehr gro&szlig;e, d&uuml;nn besetzte Netzwerke f&uuml;r jedes Protokoll herausfordernd bleiben. Das Protokoll ist vollst&auml;ndig spezifiziert, ein funktionierender ESP32-Firmware-Prototyp existiert f&uuml;r drei Board-Typen, und der vollst&auml;ndige Quellcode ist unter MIT-Lizenz verf&uuml;gbar.</p>
+  <p class="section-desc reveal">Halbduplex-Funk und Kollisionen zerst&ouml;ren Managed Flooding bereits bei mittleren Netzwerken &mdash; bei 100 Knoten nur 27% Zustellung, bei 500 Knoten 3%, bei 1000 Knoten 0%. Die Bay Area Mesh-Erfahrung best&auml;tigt dies: Halbduplex-Einschr&auml;nkungen lassen Flooding auf nur 6% Zustellung zusammenbrechen. System V6 durchbricht diese Barrieren mit gerichtetem Routing bei ~1 TX pro Hop und &uuml;bersteht sowohl die Halbduplex-Kollisionskaskade als auch die Hop-Limit-Mauer. &Uuml;ber 26 Szenarien hinweg (alle mit Halbduplex und Kollisionen) dominiert System V6 kleine bis mittlere Netzwerke und liefert bei Skalierung deutlich mehr &mdash; obwohl sehr gro&szlig;e, d&uuml;nn besetzte Netzwerke f&uuml;r jedes Protokoll herausfordernd bleiben. Das Protokoll ist vollst&auml;ndig spezifiziert, ein funktionierender ESP32-Firmware-Prototyp existiert f&uuml;r drei Board-Typen, und der vollst&auml;ndige Quellcode ist unter MIT-Lizenz verf&uuml;gbar.</p>
 
   <div class="concl-results-grid reveal" style="margin-bottom:2.5rem">
     <div class="concl-result">

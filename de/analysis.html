@@ -102,12 +102,12 @@
   </div>
 
   <div class="chart-container tall">
-    <h3>Zustellrate: Idealisiert vs Realit&auml;t vs System 5</h3>
-    <div class="subtitle">F&uuml;r jedes Szenario: Baseline (no half-duplex) → half-duplex → System 5 with half-duplex</div>
+    <h3>Zustellrate: Idealisiert vs Realit&auml;t vs System V6</h3>
+    <div class="subtitle">F&uuml;r jedes Szenario: Baseline (no half-duplex) → half-duplex → System V6 with half-duplex</div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div>Managed Flood (idealisiert)</div>
       <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Managed Flood (Halbduplex)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5 (Halbduplex)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System V6 (Halbduplex)</div>
       <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>S5 + Stummschaltung (Halbduplex)</div>
     </div>
     <canvas id="chart-reality-gap"></canvas>
@@ -136,7 +136,7 @@
       <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>Naive Flood</div>
       <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>Managed Flood</div>
       <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Next-Hop</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System 5</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>System V6</div>
     </div>
     <canvas id="chart-efficiency"></canvas>
   </div>
@@ -262,8 +262,8 @@
     const bars = [
       { feat: 'baseline', router: 'Managed (7 hop)', color: C.gray, label: 'MF ideal' },
       { feat: 'half_duplex', router: 'Managed (7 hop)', color: C.red, label: 'MF real' },
-      { feat: 'half_duplex', router: 'System 5', color: C.cyan, label: 'S5 real' },
-      { feat: 'hd+silencing', router: 'System 5', color: C.green, label: 'S5+Sil' },
+      { feat: 'half_duplex', router: 'System V6', color: C.cyan, label: 'S5 real' },
+      { feat: 'hd+silencing', router: 'System V6', color: C.green, label: 'S5+Sil' },
     ];
 
     for (let i = 0; i < n; i++) {
@@ -335,7 +335,7 @@
       for (const s of DATA.scenarios) {
         const mfBase = get(s.name, 'baseline', 'Managed (7 hop)');
         const mfHD = get(s.name, 'half_duplex', 'Managed (7 hop)');
-        const s5HD = get(s.name, 'half_duplex', 'System 5');
+        const s5HD = get(s.name, 'half_duplex', 'System V6');
         if (mfBase && mfHD && s5HD) {
           totalGap += mfBase.delivery - mfHD.delivery;
           totalS5Gain += s5HD.delivery - mfHD.delivery;
@@ -344,7 +344,7 @@
       }
       const avgGap = count > 0 ? (totalGap/count).toFixed(0) : '?';
       const avgGain = count > 0 ? (totalS5Gain/count).toFixed(0) : '?';
-      insightEl.innerHTML = `<strong>Die Realit&auml;tsl&uuml;cke:</strong> Im Durchschnitt reduziert Halbduplex die Managed-Flooding-Zustellung um <span class="num">${avgGap} Prozentpunkte</span> &uuml;ber alle Szenarien. System 5 gewinnt <span class="num">${avgGain} points</span> dieser L&uuml;cke durch gerichtetes Routing zur&uuml;ck. Die roten Pfeile zeigen wo Flooding am dramatischsten einbricht.`;
+      insightEl.innerHTML = `<strong>Die Realit&auml;tsl&uuml;cke:</strong> Im Durchschnitt reduziert Halbduplex die Managed-Flooding-Zustellung um <span class="num">${avgGap} Prozentpunkte</span> &uuml;ber alle Szenarien. System V6 gewinnt <span class="num">${avgGain} points</span> dieser L&uuml;cke durch gerichtetes Routing zur&uuml;ck. Die roten Pfeile zeigen wo Flooding am dramatischsten einbricht.`;
     }
   }
 
@@ -363,8 +363,8 @@
     for (const s of DATA.scenarios) {
       const a = get(s.name, 'baseline', 'Managed (7 hop)');
       const b = get(s.name, 'half_duplex', 'Managed (7 hop)');
-      const c = get(s.name, 'half_duplex', 'System 5');
-      const d = get(s.name, 'hd+silencing', 'System 5');
+      const c = get(s.name, 'half_duplex', 'System V6');
+      const d = get(s.name, 'hd+silencing', 'System V6');
       if (a && b && c) {
         mfBase += a.delivery; mfHD += b.delivery;
         s5HD += c.delivery; s5Sil += (d ? d.delivery : c.delivery);
@@ -376,7 +376,7 @@
     const steps = [
       { label: 'Managed Flood\n(idealized)', val: mfBase, color: C.gray },
       { label: 'Half-Duplex\nReality', val: mfHD, color: C.red, delta: mfHD-mfBase },
-      { label: 'System 5\nDirected Routing', val: s5HD, color: C.cyan, delta: s5HD-mfHD },
+      { label: 'System V6\nDirected Routing', val: s5HD, color: C.cyan, delta: s5HD-mfHD },
       { label: '+ Node\nSilencing', val: s5Sil, color: C.green, delta: s5Sil-s5HD },
     ];
 
@@ -457,7 +457,7 @@
       { name: 'Naive Flood', color: C.red },
       { name: 'Managed (7 hop)', color: C.yellow },
       { name: 'Next-Hop (7 hop)', color: C.orange },
-      { name: 'System 5', color: C.cyan },
+      { name: 'System V6', color: C.cyan },
     ];
     const feat = 'half_duplex';
 
@@ -531,7 +531,7 @@
     ctx.clearRect(0, 0, W, H);
 
     const scenarios = DATA.scenarios;
-    const routers = ['Naive Flood', 'Managed (3 hop)', 'Managed (5 hop)', 'Managed (7 hop)', 'Next-Hop (7 hop)', 'System 5'];
+    const routers = ['Naive Flood', 'Managed (3 hop)', 'Managed (5 hop)', 'Managed (7 hop)', 'Next-Hop (7 hop)', 'System V6'];
     const feat = 'half_duplex';
 
     const labelW = 180, headerH = 60;
@@ -632,8 +632,8 @@
 
     // Plot points
     for (const s of DATA.scenarios) {
-      const s5hd = get(s.name, 'half_duplex', 'System 5');
-      const s5sil = get(s.name, 'hd+silencing', 'System 5');
+      const s5hd = get(s.name, 'half_duplex', 'System V6');
+      const s5sil = get(s.name, 'hd+silencing', 'System V6');
       if (!s5hd || !s5sil || s5hd.tx <= 0) continue;
 
       const txReduction = Math.max(0, (1 - s5sil.tx / s5hd.tx) * 100);

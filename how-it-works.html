@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MeshRoute — How System 5 Works (Step by Step)</title>
+<title>MeshRoute — How System V6 Works (Step by Step)</title>
 <link rel="stylesheet" href="css/styles.css">
 <style>
   .hw-hero {
@@ -143,7 +143,7 @@
 <div class="hw-hero">
   <div>
     <div class="hero-tag">Deep Dive — Every Layer Explained</div>
-    <h1 class="hero-title">How System 5 <span class="accent">Works</span></h1>
+    <h1 class="hero-title">How System V6 <span class="accent">Works</span></h1>
     <p class="hero-sub">A complete technical walkthrough of MeshRoute's geo-clustered, multi-path, load-balanced routing protocol — from boot to delivery.</p>
     <div class="hw-nav">
       <a href="#overview">Overview</a>
@@ -174,13 +174,13 @@
 
 <p>Current Meshtastic uses <strong>managed flooding</strong>: every node rebroadcasts every message, hoping it reaches the destination. This works for small networks but creates a bandwidth explosion at scale — 100 nodes means ~100 transmissions per message.</p>
 
-<p>System 5 takes a fundamentally different approach: <strong>nodes self-organize into geographic clusters, discover multi-hop routes, and send each message along a specific computed path.</strong> The cost per message is proportional to the number of hops, not the number of nodes.</p>
+<p>System V6 takes a fundamentally different approach: <strong>nodes self-organize into geographic clusters, discover multi-hop routes, and send each message along a specific computed path.</strong> The cost per message is proportional to the number of hops, not the number of nodes.</p>
 
 <div class="diagram"><span class="flood">Managed Flooding (Meshtastic today)</span>
 A sends → <span class="flood">every node rebroadcasts</span> → Z receives (eventually)
 Cost: O(n) transmissions per message — scales with network size
 
-<span class="path">System 5 (MeshRoute proposal)</span>
+<span class="path">System V6 (MeshRoute proposal)</span>
 A sends → <span class="path">B → D → G → Z</span> (computed path)
 Cost: O(hops) transmissions per message — scales with distance, not size</div>
 
@@ -189,7 +189,7 @@ Cost: O(hops) transmissions per message — scales with distance, not size</div>
 <!-- ============================================================ -->
 <h2 id="step1">Step 1: Boot — What Happens When a Node Turns On</h2>
 
-<p>When a System 5 node powers up, it doesn't know anything about the network yet. Here's the exact sequence:</p>
+<p>When a System V6 node powers up, it doesn't know anything about the network yet. Here's the exact sequence:</p>
 
 <ol>
   <li><strong>Hardware init</strong>: LoRa radio starts listening on the configured frequency (EU 868MHz). GPS module begins acquiring satellites (if available).</li>
@@ -251,12 +251,12 @@ Cost: O(hops) transmissions per message — scales with distance, not size</div>
 
 <h3>Link Quality Is Asymmetric</h3>
 
-<p>A critical detail: <strong>the link from A→B can have different quality than B→A.</strong> A mountaintop node with clear line-of-sight might send to a valley node with quality 0.95, but the valley node (surrounded by buildings) can only reach back with quality 0.3. System 5 tracks both directions independently.</p>
+<p>A critical detail: <strong>the link from A→B can have different quality than B→A.</strong> A mountaintop node with clear line-of-sight might send to a valley node with quality 0.95, but the valley node (surrounded by buildings) can only reach back with quality 0.3. System V6 tracks both directions independently.</p>
 
 <div class="diagram"><span class="node">Mountain (600m, free-space)</span>  ——— quality 0.95 ———→  <span class="node">Valley (50m, urban)</span>
 <span class="node">Mountain</span>  ←—— quality 0.30 ——————  <span class="node">Valley</span>
 
-System 5 knows both values. When routing TO the valley, it uses the 0.95 link.
+System V6 knows both values. When routing TO the valley, it uses the 0.95 link.
 When routing FROM the valley, it finds a different path (maybe through a hill node).</div>
 
 <!-- ============================================================ -->
@@ -290,7 +290,7 @@ When routing FROM the valley, it finds a different path (maybe through a hill no
 To send from A to H: A → D → <span class="node">E</span> → <span class="node">J</span> → G → H
                       (within u33d) (bridge) (within u33e)</div>
 
-<p>System 5 limits bridge links to <strong>2 per cluster pair</strong> to prevent route explosion. The two strongest links between each pair of adjacent clusters are selected.</p>
+<p>System V6 limits bridge links to <strong>2 per cluster pair</strong> to prevent route explosion. The two strongest links between each pair of adjacent clusters are selected.</p>
 
 <h3>Why This Scales</h3>
 
@@ -407,7 +407,7 @@ Result: 2 routes with independent next-hops. No graph traversal needed.</div>
 
 <div class="step-title"><span class="step-num">5</span><h3>Proportional Selection (Not Best-Only!)</h3></div>
 
-<p>This is a critical design choice. System 5 does <strong>not</strong> always pick the best route. It selects routes <strong>probabilistically, proportional to their weight</strong>:</p>
+<p>This is a critical design choice. System V6 does <strong>not</strong> always pick the best route. It selects routes <strong>probabilistically, proportional to their weight</strong>:</p>
 
 <div class="formula-box">
   <span class="label">Selection Probability</span>
@@ -441,7 +441,7 @@ Result: 2 routes with independent next-hops. No graph traversal needed.</div>
 
 <h3>Backpressure — Automatic Congestion Avoidance</h3>
 
-<p>When an intermediate node's queue is filling up, System 5 applies <strong>gradual backpressure</strong>:</p>
+<p>When an intermediate node's queue is filling up, System V6 applies <strong>gradual backpressure</strong>:</p>
 
 <table class="compare-table">
   <tr><th>Queue Load</th><th>Action</th></tr>
@@ -455,7 +455,7 @@ Result: 2 routes with independent next-hops. No graph traversal needed.</div>
 <!-- ============================================================ -->
 <h2 id="step6">Step 6: QoS — Priority Under Pressure</h2>
 
-<p>Not all messages are equal. System 5 uses a <strong>Network Health Score (NHS)</strong> per cluster to throttle low-priority traffic when the network is stressed.</p>
+<p>Not all messages are equal. System V6 uses a <strong>Network Health Score (NHS)</strong> per cluster to throttle low-priority traffic when the network is stressed.</p>
 
 <h3>NHS Calculation (Locally Computed)</h3>
 <p>NHS is a value from 0.0 to 1.0 representing the cluster's health <strong>as seen by this node</strong>. It requires no extra traffic — it's computed entirely from data already present in received OGMs:</p>
@@ -482,7 +482,7 @@ Result: 2 routes with independent next-hops. No graph traversal needed.</div>
 <!-- ============================================================ -->
 <h2 id="step7">Step 7: Fallback — When All Routes Fail</h2>
 
-<p>If all 5 cached routes fail (after retries on each), System 5 doesn't give up. It falls back to <strong>scoped cluster flooding</strong> — a targeted mini-flood along the corridor between source and destination.</p>
+<p>If all 5 cached routes fail (after retries on each), System V6 doesn't give up. It falls back to <strong>scoped cluster flooding</strong> — a targeted mini-flood along the corridor between source and destination.</p>
 
 <h3>How Scoped Flooding Works</h3>
 
@@ -500,7 +500,7 @@ Result: 2 routes with independent next-hops. No graph traversal needed.</div>
 Source in C1, destination in C4.
 Cluster path: C1 → C2 → C3 → C4
 
-<span class="path">Scoped flood corridor (System 5 fallback):</span>
+<span class="path">Scoped flood corridor (System V6 fallback):</span>
 ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐
 │<span class="path"> C1 </span> │──│ <span class="node">B2</span>  │──│ <span class="node">B3</span>  │──│<span class="path"> C4 </span> │   C5 is NOT flooded
 └─────┘  └─────┘  └─────┘  └─────┘
@@ -526,7 +526,7 @@ Cluster path: C1 → C2 → C3 → C4
 
 <h3>Cluster-Distributor: Wave Propagation</h3>
 
-<p>System 5 replaces blind broadcast flooding with <strong>structured wave propagation</strong> through elected cluster distributors:</p>
+<p>System V6 replaces blind broadcast flooding with <strong>structured wave propagation</strong> through elected cluster distributors:</p>
 
 <div class="step-title"><span class="step-num">1</span><h3>Elect Distributors</h3></div>
 <p>Each cluster elects one <strong>distributor node</strong> — a valley-level node with high local connectivity but low cross-cluster leakage. Selection criteria:</p>
@@ -589,7 +589,7 @@ Source node in C1 sends to C1-Distributor (unicast, 2 TX)
 <!-- ============================================================ -->
 <h2 id="step8">Step 8: Self-Maintenance — Keeping Routes Fresh</h2>
 
-<p>Networks change constantly: nodes move, batteries drain, links degrade. System 5 maintains itself through several mechanisms:</p>
+<p>Networks change constantly: nodes move, batteries drain, links degrade. System V6 maintains itself through several mechanisms:</p>
 
 <h3>Route Quality Decay (Pheromone Model)</h3>
 <p>Inspired by ant colony optimization: at each OGM cycle (adaptive interval, see <a href="#step2">Step 2</a>), all cached route qualities decay by 5%:</p>
@@ -612,7 +612,7 @@ Source node in C1 sends to C1-Distributor (unicast, 2 TX)
 <p>When a node discovers a new neighbor but its table is full (16 entries), it evicts the neighbor with the lowest link quality. This ensures the routing table always contains the <strong>best available</strong> connections.</p>
 
 <h3>Dynamic Hop Limit</h3>
-<p>Unlike Meshtastic's fixed 3-7 hop limit, System 5 uses a dynamic limit that scales with network size:</p>
+<p>Unlike Meshtastic's fixed 3-7 hop limit, System V6 uses a dynamic limit that scales with network size:</p>
 
 <div class="formula-box">
   <span class="label">Dynamic Max Hops</span>
@@ -640,7 +640,7 @@ Source node in C1 sends to C1-Distributor (unicast, 2 TX)
 
 <p>Result: 5% actual utilization becomes <strong>50% channel utilization</strong> at the mountaintop, and messages fail to propagate beyond the first hop.</p>
 
-<h3>Why System 5 Survives Half-Duplex</h3>
+<h3>Why System V6 Survives Half-Duplex</h3>
 
 <p>With directed routing, the mountaintop node receives <strong>one targeted packet</strong> (not 14 simultaneous rebroadcasts). It processes it, waits for a clear TX window, and forwards to the next hop. The radio state machine is simple:</p>
 
@@ -648,7 +648,7 @@ Source node in C1 sends to C1-Distributor (unicast, 2 TX)
   RX(A) → RX(B) → RX(C) → ... → RX(N) → <span class="bad">TX window? ALL BLOCKED</span>
   Duration: 10-20 seconds of continuous RX → message dies
 
-System 5 directed routing:
+System V6 directed routing:
   RX(packet for us) → <span class="path">TX(forward to next hop)</span> → IDLE
   Duration: ~2 seconds total → message continues</div>
 
@@ -660,18 +660,18 @@ System 5 directed routing:
   <tr><th>Scenario</th><th>Router</th><th>Delivery</th><th>Total TX</th></tr>
   <tr><td rowspan="2">Bay Area <strong>without</strong> half-duplex</td>
     <td>Managed Flood</td><td>87.5%</td><td>908,785</td></tr>
-  <tr><td class="highlight">System 5</td><td class="highlight">80.5%</td><td class="highlight">47,094</td></tr>
+  <tr><td class="highlight">System V6</td><td class="highlight">80.5%</td><td class="highlight">47,094</td></tr>
   <tr><td rowspan="2">Bay Area <strong>with</strong> half-duplex</td>
     <td>Managed Flood</td><td class="bad">6.0%</td><td>6,752</td></tr>
-  <tr><td class="highlight">System 5</td><td class="highlight">77.5%</td><td>540,780</td></tr>
+  <tr><td class="highlight">System V6</td><td class="highlight">77.5%</td><td>540,780</td></tr>
 </table>
 
-<p>Half-duplex collapses flooding from ~87% → ~6% delivery. System 5 holds at ~74%. <a href="simulator.html">Try the Bay Area scenario in the live simulator →</a></p>
+<p>Half-duplex collapses flooding from ~87% → ~6% delivery. System V6 holds at ~74%. <a href="simulator.html">Try the Bay Area scenario in the live simulator →</a></p>
 
 <!-- ============================================================ -->
 <h2 id="memory">Memory Footprint — Can This Run on nRF52?</h2>
 
-<p>Real-world mesh devices have tight memory constraints. The nRF52840 (used in RAK4631 solar routers) has 256KB RAM, with <strong>~64KB available</strong> after BLE and LoRa stacks. System 5 is designed to fit comfortably.</p>
+<p>Real-world mesh devices have tight memory constraints. The nRF52840 (used in RAK4631 solar routers) has 256KB RAM, with <strong>~64KB available</strong> after BLE and LoRa stacks. System V6 is designed to fit comfortably.</p>
 
 <h3>Data Structures (Revised)</h3>
 
@@ -767,7 +767,7 @@ System 5 directed routing:
 
 <h3>Battery-Fair Rotation</h3>
 
-<p>The same nodes can't be silenced forever — their batteries would last longer, but the active nodes would drain faster. System 5 <strong>rotates the silent set every 10 minutes</strong>:</p>
+<p>The same nodes can't be silenced forever — their batteries would last longer, but the active nodes would drain faster. System V6 <strong>rotates the silent set every 10 minutes</strong>:</p>
 
 <ol>
   <li>All expired silences are lifted</li>
@@ -789,7 +789,7 @@ System 5 directed routing:
 <!-- ============================================================ -->
 <h2 id="emergency">Emergency Re-Route — Last Resort Before Flooding</h2>
 
-<p>When all 5 cached routes fail (every hop was tried with retries), the original System 5 immediately triggered scoped corridor flooding. This was expensive — in the Bay Area scenario, 73 out of 200 messages triggered fallback floods.</p>
+<p>When all 5 cached routes fail (every hop was tried with retries), the original System V6 immediately triggered scoped corridor flooding. This was expensive — in the Bay Area scenario, 73 out of 200 messages triggered fallback floods.</p>
 
 <p>The v2.0 improvement adds one more step before flooding:</p>
 
@@ -826,7 +826,7 @@ System 5 directed routing:
 <!-- ============================================================ -->
 <h2 id="packet">Packet Format — What Goes Over the Air</h2>
 
-<p>Every System 5 packet has a 22-byte header:</p>
+<p>Every System V6 packet has a 22-byte header:</p>
 
 <table class="compare-table">
   <tr><th>Offset</th><th>Field</th><th>Size</th><th>Description</th></tr>
@@ -845,10 +845,10 @@ System 5 directed routing:
 </table>
 
 <!-- ============================================================ -->
-<h2 id="comparison">System 5 vs. Everything Else</h2>
+<h2 id="comparison">System V6 vs. Everything Else</h2>
 
 <table class="compare-table">
-  <tr><th>Property</th><th>Naive Flood</th><th>Managed Flood</th><th>Next-Hop</th><th class="highlight">System 5</th></tr>
+  <tr><th>Property</th><th>Naive Flood</th><th>Managed Flood</th><th>Next-Hop</th><th class="highlight">System V6</th></tr>
   <tr><td>TX cost per message</td><td class="bad">O(n)</td><td class="bad">O(n) × 0.5</td><td>O(hops)*</td><td class="highlight">O(hops)</td></tr>
   <tr><td>Works for broadcasts</td><td>Yes</td><td>Yes</td><td class="bad">No</td><td class="highlight">Yes</td></tr>
   <tr><td>Hop limit needed</td><td>Yes (3-7)</td><td>Yes (3-7)</td><td>Partially</td><td class="highlight">No (dynamic)</td></tr>
