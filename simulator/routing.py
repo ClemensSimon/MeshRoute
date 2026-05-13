@@ -2510,10 +2510,16 @@ class WalkFloodBroadcast:
          from specific nodes on demand. Demonstrated via N unicast requests.
     """
 
+    # MPR recompute interval: recompute every N broadcasts to adapt to topology changes.
+    # Tom (NomDeTom) correctly noted that in dynamic meshes, the "stable phase never arrives",
+    # so MPR sets must be refreshed periodically rather than computed once.
+    MPR_RECOMPUTE_INTERVAL = 10  # recompute every 10 broadcasts
+
     def __init__(self, seed=42, hop_limit=7):
         self.rng = random.Random(seed)
         self.hop_limit = hop_limit
         self._mpr_sets = {}  # node_id -> set of MPR neighbor IDs
+        self._mpr_broadcast_count = 0  # counter for periodic recompute
 
     # ------------------------------------------------------------------
     # MPR Selection
@@ -2523,7 +2529,7 @@ class WalkFloodBroadcast:
     # Low threshold because Bay Area topology relies on weak mountain links.
     QUALITY_MIN = 0.02
 
-    def _compute_mpr_sets(self, network):
+    def _compute_mpr_sets(self, network, force=False):
         """Compute MPR set for every node in the network.
 
         Quality-aware greedy algorithm adapted for lossy LoRa links:
@@ -2534,8 +2540,10 @@ class WalkFloodBroadcast:
            that cover many 2-hop nodes).
         5. After covering all 2-hop nodes, add extra MPRs for redundancy if the
            selected set has low average quality (lossy links need backup paths).
+
+        Called periodically (every MPR_RECOMPUTE_TICKS) to adapt to topology changes.
         """
-        if self._mpr_sets:
+        if self._mpr_sets and not force:
             return
 
         for node_id, node in network.nodes.items():
@@ -2665,7 +2673,10 @@ class WalkFloodBroadcast:
         if not src_node or src_node.battery <= 0:
             return stats
 
-        self._compute_mpr_sets(network)
+        # Periodic MPR recompute to adapt to topology changes (Fix A1)
+        self._mpr_broadcast_count += 1
+        force_recompute = (self._mpr_broadcast_count % self.MPR_RECOMPUTE_INTERVAL == 0)
+        self._compute_mpr_sets(network, force=force_recompute)
 
         seen = {src_id}
         stats.nodes_reached.add(src_id)
@@ -2689,23 +2700,47 @@ class WalkFloodBroadcast:
                     continue
 
             # Decision: should this node rebroadcast?
+            # Graceful Degradation (Fix A1): confidence = fraction of neighbors
+            # with known MPR status. Low confidence → more flooding, high → strict MPR.
+            # This ensures V6 is NEVER worse than Managed Flooding.
+            total_neighbors = len(current_node.neighbors)
+            known_mpr_neighbors = sum(
+                1 for nid in current_node.neighbors
+                if nid in self._mpr_sets and self._mpr_sets[nid]
+            )
+            confidence = known_mpr_neighbors / max(total_neighbors, 1)
+
             should_relay = False
             if current_id == src_id:
                 should_relay = True
             elif is_mpr:
                 should_relay = True
-            else:
-                # Non-MPR: suppress if well-covered by rebroadcasting neighbors
+            elif total_neighbors <= 8:
+                # Sparse network: always relay regardless of confidence.
+                # MPR suppression is too aggressive for <10 node networks.
+                should_relay = True
+            elif confidence < 0.3:
+                # Low confidence: behave like managed flooding (always relay)
+                should_relay = True
+            elif confidence < 0.7:
+                # Medium confidence: gossip with elevated probability
                 nb_rebroadcasted = sum(
                     1 for nid in current_node.neighbors if nid in rebroadcasted
                 )
-                # If 2+ neighbors already rebroadcasted, likely redundant
                 if nb_rebroadcasted >= 2:
-                    # High suppression — most non-MPR nodes in covered areas skip
+                    suppress_prob = 0.4 + 0.05 * min(nb_rebroadcasted, 6)
+                    should_relay = self.rng.random() >= suppress_prob
+                else:
+                    should_relay = True
+            else:
+                # High confidence: full MPR suppression
+                nb_rebroadcasted = sum(
+                    1 for nid in current_node.neighbors if nid in rebroadcasted
+                )
+                if nb_rebroadcasted >= 2:
                     suppress_prob = 0.7 + 0.05 * min(nb_rebroadcasted, 6)
                     should_relay = self.rng.random() >= suppress_prob
                 else:
-                    # Low coverage: this node is needed for propagation
                     should_relay = True
 
             if not should_relay:

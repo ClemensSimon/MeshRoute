@@ -153,19 +153,53 @@ def max_range_meters(tx_power=TX_POWER, threshold_rssi=-120.0):
     return PL_D0 * (10 ** exponent)
 
 
-def link_quality_from_distance(distance, tx_power=TX_POWER, terrain="urban"):
-    """Compute a 0-1 link quality score from distance.
+def snr_quality(snr, sf=7):
+    """Compute link quality from SNR relative to SF demodulation floor.
+
+    SNR is the physically correct metric for LoRa link quality (not RSSI),
+    because LoRa can demodulate below the noise floor. The quality is a
+    sigmoid centered on the SF-specific demodulation threshold + margin.
+
+    Args:
+        snr: Signal-to-noise ratio in dB
+        sf: Spreading factor (determines demodulation threshold)
+
+    Returns:
+        Quality score (0.0 to 1.0)
+    """
+    # SF demodulation thresholds (from Semtech SX1276 datasheet)
+    # These are the minimum SNR for successful demodulation per SF
+    snr_floors = {7: -7.5, 8: -10.0, 9: -12.5, 10: -15.0, 11: -17.5, 12: -20.0}
+    floor = snr_floors.get(sf, -7.5)
+    # Margin above floor for "reliable" operation
+    margin = 5.0  # dB — SNR >= floor+5 is considered reliable
+    x = snr - (floor + margin)
+    k = 0.5  # steepness
+    try:
+        return 1.0 / (1.0 + math.exp(-k * x))
+    except OverflowError:
+        return 0.0 if x < 0 else 1.0
+
+
+def link_quality_from_distance(distance, tx_power=TX_POWER, terrain="urban", sf=7):
+    """Compute a 0-1 link quality score from distance using SNR.
+
+    Uses SNR-based quality (physically correct for LoRa) instead of
+    pure RSSI-based sigmoid. RSSI is still computed internally but
+    converted to SNR for the quality assessment.
 
     Args:
         distance: Distance in meters
         tx_power: Transmit power in dBm
         terrain: Terrain type
+        sf: Spreading factor (default 7)
 
     Returns:
         Quality score (0.0 to 1.0)
     """
     rssi = rssi_from_distance(distance, tx_power, terrain=terrain)
-    return packet_success_rate(rssi)
+    snr = snr_from_rssi(rssi)
+    return snr_quality(snr, sf=sf)
 
 
 def rssi_from_distance(distance, tx_power=TX_POWER, terrain="urban"):

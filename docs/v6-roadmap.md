@@ -52,8 +52,11 @@ Microsoft Research: decode colliding LoRa packets via signal processing. Makes c
 **10. SF Orthogonality — 2-6x parallel capacity**
 Different SFs on same frequency are quasi-orthogonal. Assign SFs by tier (short-range=SF7, long-range=SF12). Both transmit simultaneously.
 
-**11. Compressed Sensing for Telemetry — 50-80%**
-Nodes transmit random linear combinations of their data. Gateway reconstructs all readings from M << N transmissions. Ideal for position aggregation.
+**11. ~~Compressed Sensing / Delta Compression~~ — REMOVED**
+Delta compression is unsuitable for lossy LoRa links (drift accumulates on packet loss).
+Compressed sensing requires gateway coordination incompatible with peer-to-peer mesh.
+Removed based on field feedback (NomDeTom: "Delta compression is terrible — our links
+are not and will never be reliable enough for it").
 
 **12. Fountain/Raptor Codes for Broadcast — 40-60%**
 Rateless codes: receiver reconstructs from any sufficient subset. No ACK/retransmission needed for firmware updates or group messages.
